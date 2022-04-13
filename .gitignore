@@ -105,3 +105,4 @@ ENV/
 .vscode/
 
 microsim/_version.py
+microsim/samples/*.c

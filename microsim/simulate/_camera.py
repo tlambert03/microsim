@@ -10,9 +10,9 @@ if TYPE_CHECKING:
 
 
 def simulate_camera(
-    image: np.ndarray,
-    exposure: float,
     camera: Camera,
+    image: np.ndarray,
+    exposure: float = 0.1,
     binning: int = 1,
     add_poisson: bool = True,
 ):
@@ -20,14 +20,16 @@ def simulate_camera(
 
     Parameters
     ----------
+    camera : Camera
+        camera objects
     image : np.ndarray
         array where each element represents photons / second
     exposure : float
         exposure time in seconds
-    camera : Camera
-        camera objects
     binning: int
         camera binning
+    add_poisson: bool
+        Whether to include poisson noise.
 
     Returns
     -------

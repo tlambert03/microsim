@@ -15,8 +15,31 @@ class Camera(BaseModel):
     bit_depth: int
     offset: int
 
-    def simulate(self, image: "np.ndarray"):
-        ...
+    def simulate(
+        self,
+        image: np.ndarray,
+        exposure: float = 100,
+        binning: int = 1,
+        add_poisson: bool = True,
+    ) -> np.ndarray:
+        """Simulate imaging process.
+
+        Parameters
+        ----------
+        image : np.ndarray
+            array where each element represents photons / second
+        exposure : float, optional
+            _description_, by default 100
+        binning : int, optional
+            _description_, by default 1
+        add_poisson : bool, optional
+            _description_, by default True
+        """
+        from ..simulate import simulate_camera
+
+        return simulate_camera(
+            self, image, exposure, binning=binning, add_poisson=add_poisson
+        )
 
     @property
     def adc_gain(self) -> float:
@@ -25,7 +48,7 @@ class Camera(BaseModel):
 
     @property
     def max_intensity(self) -> int:
-        return 2 ** self.bit_depth - 1
+        return 2**self.bit_depth - 1
 
     def quantize_electrons(self, total_electrons: np.ndarray) -> np.ndarray:
         voltage = stats.norm.rvs(total_electrons, self.read_noise) * self.gain

@@ -10,7 +10,7 @@ class Objective(BaseModel):
         ...,
         description="working distance (immersion medium thickness) design, in microns.",
     )
-    magnification: float = Field(..., description="magnification of objective lens.")
+    magnification: float = Field(1, description="magnification of objective lens.")
     cs_ri_design: float = Field(
         1.515, description="design (expected) refractive index of coverslip"
     )
