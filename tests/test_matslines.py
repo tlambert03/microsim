@@ -1,6 +1,6 @@
 import numpy as np
 
-from microsim.models._sample import MatsLines
+from microsim.samples import MatsLines
 from microsim.util import uniformly_spaced_xarray
 
 

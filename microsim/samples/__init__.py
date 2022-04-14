@@ -1,3 +1,3 @@
-from ._bresenham import drawlines_bresenham
+from ._matslines import MatsLines
 
-__all__ = ["drawlines_bresenham"]
+__all__ = ["MatsLines"]
