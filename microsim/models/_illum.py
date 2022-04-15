@@ -1,9 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from functools import lru_cache
+from itertools import product
+from typing import TYPE_CHECKING, Sequence, Tuple
 
 import numpy as np
 from pydantic import BaseModel
+from scipy.ndimage import map_coordinates
+from tqdm import tqdm
 
 from ._renderable import Renderable
 
@@ -26,7 +30,10 @@ class SIMIllum2D(Illumination, BaseModel):
     angles: Sequence[float] = [0, np.pi / 3, np.pi * 2 / 3]
     nphases: int = 3
     linespacing: float = 0.2035
-    defocus: float = 0
+    defocus: float = 0  # TODO: implement
+    spotsize: float = 0.035  # BFP spot size as fraction of NA
+    nbeamlets: int = 31  # number of beamlets in each BFP spot
+    ampcenter: float = 0
 
     @property
     def nangles(self) -> int:
@@ -36,51 +43,157 @@ class SIMIllum2D(Illumination, BaseModel):
     def phaseshift(self) -> float:
         return 2 * self.linespacing / self.nphases
 
+    @property
+    def phases(self) -> NDArray:
+        return np.arange(self.nphases) * self.phaseshift
+
+    def axial_sim_plane(
+        self,
+        nz: int,
+        nx: int,
+        dz: float,
+        dx: float,
+        NA: float = 1.42,
+        nimm: float = 1.515,
+        wvl: float = 0.488,
+    ) -> np.ndarray:
+        """Return single axial SIM illumination plane."""
+        return structillum_2d(
+            nz=nz + 1,
+            nx=nx,
+            dz=dz,
+            dx=dx,
+            NA=NA,
+            nimm=nimm,
+            wvl=wvl,
+            linespacing=self.linespacing,
+            ampcenter=self.ampcenter,
+            nbeamlets=self.nbeamlets,
+            spotsize=self.spotsize,
+        ).sum(0)[1:]
+
+    def render(self, space: xr.DataArray) -> np.ndarray:
+        _dz = set(xp.round(xp.diff(space.coords.get("Z", [0, 0.1])), 8))
+        _dx = set(xp.round(xp.diff(space.coords["X"]), 8))
+        assert len(_dz) == 1, "Non-uniform spacing detected in Z"
+        assert len(_dx) == 1, "Non-uniform spacing detected in X"
+        dz = _dz.pop()
+        dx = _dx.pop()
+        nz = space.sizes.get("Z", 1)
+        ny = space.sizes["Y"]
+        nx = space.sizes["X"]
+
+        return self.create((nz, ny, nx), dz, dx)
+
+    def create(self, shape: Tuple[int, int, int], dz: float, dx: float) -> np.ndarray:
+        """Create illumination volume (generic variant of render)"""
+        nz, ny, nx = shape
+
+        nx_extended = int(3 * np.hypot(ny, nx))
+        phases = self.phases / dx + nx_extended / 2
+
+        # TODO: figure out the transformations without all the transpositions
+        sim_plane = self.axial_sim_plane(nz=nz, nx=nx_extended, dz=dz, dx=dx).T
+
+        out = xp.empty((self.nangles, self.nphases, nz, ny, nx))
+
+        coords = xp.indices((ny, nz, nx)).reshape((3, -1))
+        with tqdm(total=(self.nangles * self.nphases)) as pbar:
+            for idx, (theta, phase) in _enumerated_product(self.angles, phases):
+                pbar.set_description(
+                    f"SIM: angle {idx[0] + 1}/{self.nangles}, "
+                    f"phase {idx[1]+ 1}/{self.nphases}"
+                )
+                new_coords = self._map_coords(coords, theta, phase)
+                img = map_coordinates(sim_plane, new_coords, order=1)
+                pbar.update()
+                out[idx] = img.reshape((ny, nz, nx)).transpose((1, 0, 2))
+
+        return out
+
+    def _map_coords(self, coords: np.ndarray, theta: float, phase: float) -> NDArray:
+        """Map a set of image coordinates to new coords after phaseshift and rotation"""
+        matrix = self._get_matrix(theta, phase)
+        new_coordinates = (matrix[:-1, :-1] @ coords)[:2]
+        return new_coordinates + xp.expand_dims(xp.asarray(matrix[:2, -1]), -1)
+
+    def _get_matrix(self, theta: float, phase: float) -> NDArray:
+        """Get matrix to transform output coordinates to axial sim plane
+
+        Parameters
+        ----------
+        theta : float
+            current rotation angle
+        phase : float
+            current phase shift
+
+        Returns
+        -------
+        NDArray
+            tranformation matrix
+        """
+        scale = xp.eye(4)
+        scale[2, 2] = 0  # flatten the z dimension to the 2D plane
+
+        translate = xp.eye(4)
+        translate[0, 3] = phase
+
+        rotate = xp.array(
+            [
+                [np.cos(theta), 0, -np.sin(theta), 0],
+                [0, 1, 0, 0],
+                [np.sin(theta), 0, np.cos(theta), 0],
+                [0, 0, 0, 1],
+            ]
+        )
+
+        return scale @ translate @ rotate
+
 
 class SIMIllum3D(SIMIllum2D):
     nphases: int = 5
-
-    def render(self, space: xr.DataArray):
-        assert space.ndim == 3
-        nz, ny, nx = space.shape  # Todo, use xarray
+    ampcenter: float = 1.0
 
 
-def efield(kvec, zarr, xarr, dx, dz):
-    return np.exp(1j * 2 * np.pi * (kvec[0] * xarr * dx + kvec[1] * zarr * dz))
+TAU = 1j * 2 * np.pi
 
 
+def efield(kvec: Tuple[float, float], zarr: NDArray, xarr: NDArray):
+    return xp.exp(TAU * (kvec[0] * xarr + kvec[1] * zarr))
+
+
+@lru_cache(maxsize=128)
 def structillum_2d(
-    nz: int = 256,
-    nx: int = 512,
-    dx: float = 0.01,
+    nz: int = 128,
+    nx: int = 256,
     dz: float = 0.01,
+    dx: float = 0.01,
     NA: float = 1.42,
     nimm: float = 1.515,
     wvl: float = 0.488,
     linespacing: float = 0.2035,
-    extraz: int = 0,
-    side_intensity: float = 0.5,
     ampcenter: float = 1.0,
-    ampratio: float = 1.0,
-    nangles: int = 100,
-    spotratio: float = 0.035,
+    ampratio: float = 1.0,  # TODO: remove?  ampcenter seems sufficient
+    nbeamlets: int = 31,
+    spotsize: float = 0.035,
 ) -> napari.types.ImageData:
     """Simulate a single "XZ" plane of structured illumination intensity.
 
-    from Lin Shao's psfsimu.py file which is in turn based on Hanser et al (2004) and
-    C code pftopsfV3test_polV2.c
+    from Lin Shao's psfsimu.py file which is in turn based on Hanser et al (2004)
+    and C code pftopsfV3test_polV2.c
 
-    '2d' means we're only creating one sheet of illumination since every sheet will
-    be the same side_intensity (0~1) -- the amplitude of illum from one objective;
-    for the other it's 1 minus this value
+    '2d' means we're only creating one axial sheet of illumination
+    (not that we're doing 2D SIM)
 
     Parameters
     ----------
-    shape : _type_
-        output array shape
-    dx : float, optional
-        pixel sizes in microns, by default 0.01
+    nz : float, optional
+        number of Z pixels
+    nx : float, optional
+        number of X pixels
     dz : float, optional
+        pixel sizes in microns, by default 0.01
+    dx : float, optional
         pixel sizes in microns, by default 0.01
     NA : float, optional
         NA of the lens, by default 1.42
@@ -90,102 +203,90 @@ def structillum_2d(
         wavelength in microns, by default 0.488
     linespacing : float, optional
         spacing in microns of illumination pattern, by default 0.2035
-    extraz : int, optional
-        _description_, by default 0
-    side_intensity : float, optional
-        the amplitude of illum from one objective; for the other it's 1 minus this
-        value. Should be between 0-1. by default 0.5
     ampcenter : float, optional
         the amplitude of the center illum beam if 0, then it's for 2D SIM.
         by default 1.0
     ampratio : float, optional
         the amplitude of the side beams relative to center beam, which is 1.0.
         by default 1.0
-    nangles : int, optional
+    nbeamlets : int, optional
         the number of triplets (or sextets) we'd divide the illumination beams
         into because the beams assume different incident angles (multi-mode fiber),
-        by default 100
-    spotratio : float, optional
-        the proportion of illum spot size vs entire NA with the condition that
-        f-fiber-lens = 60mm, fiber-diameter = 0.1mm, lambda-excitation = 528nm,
-        grating-pitch = 33.6um, by default 0.035
+        by default 31
+    spotsize : float, optional
+        the proportion of illum spot size vs entire NA.  This represents the size of
+        a partially coherent (e.g. multimode fiber) spot at the back focal plane.
+        Increasing spotratio will reduce the axial envelope of the pattern.
 
     Returns
     -------
-    _type_
-        _description_
+    np.ndarray
+        (3 x nz x nx) Array of zero order, axial orders, and lateral orders. Sum them
+        along axis zero to get final 3D illumination intensity.
     """
 
-    # theta_arr = np.arange(-nangles/2, nangles/2+1, dtype=np.float32)*anglespan/nangles
+    assert NA < nimm, "NA must be less than immersion refractive index `nimm`."
 
-    # NA is half angle, hence 2 *
-    anglespan = spotratio * 2 * np.arcsin(NA / nimm)
+    # steepest angle of illumination based on NA and nimm, in radians
+    max_half_angle = xp.arcsin(NA / nimm)
+    # angular span of each beam (where higher numbers mean a larger spot in the BFP)
+    spot_angular_span = spotsize * 2 * max_half_angle
+    # NA of each beam
+    beam_NA = 0 if spot_angular_span == 0 else xp.sin(spot_angular_span)
 
-    NA_span = np.sin(anglespan)
-    NA_arr = (
-        np.arange(-nangles / 2, nangles / 2 + 1, dtype=np.float32) * NA_span / nangles
-    )
+    # NA_arr is the individual NAs for each wave-vector in each of the 2/3 beams
+    # (each beam is composed of 'nbeamlets' beamlets spanning a total of NA_span)
+    NA_arr: NDArray = xp.arange(nbeamlets, dtype=np.float32) - (nbeamlets - 1) / 2
+    NA_arr *= beam_NA / nbeamlets
 
+    # max k vector
     kmag = nimm / wvl
 
     # The contribution to the illum is dependent on theta, since the middle of
-    # the circle has more rays than the edge
-    # kmag*np.sin(anglespan/2)) is the radius of each circular illumination
-    # spot weight_arr is essentially the "chord" length as a function of theta_arr
-    # weight_arr = np.sqrt(
-    #   (kmag*np.sin(anglespan/2)) ** 2 - (kmag*np.sin(theta_arr))**2 )
-    #   / (kmag*np.sin(anglespan/2))
-    weight_arr = np.sqrt((kmag * NA_span / 2) ** 2 - (kmag * NA_arr) ** 2) / (
-        kmag * NA_span / 2
-    )
+    # each illumination spot has more rays than the edge
+    # ``kmag * beam_NA / 2`` is the radius of each circular illumination spot
+    # `weight_arr` is essentially the "chord" length as a function of NA_arr
+    _r = kmag * beam_NA / 2
+    _d = kmag * NA_arr
+    weight_arr = xp.sqrt(xp.maximum(_r**2 - _d**2, 0)) / _r
 
-    # plus_sidetheta_arr =
-    #   np.arcsin( (kmag * np.sin(theta_arr) + 1/linespacing/2)/kmag)
-    # minus_sidetheta_arr = -plus_sidetheta_arr[::-1]
+    side_NA = (1 / linespacing / 2 + kmag * NA_arr) / kmag
+    if xp.any(side_NA > 1):
+        # TODO could consider setting weight of clipped beams to 0?
+        raise ValueError(
+            "Unsatisfiable parameters (clipped beams): "
+            f"{NA=}, {wvl=}, {linespacing=}, {spotsize=}"
+        )
 
     linefrequency = 1 / linespacing
     # TODO: add sanity check here
     plus_sideNA = (linefrequency / 2 + kmag * NA_arr) / kmag
     minus_sideNA = -plus_sideNA[::-1]
 
+    zarr, xarr = xp.indices((nz, nx)).astype(np.float32)
+    zarr = (zarr - nz / 2) * dz
+    xarr = (xarr - nx / 2) * dx
+
+    kvecs = kmag * xp.stack([NA_arr, xp.sqrt(1 - NA_arr**2)]).T
+    plus_kvecs = kmag * xp.stack([plus_sideNA, xp.sqrt(1 - plus_sideNA**2)]).T
+    minus_kvecs = kmag * xp.stack([minus_sideNA, xp.sqrt(1 - minus_sideNA**2)]).T
+
     # output array
-    intensity: NDArray = np.zeros((3, nz + extraz, nx), np.float32)
-
-    amp: NDArray = np.zeros((3, nz + extraz, nx), np.complex64)
-    zarr, xarr = np.indices((nz + extraz, nx)).astype(np.float32)
-    zarr -= (nz + extraz) / 2
-    xarr -= nx / 2
-
-    amp_plus = np.sqrt(1.0 - side_intensity)
-    # amp_minus = np.sqrt(side_intensity)
-
-    kvecs = kmag * np.stack([NA_arr, np.sqrt(1 - NA_arr**2)]).T
-    plus_kvecs = kmag * np.stack([plus_sideNA, np.sqrt(1 - plus_sideNA**2)]).T
-    minus_kvecs = kmag * np.stack([minus_sideNA, np.sqrt(1 - minus_sideNA**2)]).T
-
+    intensity: NDArray = xp.zeros((3, nz, nx), np.float32)
     for i, wght in enumerate(weight_arr):
-        amp[0] = amp_plus * efield(kvecs[i], zarr, xarr, dx, dz) * ampcenter
-        amp[1] = amp_plus * efield(plus_kvecs[i], zarr, xarr, dx, dz) * ampratio
-        amp[2] = amp_plus * efield(minus_kvecs[i], zarr, xarr, dx, dz) * ampratio
+        a0 = efield(kvecs[i], zarr, xarr) * ampcenter
+        a1 = efield(plus_kvecs[i], zarr, xarr) * ampratio
+        a2 = efield(minus_kvecs[i], zarr, xarr) * ampratio
 
-        intensity[0] += (
-            (amp[0] * amp[0].conj() + amp[1] * amp[1].conj() + amp[2] * amp[2].conj())
-            * wght
-        ).real
-        intensity[1] += (
-            2 * np.real(amp[0] * amp[1].conj() + amp[0] * amp[2].conj()) * wght
-        )
-        intensity[2] += 2 * np.real(amp[1] * amp[2].conj()) * wght
+        a1conj = a1.conj()
+        a2conj = a2.conj()
 
-    if extraz <= 0:
-        return intensity
+        intensity[0] += xp.real(a0 * a0.conj() + a1 * a1conj + a2 * a2conj) * wght
+        intensity[1] += 2 * xp.real(a0 * a1conj + a0 * a2conj) * wght
+        intensity[2] += 2 * xp.real(a1 * a2conj) * wght
 
-    # blend = F.zeroArrF(extraz, nx)
-    aslope = np.arange(extraz, dtype=np.float32) / extraz
-    blend = np.transpose(
-        np.transpose(intensity[:extraz, :]) * aslope
-        + np.transpose(intensity[-extraz:, :]) * (1 - aslope)
-    )
-    intensity[:extraz, :] = blend
-    intensity[-extraz:, :] = blend
-    return intensity[extraz // 2 : -extraz // 2, :]  # noqa
+    return intensity
+
+
+def _enumerated_product(*args):
+    yield from zip(product(*(range(len(x)) for x in args)), product(*args))

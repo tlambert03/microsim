@@ -50,4 +50,4 @@ def uniformly_spaced_xarray(
 
     axes = axes[-ndim:]  # pick last ndim axes, in case there are too many provided.
     coords = [(ax, np.arange(sh) * sc) for ax, sh, sc in zip(axes, shape, scale)]
-    return xr.DataArray(array_creator(shape), coords=coords)
+    return xr.DataArray(array_creator(shape), coords=coords, attrs={"units": "um"})

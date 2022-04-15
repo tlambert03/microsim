@@ -2,12 +2,12 @@ from pydantic import BaseModel, Field, root_validator
 
 
 class Objective(BaseModel):
-    na: float = Field(..., description="numerical aperture.")
+    na: float = Field(1.42, description="numerical aperture.")
     immersion_ri: float = Field(
-        ..., description="design (expected) refractive index of immersion medium"
+        1.515, description="design (expected) refractive index of immersion medium"
     )
     working_distance: float = Field(
-        ...,
+        150,
         description="working distance (immersion medium thickness) design, in microns.",
     )
     magnification: float = Field(1, description="magnification of objective lens.")
@@ -19,16 +19,11 @@ class Objective(BaseModel):
     )
 
     @root_validator
-    def _vroot(cls, values: dict):
+    def _vroot(cls, values: dict):  # sourcery skip: instance-method-first-arg-name
         na = values.get("na", 0)
         ri = values.get("immersion_ri", 1000)
         if na > ri:
             raise ValueError(
                 f"NA ({na}) cannot be greater than immersion medium RI ({ri})"
             )
-
         return values
-
-    @classmethod
-    def default(cls):
-        return cls(na=1.4, immersion_ri=1.515, working_distance=150, magnification=1)
