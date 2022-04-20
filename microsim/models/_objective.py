@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, root_validator
 
 class Objective(BaseModel):
     na: float = Field(1.42, description="numerical aperture.")
-    immersion_ri: float = Field(
+    immersion_ri_design: float = Field(
         1.515, description="design (expected) refractive index of immersion medium"
     )
     working_distance: float = Field(
@@ -21,9 +21,10 @@ class Objective(BaseModel):
     @root_validator
     def _vroot(cls, values: dict):  # sourcery skip: instance-method-first-arg-name
         na = values.get("na", 0)
-        ri = values.get("immersion_ri", 1000)
+        ri = values.get("immersion_ri_design", 1000)
         if na > ri:
             raise ValueError(
-                f"NA ({na}) cannot be greater than immersion medium RI ({ri})"
+                f"NA ({na}) cannot be greater than the immersion medium RI "
+                f"design value ({ri})"
             )
         return values

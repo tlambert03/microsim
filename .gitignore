@@ -106,3 +106,5 @@ ENV/
 
 microsim/_version.py
 microsim/**/*.c
+jrc_*
+dask-worker-space*

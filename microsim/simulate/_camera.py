@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence, Union
 
 import numpy as np
 from scipy.stats import poisson
 
+from ..models import CameraEMCCD
+
 if TYPE_CHECKING:
-    from ..models import Camera, CameraCMOS, CameraEMCCD
+    from numpy.typing import NDArray
+
+    from ..models import Camera, CameraCMOS
 
 
 def simulate_camera(
@@ -76,9 +80,16 @@ def simulate_camera(
         return gray_values.astype("uint8")
 
 
-def bin(array: np.ndarray, binfactor: int, method="sum") -> np.ndarray:
-    assert array.ndim == 2, "Cannot yet bin >2D images"
-    m, n = array.shape
+def bin(
+    array: NDArray, factor: Union[int, Sequence[int]], method="sum", dtype=None
+) -> NDArray:
+    # TODO: deal with xarray
     f = getattr(np, method)
-    reshaped = np.reshape(array, (m // binfactor, binfactor, n // binfactor, binfactor))
-    return f(f(reshaped, 3), 1)
+    binfactor = (factor,) * array.ndim if isinstance(factor, int) else factor
+    new_shape = []
+    for s, b in zip(array.shape, binfactor):
+        new_shape.extend([s // b, b])
+    reshaped = np.reshape(array, new_shape)
+    for d in range(array.ndim):
+        reshaped = f(reshaped, axis=-1 * (d + 1), dtype=dtype)
+    return reshaped
