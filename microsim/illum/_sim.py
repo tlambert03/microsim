@@ -5,14 +5,15 @@ from itertools import product
 from typing import TYPE_CHECKING, Sequence, Tuple
 
 import numpy as np
-from scipy.ndimage import map_coordinates
 from tqdm import tqdm
 
 from ._widefield import Widefield
 
 try:
     import cupy as xp
+    from cupyx.scipy.ndimage import map_coordinates
 except ImportError:
+    from scipy.ndimage import map_coordinates
     xp = np
 
 if TYPE_CHECKING:
@@ -69,8 +70,8 @@ class SIMIllum2D(Widefield):
         ).sum(0)[1:]
 
     def render(self, space: xr.DataArray) -> np.ndarray:
-        _dz = set(xp.round(xp.diff(space.coords.get("Z", [0, 0.1])), 8))
-        _dx = set(xp.round(xp.diff(space.coords["X"]), 8))
+        _dz = set(xp.round(xp.diff(space.coords.get("Z", [0, 0.1])), 8).tolist())
+        _dx = set(xp.round(xp.diff(space.coords["X"]), 8).tolist())
         assert len(_dz) == 1, "Non-uniform spacing detected in Z"
         assert len(_dx) == 1, "Non-uniform spacing detected in X"
         dz = _dz.pop()

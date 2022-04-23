@@ -38,18 +38,18 @@ class MatsLines(BaseModel, Sample):
             alphaz = np.pi / 2
 
         # random set of x, y, z centers
-        x1 = np.random.randint(xypad, nx - xypad, size=numlines)
-        y1 = np.random.randint(xypad, ny - xypad, size=numlines)
+        x1 = xp.random.randint(xypad, nx - xypad, size=numlines)
+        y1 = xp.random.randint(xypad, ny - xypad, size=numlines)
         if nz:
-            z1 = np.random.randint(zpad, nz[0] - zpad, size=numlines)
+            z1 = xp.random.randint(zpad, nz[0] - zpad, size=numlines)
 
         # find other end of line given alpha and length
         lens = nx / 20 + self.length * ny / 20 * xp.random.rand(numlines)
         x2 = xp.clip(
-            np.round(x1 + np.sin(alphaz) * np.cos(alpha) * lens), xypad, nx - xypad
+            xp.round(x1 + xp.sin(alphaz) * xp.cos(alpha) * lens), xypad, nx - xypad
         )
         y2 = xp.clip(
-            np.round(y1 + np.sin(alphaz) * np.sin(alpha) * lens), xypad, nx - xypad
+            xp.round(y1 + xp.sin(alphaz) * xp.sin(alpha) * lens), xypad, nx - xypad
         )
 
         if nz:
@@ -59,7 +59,10 @@ class MatsLines(BaseModel, Sample):
 
     def render(self, space: Union[NDArray, xr.DataArray]):
         start, end = self._gen_vertices(space.shape)
-        data = xp.zeros_like(space).astype(np.int32)
         c = xp.concatenate([start, end], axis=1).astype(np.int32)
+        data = np.zeros(space.shape).astype(np.int32)
+        # TODO: make bresenham work on GPU
+        if hasattr(c, 'get'):
+            c = c.get()
         drawlines_bresenham(c, data, self.max_r)
         return space + data
