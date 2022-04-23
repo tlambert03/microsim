@@ -29,6 +29,7 @@ class SIMIllum2D(Widefield):
     spotsize: float = 0.035  # BFP spot size as fraction of NA
     nbeamlets: int = 31  # number of beamlets in each BFP spot
     ampcenter: float = 0
+    order: str = "PZA"
 
     @property
     def nangles(self) -> int:
