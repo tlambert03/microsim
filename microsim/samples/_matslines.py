@@ -62,7 +62,7 @@ class MatsLines(BaseModel, Sample):
         c = xp.concatenate([start, end], axis=1).astype(np.int32)
         data = np.zeros(space.shape).astype(np.int32)
         # TODO: make bresenham work on GPU
-        if hasattr(c, 'get'):
+        if hasattr(c, "get"):
             c = c.get()
         drawlines_bresenham(c, data, self.max_r)
         return space + data

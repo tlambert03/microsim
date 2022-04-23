@@ -14,6 +14,7 @@ try:
     from cupyx.scipy.ndimage import map_coordinates
 except ImportError:
     from scipy.ndimage import map_coordinates
+
     xp = np
 
 if TYPE_CHECKING:
@@ -85,9 +86,9 @@ class SIMIllum2D(Widefield):
         data = self.create((nz, ny, nx), dz, dx)
 
         d = xr.DataArray(data, dims=list(self.order + "YX"), coords=space.coords)
-        d.coords['A'] = self.angles
-        d.coords['P'] = self.phases
-        print(d.shape, 'd')
+        d.coords["A"] = self.angles
+        d.coords["P"] = self.phases
+        print(d.shape, "d")
         return d
 
     def create(self, shape: Tuple[int, int, int], dz: float, dx: float) -> np.ndarray:
@@ -112,12 +113,12 @@ class SIMIllum2D(Widefield):
                 img = self._render_plane(sim_plane, coords, theta, phase)
                 img = img.reshape((ny, nz, nx)).transpose((1, 0, 2))
                 pbar.update()
-                out[ai, pi] = img.get() if hasattr(img, 'get') else img
+                out[ai, pi] = img.get() if hasattr(img, "get") else img
 
         _order = self.order.upper() + "YX"
-        if _order != 'APZYX':
+        if _order != "APZYX":
             out = np.transpose(out, tuple("APZYX".index(i) for i in _order))
-        print(out.shape, 'out')
+        print(out.shape, "out")
         return out
 
     def _render_plane(self, sim_plane, coords, theta, phase):
