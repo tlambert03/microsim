@@ -70,6 +70,8 @@ class SIMIllum2D(Widefield):
         ).sum(0)[1:]
 
     def render(self, space: xr.DataArray) -> np.ndarray:
+        import xarray as xr
+
         _dz = set(xp.round(xp.diff(space.coords.get("Z", [0, 0.1])), 8).tolist())
         _dx = set(xp.round(xp.diff(space.coords["X"]), 8).tolist())
         assert len(_dz) == 1, "Non-uniform spacing detected in Z"
@@ -80,7 +82,13 @@ class SIMIllum2D(Widefield):
         ny = space.sizes["Y"]
         nx = space.sizes["X"]
 
-        return self.create((nz, ny, nx), dz, dx)
+        data = self.create((nz, ny, nx), dz, dx)
+
+        d = xr.DataArray(data, dims=list(self.order + "YX"), coords=space.coords)
+        d.coords['A'] = self.angles
+        d.coords['P'] = self.phases
+        print(d.shape, 'd')
+        return d
 
     def create(self, shape: Tuple[int, int, int], dz: float, dx: float) -> np.ndarray:
         """Create illumination volume (generic variant of render)"""
@@ -92,21 +100,38 @@ class SIMIllum2D(Widefield):
         # TODO: figure out the transformations without all the transpositions
         sim_plane = self.axial_sim_plane(nz=nz, nx=nx_extended, dz=dz, dx=dx).T
 
-        out = xp.empty((self.nangles, self.nphases, nz, ny, nx))
+        out = np.empty((self.nangles, self.nphases, nz, ny, nx))
 
-        coords = xp.indices((ny, nz, nx)).reshape((3, -1))
+        coords = np.indices((ny, nz, nx)).reshape((3, -1))
         with tqdm(total=(self.nangles * self.nphases)) as pbar:
-            for idx, (theta, phase) in _enumerated_product(self.angles, phases):
+            for (ai, pi), (theta, phase) in _enumerated_product(self.angles, phases):
                 pbar.set_description(
-                    f"SIM: angle {idx[0] + 1}/{self.nangles}, "
-                    f"phase {idx[1]+ 1}/{self.nphases}"
+                    f"SIM: angle {ai + 1}/{self.nangles}, "
+                    f"phase {pi + 1}/{self.nphases}"
                 )
-                new_coords = self._map_coords(coords, theta, phase)
-                img = map_coordinates(sim_plane, new_coords, order=1)
+                img = self._render_plane(sim_plane, coords, theta, phase)
+                img = img.reshape((ny, nz, nx)).transpose((1, 0, 2))
                 pbar.update()
-                out[idx] = img.reshape((ny, nz, nx)).transpose((1, 0, 2))
+                out[ai, pi] = img.get() if hasattr(img, 'get') else img
 
+        _order = self.order.upper() + "YX"
+        if _order != 'APZYX':
+            out = np.transpose(out, tuple("APZYX".index(i) for i in _order))
+        print(out.shape, 'out')
         return out
+
+    def _render_plane(self, sim_plane, coords, theta, phase):
+        if map_coordinates.__module__.startswith("cupy"):
+            _i = []
+            CHUNKSIZE = 128  # TODO: determine better strategy
+            for chunk in np.array_split(coords, CHUNKSIZE, axis=1):
+                new_coords = self._map_coords(xp.asarray(chunk), theta, phase)
+                _i.append(map_coordinates(sim_plane, new_coords, order=1).get())
+            img: np.ndarray = np.concatenate(_i)
+        else:
+            new_coords = self._map_coords(coords, theta, phase)
+            img = map_coordinates(sim_plane, new_coords, order=1)
+        return img
 
     def _map_coords(self, coords: np.ndarray, theta: float, phase: float) -> NDArray:
         """Map a set of image coordinates to new coords after phaseshift and rotation"""
