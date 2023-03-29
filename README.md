@@ -34,14 +34,13 @@ camera = Camera(
   photodiode_size=6.45,
   qe=0.70,
   gain=1,
-  full_well=18000,
-  # e/pix
-  dark_current=0.0005,
-  # e/pix/sec
+  full_well=18000,  # e/pix
+  dark_current=0.0005,  # e/pix/sec
   clock_induced_charge=1,
   read_noise=6,
   bit_depth=12,
   offset=100,
+  readout_rate=14
   )
 
 space = uniformly_spaced_xarray(shape=(256, 256))
