@@ -15,18 +15,10 @@ to use it, cd into this directory, "pip install ." and "pip install matlab"
 Try this:
 ```python
 
-from microsim.util 
-import uniformly_spaced_xarray
-
-from microsim.samples 
-import MatsLines
-
-from microsim.simulate 
-import simulate_camera
-
-from microsim.models 
-import Camera
-
+from microsim.util import uniformly_spaced_xarray
+from microsim.samples import MatsLines
+from microsim.simulate import simulate_camera
+from microsim.models import Camera
 import matplotlib.pyplot as plt
 
 camera = Camera(
