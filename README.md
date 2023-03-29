@@ -11,6 +11,8 @@ Light microscopy simulation in python
 ### Install
 to use it, cd into this directory, "pip install ." and "pip install matlab" 
 
+If it complains about needing "Microsoft Visual C++ 14.0", you can download it [here](https://visualstudio.microsoft.com/visual-cpp-build-tools/).  The Visual Studio Installer you download will bring up a dialog showing the available Visual Studio Build Tools workloads. Check the "Desktop development with C++" workload and select "Install".
+
 ### Getting started
 Try this:
 ```python
