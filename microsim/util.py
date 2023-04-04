@@ -29,7 +29,7 @@ except ImportError:
 if TYPE_CHECKING:
     import xarray as xr
     from numpy.typing import ArrayLike, DTypeLike, NDArray
-    from typing_extensions import Literal
+    from typing import Literal
 
     ShapeLike = Sequence[int]
 

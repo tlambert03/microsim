@@ -88,7 +88,7 @@ class SIMIllum2D(Widefield):
         d = xr.DataArray(data, dims=list(self.order + "YX"), coords=space.coords)
         d.coords["A"] = self.angles
         d.coords["P"] = self.phases
-        d.attrs['SIM'] = self.dict()
+        d.attrs["SIM"] = self.dict()
         return d
 
     def create(self, shape: Tuple[int, int, int], dz: float, dx: float) -> np.ndarray:
