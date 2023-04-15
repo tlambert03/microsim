@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, Union
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 from scipy.stats import poisson
@@ -80,8 +80,8 @@ def simulate_camera(
         return gray_values.astype("uint8")
 
 
-def bin(
-    array: NDArray, factor: Union[int, Sequence[int]], method="sum", dtype=None
+def bin(  # noqa: A001
+    array: NDArray, factor: int | Sequence[int], method="sum", dtype=None
 ) -> NDArray:
     # TODO: deal with xarray
     f = getattr(np, method)

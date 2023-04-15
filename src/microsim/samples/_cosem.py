@@ -4,7 +4,7 @@ import json
 import warnings
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, List, Optional, Sequence, Set, Union
+from typing import TYPE_CHECKING, Sequence
 from urllib.request import urlopen
 
 from fibsem_tools import io
@@ -33,10 +33,10 @@ class DatasetMetadata(TypedDict):
     id: str
     imaging: dict
     sample: dict
-    institution: List[str]
+    institution: list[str]
     softwareAvailability: str
-    DOI: List[dict]
-    publications: List[dict]
+    DOI: list[dict]
+    publications: list[dict]
 
 
 class DatasetView(TypedDict):
@@ -44,15 +44,15 @@ class DatasetView(TypedDict):
     - sources: suggested layers
     - position: [X, Y, Z] centerpoint of the feature
     - scale: nm/pixel at which to show the view
-    - orientation: always seems to be [1, 0, 0, 0]
+    - orientation: always seems to be [1, 0, 0, 0].
     """
 
     name: str
     description: str
-    sources: List[str]
-    position: Optional[List[float]]
-    scale: Optional[float]
-    orientation: List[float]
+    sources: list[str]
+    position: list[float] | None
+    scale: float | None
+    orientation: list[float]
 
 
 class Source(TypedDict):
@@ -64,14 +64,14 @@ class Source(TypedDict):
     sampleType: str
     contentType: str
     displaySettings: dict
-    subsources: List
+    subsources: list
 
 
 class DatasetManifest(TypedDict):
     name: str
     metadata: DatasetMetadata
-    sources: Dict[str, Source]
-    views: List[DatasetView]
+    sources: dict[str, Source]
+    views: list[DatasetView]
 
 
 class CosemDataset:
@@ -111,11 +111,11 @@ class CosemDataset:
         return get_thumbnail(self.id)
 
     @cached_property
-    def views(self) -> List[DatasetView]:
+    def views(self) -> list[DatasetView]:
         return self.manifest["views"]
 
     @property
-    def sources(self) -> Dict[str, Source]:
+    def sources(self) -> dict[str, Source]:
         return self.manifest["sources"]
 
     def read_source(self, key: str, level=0) -> xr.DataArray:
@@ -137,10 +137,10 @@ class CosemDataset:
 
     def load_view(
         self,
-        name: Optional[str] = None,
+        name: str | None = None,
         sources: Sequence[str] = (),
-        position: Optional[Sequence[float]] = None,
-        exclude: Set[str] = set(),
+        position: Sequence[float] | None = None,
+        exclude: set[str] | None = None,
         extent=1000,  # in nm around position
         level=0,
     ):
@@ -156,15 +156,15 @@ class CosemDataset:
 
 
 @lru_cache
-def get_datasets() -> Dict[str, str]:
-    """Retrieve available datasets from janelia-cosem/fibsem-metadata"""
-    with urlopen(f"{GH_API}/index.json") as r:
+def get_datasets() -> dict[str, str]:
+    """Retrieve available datasets from janelia-cosem/fibsem-metadata."""
+    with urlopen(f"{GH_API}/index.json") as r:  # noqa: S310
         return json.load(r).get("datasets")
 
 
 @lru_cache(maxsize=64)
 def get_manifest(dataset: str) -> DatasetManifest:
-    """Get manifest for a dataset
+    """Get manifest for a dataset.
 
     Parameters
     ----------
@@ -179,7 +179,7 @@ def get_manifest(dataset: str) -> DatasetManifest:
         * views: a curated list of views with:
 
     """
-    with urlopen(f"{GH_API}/{dataset}/manifest.json") as r:
+    with urlopen(f"{GH_API}/{dataset}/manifest.json") as r:  # noqa: S310
         return json.load(r)
 
 
@@ -191,12 +191,12 @@ def get_thumbnail(dataset: str) -> np.ndarray:
 
 
 def load_view(
-    dataset: Union[str, CosemDataset],
+    dataset: str | CosemDataset,
     sources: Sequence[str] = (),
-    name: Optional[str] = None,
-    exclude: Set[str] = set(),
-    extent: Union[float, Sequence[float]] = None,  # in nm around position, in XYZ
-    position: Optional[Sequence[float]] = None,  # in XYZ
+    name: str | None = None,
+    exclude: set[str] | None = None,
+    extent: float | Sequence[float] = None,  # in nm around position, in XYZ
+    position: Sequence[float] | None = None,  # in XYZ
     level=0,
 ):
     import dask
@@ -209,21 +209,25 @@ def load_view(
         if not sources:
             sources = view["sources"]
 
+    if exclude is None:
+        exclude = set()
+
     sources = [
         s.replace("fibsem-uint8", "fibsem-uint16")
         for s in sources
-        if ds.sources.get(s, {}).get("contentType") not in exclude  # type: ignore
+        if ds.sources.get(s, {}).get("contentType") not in exclude
     ]
-    _loaded: List[str] = []
-    arrs: List[xr.DataArray] = []
+    _loaded: list[str] = []
+    arrs: list[xr.DataArray] = []
     for source in sources:
         try:
             arrs.append(ds.read_source(source, level))
             _loaded.append(source)
         except (NotImplementedError, KeyError):
-            warnings.warn(f"Could not load source {source!r}")
+            warnings.warn(f"Could not load source {source!r}", stacklevel=2)
 
-    assert arrs, "Nothing loaded!"
+    if not arrs:
+        raise RuntimeError("No sources could be loaded")
 
     if len(arrs) > 1:
         with dask.config.set(**{"array.slicing.split_large_chunks": False}):
@@ -244,14 +248,16 @@ def load_view(
 def _crop_around(
     ary: xr.DataArray,
     position: Sequence[float],
-    extent: Union[float, Sequence[float]],
+    extent: float | Sequence[float],
     axes="xyz",
 ):
-    """crop dataarray around position"""
-    assert len(position) == 3, "position must be of length 3 (X, Y, Z)"
+    """Crop dataarray around position."""
+    if len(position) != 3:
+        raise ValueError("position must be of length 3 (X, Y, Z)")
     if isinstance(extent, (float, int)):
         extent = (extent,) * 3
-    assert len(extent) == 3, "extent must be of length 3"
+    if len(extent) != 3:
+        raise ValueError("extent must be of length 3")
 
     slc = {ax: slice(p - e / 2, p + e / 2) for p, e, ax in zip(position, extent, axes)}
     return ary.sel(**slc)
@@ -290,6 +296,6 @@ def _load_local(dataset, sources, slices=None, b=4):
         for source in sources
     ]
     za = da.stack(zas)
-    if slices := (slice(None),) + slices:
+    if slices := (slice(None), *slices):
         za = za[slices]
     return za.transpose(0, 2, 1, 3)

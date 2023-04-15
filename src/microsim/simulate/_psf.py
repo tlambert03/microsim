@@ -5,16 +5,19 @@ from psfmodels import library
 
 from ..models import Coverslip, Objective
 
+_DEFAULT_COVERSLIP = Coverslip()
+_DEFAULT_OBJ = Objective.default()
+
 
 # todo: pydantic validate arguments?
 def vectorial_psf(
-    objective: Objective = Objective.default(),
+    objective: Objective = _DEFAULT_OBJ,
     zv=0,
     nx=31,
     dxy=0.05,
     particle_z=0.0,
     wavelength=0.6,  # in microns
-    coverslip: Coverslip = Coverslip(),
+    coverslip: Coverslip = _DEFAULT_COVERSLIP,
     immersion_ri=1.515,
     specimen_ri=1.515,
     normalize=True,

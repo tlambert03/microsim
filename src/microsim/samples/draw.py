@@ -29,7 +29,6 @@ def _bresenhamline_nslope(slope: NDArray):
     >>> _bresenhamline_nslope(s)
     array([[ 0.,  0.,  1.,  0.]])
     """
-
     scale = xp.amax(xp.abs(slope), axis=1).reshape(-1, 1)
     zeroslope = (scale == 0).all(1)
     scale[zeroslope] = xp.ones(1)

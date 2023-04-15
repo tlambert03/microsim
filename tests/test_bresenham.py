@@ -1,13 +1,14 @@
 import numpy as np
+import pytest
 
-from microsim.samples.utils._bresenham import drawlines_bresenham
+bres = pytest.importorskip("microsim.samples.utils._bresenham")
 
 
 def test_bres():
     n = 100
 
     a: np.ndarray = np.zeros((n, n)).astype(np.int32)
-    drawlines_bresenham(np.array([[0, 0, n - 1, n - 1]], dtype=np.int32), a)
+    bres.drawlines_bresenham(np.array([[0, 0, n - 1, n - 1]], dtype=np.int32), a)
 
     expect: np.ndarray = np.zeros((n, n)).astype(np.int32)
     for i in range(n):
@@ -19,7 +20,9 @@ def test_bres():
 def test_bres3():
     n = 100
     a: np.ndarray = np.zeros((n, n, n)).astype(np.int32)
-    drawlines_bresenham(np.array([[0, 0, 0, n - 1, n - 1, n - 1]], dtype=np.int32), a)
+    bres.drawlines_bresenham(
+        np.array([[0, 0, 0, n - 1, n - 1, n - 1]], dtype=np.int32), a
+    )
 
     expect: np.ndarray = np.zeros((n, n, n)).astype(np.int32)
     for i in range(n):

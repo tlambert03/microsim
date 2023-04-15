@@ -6,12 +6,8 @@ from typing import (
     TYPE_CHECKING,
     Callable,
     Iterator,
-    List,
-    Optional,
     Protocol,
     Sequence,
-    Tuple,
-    Union,
 )
 
 import numpy as np
@@ -27,18 +23,19 @@ except ImportError:
 
 
 if TYPE_CHECKING:
+    from typing import Literal
+
     import xarray as xr
     from numpy.typing import ArrayLike, DTypeLike, NDArray
-    from typing_extensions import Literal
 
     ShapeLike = Sequence[int]
 
 
 def uniformly_spaced_xarray(
-    shape: Tuple[int, ...] = (64, 128, 128),
-    scale: Tuple[float, ...] = (),
-    extent: Tuple[int, ...] = (),
-    axes: Union[str, Sequence[str]] = "ZYX",
+    shape: tuple[int, ...] = (64, 128, 128),
+    scale: tuple[float, ...] = (),
+    extent: tuple[int, ...] = (),
+    axes: str | Sequence[str] = "ZYX",
     array_creator: Callable[[ShapeLike], ArrayLike] = np.zeros,
 ) -> xr.DataArray:
     import xarray as xr
@@ -54,7 +51,8 @@ def uniformly_spaced_xarray(
         if scale:
             warnings.warn(
                 "Overdetermined: all three of shape, scale, and extent provided."
-                "Ignoring value for extent."
+                "Ignoring value for extent.",
+                stacklevel=2,
             )
         else:
             scale = tuple(x / s for x, s in zip(extent, shape))
@@ -65,10 +63,10 @@ def uniformly_spaced_xarray(
         raise TypeError(f"Shape must be a tuple of integers. Got {shape!r}")
 
     ndim = len(shape)
-    assert (
-        len(scale) == ndim
-    ), f"length of scale and shape must match ({len(scale)}, {ndim})"
-    assert len(axes) >= ndim, f"Only {len(axes)} axes provided but got {ndim} dims"
+    if len(scale) != ndim:
+        raise ValueError(f"length of scale and shape must match ({len(scale)}, {ndim})")
+    if len(axes) >= ndim:
+        raise ValueError(f"Only {len(axes)} axes provided but got {ndim} dims")
 
     axes = axes[-ndim:]  # pick last ndim axes, in case there are too many provided.
     coords = [(ax, np.arange(sh) * sc) for ax, sh, sc in zip(axes, shape, scale)]
@@ -121,10 +119,11 @@ def get_fftconvolve_shape(in1, in2, mode="full", axes=None):
                 "For 'valid' mode, one must be at least "
                 "as large as the other in every dimension"
             )
-    else:
-        assert mode == "full"
+    elif mode == "full":
         final_shape = full_shape
 
+    else:
+        raise ValueError("Acceptable mode flags are 'valid'," " 'same', or 'full'")
     return final_shape
 
 
@@ -139,9 +138,9 @@ def _centered(arr: NDArray, newshape: ShapeLike) -> NDArray:
 
 
 def _iter_block_locations(
-    chunks: Tuple[Tuple[int, ...]]
-) -> Iterator[Tuple[List[Tuple[int, int]], Tuple[int, ...], ShapeLike]]:
-    """Iterate block indices
+    chunks: tuple[tuple[int, ...]]
+) -> Iterator[tuple[list[tuple[int, int]], tuple[int, ...], ShapeLike]]:
+    """Iterate block indices.
 
     Examples
     --------
@@ -154,7 +153,7 @@ def _iter_block_locations(
         ...
     ]
     """
-    starts = [(0,) + tuple(np.cumsum(i)) for i in chunks]
+    starts = [(0, *tuple(np.cumsum(i))) for i in chunks]
     for block_id in itertools.product(*(range(len(c)) for c in chunks)):
         arr_slc = [(starts[ij][j], starts[ij][j + 1]) for ij, j in enumerate(block_id)]
         chunk_shape = tuple(chunks[ij][j] for ij, j in enumerate(block_id))
@@ -172,14 +171,14 @@ def tiled_convolve(
     in1: NDArray,
     in2: NDArray,
     mode: Literal["full", "valid", "same"] = "full",
-    chunks: Optional[tuple] = None,
+    chunks: tuple | None = None,
     func: Convolver = signal.convolve,
-    dtype: Optional[DTypeLike] = None,
+    dtype: DTypeLike | None = None,
 ):
     if chunks is None:
         chunks = getattr(in1, "chunks", None) or (100,) * in1.ndim  # TODO: change 100
 
-    _chunks: Tuple[Tuple[int, ...]] = normalize_chunks(chunks, in1.shape)
+    _chunks: tuple[tuple[int, ...]] = normalize_chunks(chunks, in1.shape)
 
     final_shape = get_fftconvolve_shape(in1, in2, mode="full")
 

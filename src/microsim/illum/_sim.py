@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from itertools import product
-from typing import TYPE_CHECKING, Sequence, Tuple
+from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
 from tqdm import tqdm
@@ -70,13 +70,15 @@ class SIMIllum2D(Widefield):
             spotsize=self.spotsize,
         ).sum(0)[1:]
 
-    def render(self, space: xr.DataArray) -> np.ndarray:
+    def render(self, space: xr.DataArray) -> xr.DataArray:
         import xarray as xr
 
         _dz = set(xp.round(xp.diff(space.coords.get("Z", [0, 0.1])), 8).tolist())
         _dx = set(xp.round(xp.diff(space.coords["X"]), 8).tolist())
-        assert len(_dz) == 1, "Non-uniform spacing detected in Z"
-        assert len(_dx) == 1, "Non-uniform spacing detected in X"
+        if len(_dz) != 1:
+            raise ValueError("Non-uniform spacing detected in Z")
+        if len(_dx) != 1:
+            raise ValueError("Non-uniform spacing detected in X")
         dz = _dz.pop()
         dx = _dx.pop()
         nz = space.sizes.get("Z", 1)
@@ -88,11 +90,11 @@ class SIMIllum2D(Widefield):
         d = xr.DataArray(data, dims=list(self.order + "YX"), coords=space.coords)
         d.coords["A"] = self.angles
         d.coords["P"] = self.phases
-        d.attrs['SIM'] = self.dict()
+        d.attrs["SIM"] = self.dict()
         return d
 
-    def create(self, shape: Tuple[int, int, int], dz: float, dx: float) -> np.ndarray:
-        """Create illumination volume (generic variant of render)"""
+    def create(self, shape: tuple[int, int, int], dz: float, dx: float) -> np.ndarray:
+        """Create illumination volume (generic variant of render)."""
         nz, ny, nx = shape
 
         nx_extended = int(3 * np.hypot(ny, nx))
@@ -141,7 +143,7 @@ class SIMIllum2D(Widefield):
         return new_coordinates + xp.expand_dims(xp.asarray(matrix[:2, -1]), -1)
 
     def _get_matrix(self, theta: float, phase: float) -> NDArray:
-        """Get matrix to transform output coordinates to axial sim plane
+        """Get matrix to transform output coordinates to axial sim plane.
 
         Parameters
         ----------
@@ -181,7 +183,7 @@ class SIMIllum3D(SIMIllum2D):
 TAU = 1j * 2 * np.pi
 
 
-def efield(kvec: Tuple[float, float], zarr: NDArray, xarr: NDArray):
+def efield(kvec: tuple[float, float], zarr: NDArray, xarr: NDArray):
     return xp.exp(TAU * (kvec[0] * xarr + kvec[1] * zarr))
 
 
@@ -247,8 +249,8 @@ def structillum_2d(
         (3 x nz x nx) Array of zero order, axial orders, and lateral orders. Sum them
         along axis zero to get final 3D illumination intensity.
     """
-
-    assert NA < nimm, "NA must be less than immersion refractive index `nimm`."
+    if NA < nimm:
+        raise ValueError("NA must be less than immersion refractive index `nimm`.")
 
     # steepest angle of illumination based on NA and nimm, in radians
     max_half_angle = xp.arcsin(NA / nimm)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Tuple, Union
+from typing import TYPE_CHECKING
 
 import numpy as np
 from pydantic import BaseModel
@@ -25,8 +25,8 @@ class MatsLines(BaseModel, Sample):
     max_r: float = 0.9
 
     def _gen_vertices(
-        self, shape: Tuple[int, ...], xypad: int = 1, zpad: int = 1
-    ) -> Tuple[NDArray, NDArray]:
+        self, shape: tuple[int, ...], xypad: int = 1, zpad: int = 1
+    ) -> tuple[NDArray, NDArray]:
         *nz, ny, nx = shape
         numlines = shape[-1] * self.density
 
@@ -57,7 +57,7 @@ class MatsLines(BaseModel, Sample):
             return xp.stack([z1, y1, x1]).T, xp.stack([z2, y2, x2]).T
         return xp.stack([y1, x1]).T, xp.stack([y2, x2]).T
 
-    def render(self, space: Union[NDArray, xr.DataArray]):
+    def render(self, space: NDArray | xr.DataArray):
         start, end = self._gen_vertices(space.shape)
         c = xp.concatenate([start, end], axis=1).astype(np.int32)
         data = np.zeros(space.shape).astype(np.int32)
