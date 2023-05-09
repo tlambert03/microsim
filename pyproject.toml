@@ -9,7 +9,7 @@ source = "vcs"
 [tool.hatch.build.targets.wheel.hooks.mypyc]
 mypy-args = ["--ignore-missing-imports"]
 dependencies = ["hatch-mypyc>=0.13.0"]
-include = ["src/microsim/samples/utils/_bresenham.py"]
+include = ["src/microsim/samples/_bresenham.py"]
 
 # https://peps.python.org/pep-0621/
 [project]

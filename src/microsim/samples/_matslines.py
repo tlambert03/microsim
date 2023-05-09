@@ -70,15 +70,15 @@ class MatsLines(BaseModel, Sample):
 def drawlines_bresenham(
     segments: np.ndarray, grid: np.ndarray, max_r: float = 2.0
 ) -> None:
-    from .utils._bresenham import bres_draw_segment_2d, bres_draw_segment_3d
-
+    from ._bresenham import bres_draw_segment_2d, bres_draw_segment_3d
+    
     if grid.ndim == 2:
         for segment in segments:
-            x0, y0, x1, y1 = (int(x) for x in segment)
+            y0, x0, y1, x1 = (int(x) for x in segment)
             bres_draw_segment_2d(x0, y0, x1, y1, grid, max_r)
     elif grid.ndim == 3:
         for segment in segments:
-            x0, y0, z0, x1, y1, z1 = (int(x) for x in segment)
+            z0, y0, x0, z1, y1, x1 = (int(x) for x in segment)
             bres_draw_segment_3d(x0, y0, z0, x1, y1, z1, grid, max_r)
     else:
         raise ValueError(f"grid must be either 2 or 3 dimensional.  Got {grid.ndim}")
