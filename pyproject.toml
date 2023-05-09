@@ -6,6 +6,11 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 source = "vcs"
 
+[tool.hatch.build.targets.wheel.hooks.mypyc]
+mypy-args = ["--ignore-missing-imports"]
+dependencies = ["hatch-mypyc>=0.13.0"]
+include = ["src/microsim/samples/utils/_bresenham.py"]
+
 # https://peps.python.org/pep-0621/
 [project]
 name = "microsim"
@@ -57,9 +62,9 @@ line-length = 88
 target-version = "py38"
 # https://beta.ruff.rs/docs/rules/
 select = [
-    "E",    # style errors
-    "W",    # style warnings
-    "F",    # flakes
+    "E", # style errors
+    "W", # style warnings
+    "F", # flakes
     # "D",    # pydocstyle
     "I",    # isort
     "S",

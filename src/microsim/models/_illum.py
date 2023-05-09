@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from ._renderable import Renderable
 
-
-class Illumination(BaseModel, Renderable):
+class Illumination(BaseModel):
     peak_irradiance: float = Field(10, description="irradiance in W/cm2")
