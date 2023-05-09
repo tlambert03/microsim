@@ -4,7 +4,6 @@ from microsim.util import uniformly_spaced_xarray
 
 
 def test_matslines():
-    pytest.importorskip("microsim.samples.utils._bresenham")
     from microsim.samples import MatsLines
 
     array = uniformly_spaced_xarray((256, 1024, 1024))
