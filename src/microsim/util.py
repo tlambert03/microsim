@@ -65,7 +65,7 @@ def uniformly_spaced_xarray(
     ndim = len(shape)
     if len(scale) != ndim:
         raise ValueError(f"length of scale and shape must match ({len(scale)}, {ndim})")
-    if len(axes) >= ndim:
+    if len(axes) < ndim:
         raise ValueError(f"Only {len(axes)} axes provided but got {ndim} dims")
 
     axes = axes[-ndim:]  # pick last ndim axes, in case there are too many provided.

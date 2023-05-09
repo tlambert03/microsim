@@ -249,7 +249,7 @@ def structillum_2d(
         (3 x nz x nx) Array of zero order, axial orders, and lateral orders. Sum them
         along axis zero to get final 3D illumination intensity.
     """
-    if NA < nimm:
+    if NA > nimm:
         raise ValueError("NA must be less than immersion refractive index `nimm`.")
 
     # steepest angle of illumination based on NA and nimm, in radians

@@ -6,7 +6,6 @@ import numpy as np
 from pydantic import BaseModel
 
 from ..models import Sample
-from .utils._bresenham import drawlines_bresenham
 
 if TYPE_CHECKING:
     import xarray as xr
@@ -66,3 +65,20 @@ class MatsLines(BaseModel, Sample):
             c = c.get()
         drawlines_bresenham(c, data, self.max_r)
         return space + data
+
+
+def drawlines_bresenham(
+    segments: np.ndarray, grid: np.ndarray, max_r: float = 2.0
+) -> None:
+    from .utils._bresenham import bres_draw_segment_2d, bres_draw_segment_3d
+
+    if grid.ndim == 2:
+        for segment in segments:
+            x0, y0, x1, y1 = (int(x) for x in segment)
+            bres_draw_segment_2d(x0, y0, x1, y1, grid, max_r)
+    elif grid.ndim == 3:
+        for segment in segments:
+            x0, y0, z0, x1, y1, z1 = (int(x) for x in segment)
+            bres_draw_segment_3d(x0, y0, z0, x1, y1, z1, grid, max_r)
+    else:
+        raise ValueError(f"grid must be either 2 or 3 dimensional.  Got {grid.ndim}")

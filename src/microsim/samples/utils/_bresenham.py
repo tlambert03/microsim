@@ -1,23 +1,18 @@
 # Copyright (c) 2015, Warren Weckesser.  All rights reserved.
 # This software is licensed according to the "BSD 2-clause" license.
 
-cimport cython
-from libc.math cimport abs, sqrt
+from math import sqrt
+
+import numpy as np
 
 
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing.
-cdef int bres_draw_segment_2d(int[:] coord, int[:, :] grid, float max_r):
+def bres_draw_segment_2d(
+    y0: int, x0: int, y1: int, x1: int, grid: np.ndarray, max_r: float
+) -> None:
     """Bresenham's algorithm.
 
     See http://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
     """
-    cdef int x0, y0, x1, y1, dx, dy, sx, sy, err, e2
-
-    y0 = coord[0]
-    x0 = coord[1]
-    y1 = coord[2]
-    x1 = coord[3]
 
     dx = abs(x1 - x0)
     dy = -abs(y1 - y0)
@@ -43,26 +38,14 @@ cdef int bres_draw_segment_2d(int[:] coord, int[:, :] grid, float max_r):
             err += dx
             y0 += sy
 
-    return 0
 
-
-@cython.boundscheck(False)  # Deactivate bounds checking
-@cython.wraparound(False)   # Deactivate negative indexing.
-cdef int bres_draw_segment_3d(int[:] coord, int[:, :, :] grid, float max_r):
+def bres_draw_segment_3d(
+    x0: int, y0: int, z0: int, x1: int, y1: int, z1: int, grid: np.ndarray, max_r: float
+) -> None:
     """Bresenham's algorithm.
 
     See http://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
     """
-    cdef int x0, y0, z0, x1, y1, z1, dx, dy, dz, sx, sy, sz, dm, i
-    cdef float zr, yr, xr
-
-    z0 = coord[0]
-    y0 = coord[1]
-    x0 = coord[2]
-    z1 = coord[3]
-    y1 = coord[4]
-    x1 = coord[5]
-
     dx = abs(x1 - x0)
     dy = abs(y1 - y0)
     dz = abs(z1 - z0)
@@ -71,8 +54,10 @@ cdef int bres_draw_segment_3d(int[:] coord, int[:, :, :] grid, float max_r):
     sz = 1 if z0 < z1 else -1
 
     dm = max(dx, dy, dz)
-    i = dm
-    x1 = y1 = z1 = dm/2
+    i: int = dm
+    cx: float = dm / 2
+    cy: float = dm / 2
+    cz: float = dm / 2
 
     zr = grid.shape[0] / 2
     yr = grid.shape[1] / 2
@@ -85,29 +70,16 @@ cdef int bres_draw_segment_3d(int[:] coord, int[:, :, :] grid, float max_r):
         if i == 0:
             break
 
-        x1 -= dx
-        if (x1 < 0):
-            x1 += dm
+        cx -= dx
+        if cx < 0:
+            cx += dm
             x0 += sx
-        y1 -= dy
-        if (y1 < 0):
-            y1 += dm
+        cy -= dy
+        if cy < 0:
+            cy += dm
             y0 += sy
-        z1 -= dz
-        if (z1 < 0):
-            z1 += dm
+        cz -= dz
+        if cz < 0:
+            cz += dm
             z0 += sz
         i -= 1
-
-    return 0
-
-
-def drawlines_bresenham(segments, grid, max_r=2):
-    if grid.ndim == 2:
-        for segment in segments:
-            bres_draw_segment_2d(segment, grid, max_r)
-    elif grid.ndim == 3:
-        for segment in segments:
-            bres_draw_segment_3d(segment, grid, max_r)
-    else:
-        raise ValueError(f'grid must be either 2 or 3 dimensional.  Got {grid.ndim}')
