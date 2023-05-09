@@ -7,7 +7,6 @@ from pydantic import BaseModel
 
 from ..models import Sample
 
-
 if TYPE_CHECKING:
     import xarray as xr
     from numpy.typing import NDArray
