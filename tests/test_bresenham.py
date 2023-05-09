@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from microsim.samples._matslines import drawlines_bresenham
 
 
