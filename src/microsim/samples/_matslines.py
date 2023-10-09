@@ -71,7 +71,7 @@ def drawlines_bresenham(
     segments: np.ndarray, grid: np.ndarray, max_r: float = 2.0
 ) -> None:
     from ._bresenham import bres_draw_segment_2d, bres_draw_segment_3d
-    
+
     if grid.ndim == 2:
         for segment in segments:
             y0, x0, y1, x1 = (int(x) for x in segment)
