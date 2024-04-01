@@ -64,8 +64,7 @@ class Camera(BaseModel):
         return np.round((voltage / self.adc_gain) + self.offset)
 
 
-class CameraCCD(Camera):
-    ...
+class CameraCCD(Camera): ...
 
 
 class CameraEMCCD(Camera):
@@ -86,8 +85,7 @@ class CameraEMCCD(Camera):
         return np.minimum(electron_image, self.em_full_well)
 
 
-class CameraCMOS(Camera):
-    ...
+class CameraCMOS(Camera): ...
 
 
 ICX285 = CameraCCD(
