@@ -1,4 +1,5 @@
 import numpy as np
+
 from microsim.illum._spinning_disc import pinhole_coords
 
 

@@ -86,7 +86,7 @@ def bres_draw_segment_3d(
 
 try:
     from numba import jit
-except Exception:  # noqa: S110
+except Exception:
     pass
 else:
     bres_draw_segment_2d = jit(nopython=True)(bres_draw_segment_2d)

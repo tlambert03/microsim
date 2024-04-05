@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import numpy as np
+
 from microsim.illum._sim import SIMIllum3D
 from microsim.util import uniformly_spaced_xarray
 
