@@ -4,6 +4,7 @@ import itertools
 import warnings
 from typing import (
     TYPE_CHECKING,
+    Any,
     Callable,
     Iterator,
     Protocol,
@@ -18,7 +19,7 @@ try:
     from tqdm import tqdm
 except ImportError:
 
-    def tqdm(a):
+    def tqdm(a: Any) -> Any:
         return a
 
 
@@ -73,7 +74,12 @@ def uniformly_spaced_xarray(
     return xr.DataArray(array_creator(shape), coords=coords, attrs={"units": "um"})
 
 
-def get_fftconvolve_shape(in1, in2, mode="full", axes=None):
+def _get_fftconvolve_shape(
+    in1: NDArray,
+    in2: NDArray,
+    mode: Literal["full", "valid", "same"] = "full",
+    axes: int | NDArray | None = None,
+) -> ShapeLike:
     """Get output shape of an fftconvolve operation (without performing it).
 
     Parameters
@@ -103,7 +109,10 @@ def get_fftconvolve_shape(in1, in2, mode="full", axes=None):
     s1 = in1.shape
     s2 = in2.shape
     ndim = in1.ndim
-    _axes = axes or range(ndim)
+    if isinstance(axes, Sequence):
+        _axes = axes
+    else:
+        _axes = [axes] if axes is not None else list(range(ndim))
 
     full_shape = tuple(
         max((s1[i], s2[i])) if i not in _axes else s1[i] + s2[i] - 1 for i in _axes
@@ -173,13 +182,14 @@ def tiled_convolve(
     chunks: tuple | None = None,
     func: Convolver = signal.convolve,
     dtype: DTypeLike | None = None,
-):
+) -> NDArray:
+    """Convolve two arrays in a tiled fashion."""
     if chunks is None:
         chunks = getattr(in1, "chunks", None) or (100,) * in1.ndim  # TODO: change 100
 
-    _chunks: tuple[tuple[int, ...]] = normalize_chunks(chunks, in1.shape)
+    _chunks: tuple[tuple[int, ...]] = normalize_chunks(chunks, in1.shape)  # type: ignore
 
-    final_shape = get_fftconvolve_shape(in1, in2, mode="full")
+    final_shape = _get_fftconvolve_shape(in1, in2, mode="full")
 
     out = np.zeros(final_shape, dtype=dtype)
     for loc, *_ in tqdm(list(_iter_block_locations(_chunks))):
@@ -194,5 +204,5 @@ def tiled_convolve(
     if mode == "same":
         return _centered(out, in1.shape)
     elif mode == "valid":
-        return _centered(out, get_fftconvolve_shape(in1, in2, mode="valid"))
+        return _centered(out, _get_fftconvolve_shape(in1, in2, mode="valid"))
     return out
