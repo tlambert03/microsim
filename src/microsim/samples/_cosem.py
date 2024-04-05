@@ -40,7 +40,8 @@ class DatasetMetadata(TypedDict):
 
 
 class DatasetView(TypedDict):
-    """
+    """A view of a cosem dataset.
+
     - sources: suggested layers
     - position: [X, Y, Z] centerpoint of the feature
     - scale: nm/pixel at which to show the view
@@ -158,7 +159,7 @@ class CosemDataset:
 @lru_cache
 def get_datasets() -> dict[str, str]:
     """Retrieve available datasets from janelia-cosem/fibsem-metadata."""
-    with urlopen(f"{GH_API}/index.json") as r:  # noqa: S310
+    with urlopen(f"{GH_API}/index.json") as r:
         return json.load(r).get("datasets")
 
 
@@ -179,7 +180,7 @@ def get_manifest(dataset: str) -> DatasetManifest:
         * views: a curated list of views with:
 
     """
-    with urlopen(f"{GH_API}/{dataset}/manifest.json") as r:  # noqa: S310
+    with urlopen(f"{GH_API}/{dataset}/manifest.json") as r:
         return json.load(r)
 
 
@@ -195,7 +196,7 @@ def load_view(
     sources: Sequence[str] = (),
     name: str | None = None,
     exclude: set[str] | None = None,
-    extent: float | Sequence[float] = None,  # in nm around position, in XYZ
+    extent: float | Sequence[float] | None = None,  # in nm around position, in XYZ
     position: Sequence[float] | None = None,  # in XYZ
     level=0,
 ):

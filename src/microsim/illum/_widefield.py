@@ -1,4 +1,4 @@
-from ..models import Illumination
+from microsim.models import Illumination
 
 
 class Widefield(Illumination):

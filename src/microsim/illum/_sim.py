@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from itertools import product
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Any, Iterable, Sequence
 
 import numpy as np
 from tqdm import tqdm
@@ -123,7 +123,9 @@ class SIMIllum2D(Widefield):
         print(out.shape, "out")
         return out
 
-    def _render_plane(self, sim_plane, coords, theta, phase):
+    def _render_plane(
+        self, sim_plane: NDArray, coords: NDArray, theta: float, phase: float
+    ) -> NDArray:
         if map_coordinates.__module__.startswith("cupy"):
             _i = []
             CHUNKSIZE = 128  # TODO: determine better strategy
@@ -136,11 +138,11 @@ class SIMIllum2D(Widefield):
             img = map_coordinates(sim_plane, new_coords, order=1)
         return img
 
-    def _map_coords(self, coords: np.ndarray, theta: float, phase: float) -> NDArray:
-        """Map a set of image coordinates to new coords after phaseshift and rotation"""
+    def _map_coords(self, coords: NDArray, theta: float, phase: float) -> NDArray:
+        """Map a set of img coordinates to new coords after phaseshift and rotation."""
         matrix = self._get_matrix(theta, phase)
         new_coordinates = (matrix[:-1, :-1] @ coords)[:2]
-        return new_coordinates + xp.expand_dims(xp.asarray(matrix[:2, -1]), -1)
+        return new_coordinates + xp.expand_dims(xp.asarray(matrix[:2, -1]), -1)  # type: ignore
 
     def _get_matrix(self, theta: float, phase: float) -> NDArray:
         """Get matrix to transform output coordinates to axial sim plane.
@@ -172,7 +174,7 @@ class SIMIllum2D(Widefield):
             ]
         )
 
-        return scale @ translate @ rotate
+        return scale @ translate @ rotate  # type: ignore
 
 
 class SIMIllum3D(SIMIllum2D):
@@ -183,8 +185,8 @@ class SIMIllum3D(SIMIllum2D):
 TAU = 1j * 2 * np.pi
 
 
-def efield(kvec: tuple[float, float], zarr: NDArray, xarr: NDArray):
-    return xp.exp(TAU * (kvec[0] * xarr + kvec[1] * zarr))
+def efield(kvec: tuple[float, float], zarr: NDArray, xarr: NDArray) -> NDArray:
+    return xp.exp(TAU * (kvec[0] * xarr + kvec[1] * zarr))  # type: ignore
 
 
 @lru_cache(maxsize=128)
@@ -313,5 +315,7 @@ def structillum_2d(
     return intensity
 
 
-def _enumerated_product(*args):
+def _enumerated_product(
+    *args: Any,
+) -> Iterable[tuple[tuple[int, int], tuple[Any, ...]]]:
     yield from zip(product(*(range(len(x)) for x in args)), product(*args))

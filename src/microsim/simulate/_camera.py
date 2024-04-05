@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING, Sequence
 import numpy as np
 from scipy.stats import poisson
 
-from ..models import CameraEMCCD
+from microsim.models import CameraCMOS, CameraEMCCD
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from ..models import Camera, CameraCMOS
+    from microsim.models import Camera
 
 
 def simulate_camera(

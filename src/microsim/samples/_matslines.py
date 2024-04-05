@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from pydantic import BaseModel
 
-from ..models import Sample
+from microsim.models import Sample
 
 if TYPE_CHECKING:
     import xarray as xr
@@ -71,7 +71,7 @@ def drawlines_bresenham(
     segments: np.ndarray, grid: np.ndarray, max_r: float = 2.0
 ) -> None:
     from ._bresenham import bres_draw_segment_2d, bres_draw_segment_3d
-    
+
     if grid.ndim == 2:
         for segment in segments:
             y0, x0, y1, x1 = (int(x) for x in segment)

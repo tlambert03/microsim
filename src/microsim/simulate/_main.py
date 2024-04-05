@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ..samples import MatsLines
+from microsim.samples import MatsLines
 
 # just rough notes for now
 

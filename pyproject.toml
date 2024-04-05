@@ -6,6 +6,11 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 source = "vcs"
 
+# https://hatch.pypa.io/latest/config/build/
+[tool.hatch.build.targets.wheel]
+only-include = ["src"]
+sources = ["src"]
+
 # [tool.hatch.build.targets.wheel.hooks.mypyc]
 # mypy-args = ["--ignore-missing-imports"]
 # dependencies = ["hatch-mypyc>=0.13.0"]
@@ -22,12 +27,13 @@ license = { text = "BSD-3-Clause" }
 authors = [{ name = "Talley Lambert", email = "talley.lambert@gmail.com" }]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3.12",
     "Typing :: Typed",
 ]
 # add your package dependencies here
@@ -44,14 +50,7 @@ dependencies = [
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov"]
-dev = [
-    "black",
-    "ipython",
-    "mypy",
-    "pdbpp",   # https://github.com/pdbpp/pdbpp
-    "rich",    # https://github.com/Textualize/rich
-    "ruff",
-]
+dev = ["ipython", "mypy", "pdbpp", "rich", "ruff", "pre-commit"]
 
 [project.urls]
 homepage = "https://github.com/tlambert03/microsim"
@@ -60,34 +59,34 @@ repository = "https://github.com/tlambert03/microsim"
 [tool.ruff]
 line-length = 88
 target-version = "py38"
-# https://beta.ruff.rs/docs/rules/
+src = ["src"]
+
+[tool.ruff.lint]
+pydocstyle = { convention = "numpy" }
 select = [
-    "E", # style errors
-    "W", # style warnings
-    "F", # flakes
-    # "D",    # pydocstyle
+    "E",    # style errors
+    "W",    # style warnings
+    "F",    # flakes
+    "D",    # pydocstyle
+    "D417", # Missing argument descriptions in Docstrings
     "I",    # isort
-    "S",
     "UP",   # pyupgrade
     "C4",   # flake8-comprehensions
     "B",    # flake8-bugbear
     "A001", # flake8-builtins
     "RUF",  # ruff-specific rules
+    "TCH",  # flake8-type-checking
+    "TID",  # flake8-tidy-imports
 ]
 ignore = [
-    "D100", # Missing docstring in public module
-    "D107", # Missing docstring in __init__
-    "D203", # 1 blank line required before class docstring
-    "D212", # Multi-line docstring summary should start at the first line
-    "D213", # Multi-line docstring summary should start at the second line
+    "D10", # Missing docstring in public ...
     "D401", # First line should be in imperative mood
-    "D413", # Missing blank line after last section
-    "D416", # Section name should end with a colon
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["D", "S"]
 "setup.py" = ["D"]
+
 
 # https://mypy.readthedocs.io/en/stable/config_file.html
 [tool.mypy]
@@ -97,6 +96,7 @@ disallow_any_generics = false
 disallow_subclassing_any = false
 show_error_codes = true
 pretty = true
+plugins = "pydantic.mypy"
 
 # [[tool.mypy.overrides]]
 # module = ["numpy.*",]
@@ -104,7 +104,7 @@ pretty = true
 
 # https://docs.pytest.org/en/6.2.x/customize.html
 [tool.pytest.ini_options]
-minversion = "6.0"
+minversion = "7.0"
 testpaths = ["tests"]
 filterwarnings = ["error"]
 
@@ -117,9 +117,11 @@ exclude_lines = [
     "except ImportError",
     "\\.\\.\\.",
     "raise NotImplementedError()",
+    "pass"
 ]
+
 [tool.coverage.run]
-source = ["src"]
+source = ["microsim"]
 
 # https://github.com/mgedmin/check-manifest#configuration
 # add files that you want check-manifest to explicitly ignore here

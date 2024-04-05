@@ -22,7 +22,7 @@ sources = [
 ]
 
 
-def convert(data, target="."):
+def convert(data: tuple[str, str], target: str = ".") -> None:
     print(data, "started")
     dataset, source = data
     makedirs(path.join(target, dataset), exist_ok=True)

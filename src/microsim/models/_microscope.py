@@ -1,10 +1,11 @@
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Optional
+from typing import Iterable, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from ..illum import Widefield
+from microsim.illum import Widefield
+
 from ._camera import ICX285, Camera
 from ._coverslip import Coverslip
 from ._illum import Illumination
@@ -13,20 +14,20 @@ from ._objective import Objective
 
 
 class Microscope(BaseModel):
-    objective: Objective = Objective()
-    coverslip: Coverslip = Coverslip()
+    objective: Objective = Field(default_factory=Objective)
+    coverslip: Coverslip = Field(default_factory=Coverslip)
     immersion: ImmersionMedium = OilImmersion()
-    illumination: Illumination = Widefield()
+    illumination: Illumination = Field(default_factory=Widefield)
     camera: Camera = ICX285
 
     class Config:
         validate_assignment = True
 
     @staticmethod
-    def active():
+    def active() -> "Microscope":
         return _GLOBAL_MICROSCOPE.get()
 
-    @staticmethod
+    @staticmethod  # type: ignore
     @contextmanager
     def context(
         objective: Optional[Objective] = None,
@@ -34,7 +35,7 @@ class Microscope(BaseModel):
         immersion: Optional[ImmersionMedium] = None,
         illumination: Optional[Illumination] = None,
         camera: Optional[Camera] = None,
-    ):
+    ) -> Iterable["Microscope"]:
         kwargs = {k: v for k, v in locals().items() if v is not None}
         current = _GLOBAL_MICROSCOPE.get().dict()
 

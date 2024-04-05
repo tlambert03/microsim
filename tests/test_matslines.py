@@ -1,5 +1,5 @@
 import numpy as np
-import pytest
+
 from microsim.util import uniformly_spaced_xarray
 
 
