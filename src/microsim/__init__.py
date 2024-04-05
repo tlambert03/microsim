@@ -1,4 +1,5 @@
 """Light microscopy simulation in python."""
+
 from importlib.metadata import PackageNotFoundError, version
 
 try:

@@ -138,7 +138,7 @@ def _centered(arr: NDArray, newshape: ShapeLike) -> NDArray:
 
 
 def _iter_block_locations(
-    chunks: tuple[tuple[int, ...]]
+    chunks: tuple[tuple[int, ...]],
 ) -> Iterator[tuple[list[tuple[int, int]], tuple[int, ...], ShapeLike]]:
     """Iterate block indices.
 
@@ -163,8 +163,7 @@ def _iter_block_locations(
 class Convolver(Protocol):
     def __call__(
         self, in1: NDArray, in2: NDArray, mode: Literal["full", "valid", "same"]
-    ) -> NDArray:
-        ...
+    ) -> NDArray: ...
 
 
 def tiled_convolve(

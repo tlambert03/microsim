@@ -40,7 +40,8 @@ class DatasetMetadata(TypedDict):
 
 
 class DatasetView(TypedDict):
-    """
+    """A view of a cosem dataset.
+
     - sources: suggested layers
     - position: [X, Y, Z] centerpoint of the feature
     - scale: nm/pixel at which to show the view
@@ -195,7 +196,7 @@ def load_view(
     sources: Sequence[str] = (),
     name: str | None = None,
     exclude: set[str] | None = None,
-    extent: float | Sequence[float] = None,  # in nm around position, in XYZ
+    extent: float | Sequence[float] | None = None,  # in nm around position, in XYZ
     position: Sequence[float] | None = None,  # in XYZ
     level=0,
 ):

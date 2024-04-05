@@ -5,18 +5,19 @@ ci:
 
 repos:
   - repo: https://github.com/abravalheri/validate-pyproject
-    rev: v0.12.2
+    rev: v0.16
     hooks:
       - id: validate-pyproject
 
   - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.0.265
+    rev: v0.3.5
     hooks:
       - id: ruff
         args: [--fix]
+      - id: ruff-format
 
   - repo: https://github.com/psf/black
-    rev: 23.3.0
+    rev: 24.3.0
     hooks:
       - id: black
 

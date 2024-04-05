@@ -137,7 +137,7 @@ class SIMIllum2D(Widefield):
         return img
 
     def _map_coords(self, coords: np.ndarray, theta: float, phase: float) -> NDArray:
-        """Map a set of image coordinates to new coords after phaseshift and rotation"""
+        """Map a set of img coordinates to new coords after phaseshift and rotation."""
         matrix = self._get_matrix(theta, phase)
         new_coordinates = (matrix[:-1, :-1] @ coords)[:2]
         return new_coordinates + xp.expand_dims(xp.asarray(matrix[:2, -1]), -1)

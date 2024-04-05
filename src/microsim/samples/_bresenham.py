@@ -13,7 +13,6 @@ def bres_draw_segment_2d(
 
     See http://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
     """
-
     dx = abs(x1 - x0)
     dy = -abs(y1 - y0)
     sx = 1 if x0 < x1 else -1
