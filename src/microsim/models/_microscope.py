@@ -4,7 +4,8 @@ from typing import Iterable, Optional
 
 from pydantic import BaseModel, Field
 
-from ..illum import Widefield
+from microsim.illum import Widefield
+
 from ._camera import ICX285, Camera
 from ._coverslip import Coverslip
 from ._illum import Illumination

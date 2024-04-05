@@ -44,7 +44,7 @@ class Camera(BaseModel):
         add_poisson : bool, optional
             _description_, by default True
         """
-        from ..simulate import simulate_camera
+        from microsim.simulate import simulate_camera
 
         return simulate_camera(
             self, image, exposure, binning=binning, add_poisson=add_poisson

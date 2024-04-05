@@ -3,7 +3,7 @@ from typing import Sequence, Union
 import numpy as np
 from psfmodels import library
 
-from ..models import Coverslip, Objective
+from microsim.models import Coverslip, Objective
 
 _DEFAULT_COVERSLIP = Coverslip()
 _DEFAULT_OBJ = Objective.default()

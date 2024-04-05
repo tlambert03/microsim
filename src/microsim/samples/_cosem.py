@@ -159,7 +159,7 @@ class CosemDataset:
 @lru_cache
 def get_datasets() -> dict[str, str]:
     """Retrieve available datasets from janelia-cosem/fibsem-metadata."""
-    with urlopen(f"{GH_API}/index.json") as r:  # noqa: S310
+    with urlopen(f"{GH_API}/index.json") as r:
         return json.load(r).get("datasets")
 
 
@@ -180,7 +180,7 @@ def get_manifest(dataset: str) -> DatasetManifest:
         * views: a curated list of views with:
 
     """
-    with urlopen(f"{GH_API}/{dataset}/manifest.json") as r:  # noqa: S310
+    with urlopen(f"{GH_API}/{dataset}/manifest.json") as r:
         return json.load(r)
 
 

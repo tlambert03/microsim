@@ -1,5 +1,6 @@
 import napari
 from magicgui import magicgui
+
 from microsim.models._illum import structillum_2d
 
 v = napari.Viewer()
