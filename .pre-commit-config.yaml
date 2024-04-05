@@ -9,6 +9,11 @@ repos:
     hooks:
       - id: validate-pyproject
 
+  # - repo: https://github.com/crate-ci/typos
+  #   rev: v1.20.4
+  #   hooks:
+  #     - id: typos
+
   - repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: v0.3.5
     hooks:
@@ -16,16 +21,11 @@ repos:
         args: [--fix]
       - id: ruff-format
 
-  - repo: https://github.com/psf/black
-    rev: 24.3.0
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.9.0
     hooks:
-      - id: black
-
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v1.2.0
-  #   hooks:
-  #     - id: mypy
-  #       files: "^src/"
-  #       additional_dependencies:
-  #         - numpy
-  #         - pydantic
+      - id: mypy
+        files: "^src/"
+        additional_dependencies:
+          - numpy
+          - pydantic

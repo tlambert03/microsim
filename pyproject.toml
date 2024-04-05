@@ -6,6 +6,11 @@ build-backend = "hatchling.build"
 [tool.hatch.version]
 source = "vcs"
 
+# https://hatch.pypa.io/latest/config/build/
+[tool.hatch.build.targets.wheel]
+only-include = ["src"]
+sources = ["src"]
+
 # [tool.hatch.build.targets.wheel.hooks.mypyc]
 # mypy-args = ["--ignore-missing-imports"]
 # dependencies = ["hatch-mypyc>=0.13.0"]
@@ -22,13 +27,13 @@ license = { text = "BSD-3-Clause" }
 authors = [{ name = "Talley Lambert", email = "talley.lambert@gmail.com" }]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
+    "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
-    "License :: OSI Approved :: BSD License",
     "Typing :: Typed",
 ]
 # add your package dependencies here
@@ -45,7 +50,7 @@ dependencies = [
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
 test = ["pytest", "pytest-cov"]
-dev = ["ipython", "mypy", "pdbpp", "rich", "ruff"]
+dev = ["ipython", "mypy", "pdbpp", "rich", "ruff", "pre-commit"]
 
 [project.urls]
 homepage = "https://github.com/tlambert03/microsim"
@@ -54,6 +59,8 @@ repository = "https://github.com/tlambert03/microsim"
 [tool.ruff]
 line-length = 88
 target-version = "py38"
+src = ["src"]
+
 [tool.ruff.lint]
 pydocstyle = { convention = "numpy" }
 select = [
@@ -61,14 +68,15 @@ select = [
     "W",    # style warnings
     "F",    # flakes
     "D",    # pydocstyle
-    "D417", # pydocstyle
+    "D417", # Missing argument descriptions in Docstrings
     "I",    # isort
-    "S",
     "UP",   # pyupgrade
     "C4",   # flake8-comprehensions
     "B",    # flake8-bugbear
     "A001", # flake8-builtins
     "RUF",  # ruff-specific rules
+    "TCH",  # flake8-type-checking
+    "TID",  # flake8-tidy-imports
 ]
 ignore = [
     "D10", # Missing docstring in public ...
@@ -79,6 +87,7 @@ ignore = [
 "tests/*.py" = ["D", "S"]
 "setup.py" = ["D"]
 
+
 # https://mypy.readthedocs.io/en/stable/config_file.html
 [tool.mypy]
 files = "src/**/"
@@ -87,6 +96,7 @@ disallow_any_generics = false
 disallow_subclassing_any = false
 show_error_codes = true
 pretty = true
+plugins = "pydantic.mypy"
 
 # [[tool.mypy.overrides]]
 # module = ["numpy.*",]
@@ -94,7 +104,7 @@ pretty = true
 
 # https://docs.pytest.org/en/6.2.x/customize.html
 [tool.pytest.ini_options]
-minversion = "6.0"
+minversion = "7.0"
 testpaths = ["tests"]
 filterwarnings = ["error"]
 
@@ -107,9 +117,11 @@ exclude_lines = [
     "except ImportError",
     "\\.\\.\\.",
     "raise NotImplementedError()",
+    "pass"
 ]
+
 [tool.coverage.run]
-source = ["src"]
+source = ["microsim"]
 
 # https://github.com/mgedmin/check-manifest#configuration
 # add files that you want check-manifest to explicitly ignore here
