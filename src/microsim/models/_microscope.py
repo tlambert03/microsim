@@ -37,7 +37,7 @@ class Microscope(BaseModel):
         camera: Optional[Camera] = None,
     ) -> Iterable["Microscope"]:
         kwargs = {k: v for k, v in locals().items() if v is not None}
-        current = _GLOBAL_MICROSCOPE.get().dict()
+        current = _GLOBAL_MICROSCOPE.get().model_dump()
 
         token = _GLOBAL_MICROSCOPE.set(Microscope(**{**current, **kwargs}))
         try:

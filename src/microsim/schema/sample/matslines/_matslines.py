@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from pydantic import BaseModel
@@ -18,7 +18,8 @@ except ImportError:
 
 
 class MatsLines(BaseModel, Sample):
-    density: int = 1
+    type: Literal["matslines"] = "matslines"
+    density: float = 1
     length: int = 10
     azimuth: int = 10
     max_r: float = 0.9
@@ -27,7 +28,7 @@ class MatsLines(BaseModel, Sample):
         self, shape: tuple[int, ...], xypad: int = 1, zpad: int = 1
     ) -> tuple[NDArray, NDArray]:
         *nz, ny, nx = shape
-        numlines = shape[-1] * self.density
+        numlines = int(shape[-1] * self.density)
 
         # random set of angles
         alpha = xp.random.rand(numlines) * 2 * np.pi

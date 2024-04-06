@@ -1,0 +1,8 @@
+jobs:
+  confocal_image:
+    strategy:
+      matrix:
+        au: ["0.5", "1.0", "2.0"]
+    truth:
+      shape: [64, 128, 128]
+
