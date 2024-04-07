@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from .channel import Channel
 from .lens import ObjectiveLens
-from .modality import Modality
+from .modality import Modality, Widefield
 from .sample import Sample
 from .settings import Settings
 from .space import Space, _RelativeSpace
@@ -14,7 +14,7 @@ class Simulation(BaseModel):
     samples: list[Sample]
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
     channels: list[Channel]
-    modality: Modality
+    modality: Modality = Field(default_factory=Widefield)
     settings: Settings = Field(default_factory=Settings)
 
     @model_validator(mode="after")

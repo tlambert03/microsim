@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from microsim.schema.channel import Channel
 from microsim.schema.lens import ObjectiveLens
+from microsim.schema.settings import NumpyAPI
 
 if TYPE_CHECKING:
     from microsim.schema.space import Space
@@ -14,10 +15,13 @@ class Widefield(BaseModel):
     type: Literal["widefield"] = "widefield"
 
     def render(
-        self, truth: xarray.DataArray, channel: Channel, objective_lens: ObjectiveLens
+        self,
+        truth: xarray.DataArray,
+        channel: Channel,
+        objective_lens: ObjectiveLens,
+        xp: NumpyAPI | None = None,
     ) -> xarray.DataArray:
         from psfmodels import vectorial_psf_centered
-        from scipy import signal
 
         # FIXME, this is probably derivable from truth.coords
         truth_space = cast("Space", truth.attrs["space"])
@@ -30,5 +34,5 @@ class Widefield(BaseModel):
             params={"NA": objective_lens.numerical_aperture},
         )
 
-        img = signal.fftconvolve(truth, em_psf, mode="same")
-        return img
+        em_psf = xp.asarray(em_psf)
+        return xp.fftconvolve(truth.data, em_psf, mode="same")
