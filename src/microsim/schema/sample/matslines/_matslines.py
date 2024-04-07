@@ -8,13 +8,10 @@ from pydantic import BaseModel
 from microsim.models import Sample
 
 if TYPE_CHECKING:
+    import numpy.typing as npt
     import xarray as xr
-    from numpy.typing import NDArray
 
-try:
-    import cupy as xp
-except ImportError:
-    xp = np
+from microsim.schema.settings import NumpyAPI
 
 
 class MatsLines(BaseModel, Sample):
@@ -25,8 +22,8 @@ class MatsLines(BaseModel, Sample):
     max_r: float = 0.9
 
     def _gen_vertices(
-        self, shape: tuple[int, ...], xypad: int = 1, zpad: int = 1
-    ) -> tuple[NDArray, NDArray]:
+        self, xp: NumpyAPI, shape: tuple[int, ...], xypad: int = 1, zpad: int = 1
+    ) -> tuple[npt.NDArray, npt.NDArray]:
         *nz, ny, nx = shape
         numlines = int(shape[-1] * self.density)
 
@@ -57,19 +54,21 @@ class MatsLines(BaseModel, Sample):
             return xp.stack([z1, y1, x1]).T, xp.stack([z2, y2, x2]).T
         return xp.stack([y1, x1]).T, xp.stack([y2, x2]).T
 
-    def render(self, space: NDArray | xr.DataArray):
-        start, end = self._gen_vertices(space.shape)
+    def render(self, space: npt.NDArray | xr.DataArray, xp: NumpyAPI | None = None):
+        xp = xp or NumpyAPI()
+
+        start, end = self._gen_vertices(xp, space.shape)
         c = xp.concatenate([start, end], axis=1).astype(np.int32)
         data = np.zeros(space.shape).astype(np.int32)
         # TODO: make bresenham work on GPU
         if hasattr(c, "get"):
             c = c.get()
         drawlines_bresenham(c, data, self.max_r)
-        return space + data
+        return space + xp.asarray(data)
 
 
 def drawlines_bresenham(
-    segments: np.ndarray, grid: np.ndarray, max_r: float = 2.0
+    segments: npt.NDArray, grid: npt.NDArray, max_r: float = 2.0
 ) -> None:
     from ._bresenham import bres_draw_segment_2d, bres_draw_segment_3d
 

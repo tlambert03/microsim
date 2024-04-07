@@ -1,4 +1,4 @@
-from typing import Any, Mapping
+from typing import TYPE_CHECKING, Any, Callable, Mapping
 
 import numpy as np
 import numpy.typing as npt
@@ -29,10 +29,21 @@ class FloatArray(npt.NDArray[np.floating]):
 
 
 class _Space(BaseModel):
+    if TYPE_CHECKING:
+        shape: tuple[int, ...]
+        scale: tuple[float, ...]
+
     def rescale(self, img: np.ndarray) -> np.ndarray:
         from microsim.util import downsample
 
         return downsample(img, self.downscale)
+
+    def create(self, array_creator: Callable[[], npt.ArrayLike] = np.zeros):
+        from microsim.util import uniformly_spaced_xarray
+
+        return uniformly_spaced_xarray(
+            shape=self.shape, scale=self.scale, array_creator=array_creator
+        )
 
 
 class CoordsSpace(_Space):

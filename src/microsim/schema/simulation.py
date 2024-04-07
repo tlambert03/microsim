@@ -4,6 +4,7 @@ from .channel import Channel
 from .lens import ObjectiveLens
 from .modality import Modality
 from .sample import Sample
+from .settings import Settings
 from .space import Space, _RelativeSpace
 
 
@@ -14,6 +15,7 @@ class Simulation(BaseModel):
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
     channels: list[Channel]
     modality: Modality
+    settings: Settings = Field(default_factory=Settings)
 
     @model_validator(mode="after")
     def _resolve_spaces(cls, value: "Simulation") -> "Simulation":
@@ -25,14 +27,14 @@ class Simulation(BaseModel):
             value.output_space.reference = value.truth_space
 
     def run(self, sample_idx: int = 0, channel_idx: int = 0) -> None:
-        from microsim.util import uniformly_spaced_xarray
-
-        truth = uniformly_spaced_xarray(
-            shape=self.truth_space.shape, scale=self.truth_space.scale
-        )
-        truth = self.samples[sample_idx].render(truth)
-        truth.attrs["space"] = self.truth_space
+        xp = self.settings.backend_module()
+        sample = self.samples[sample_idx]
         channel = self.channels[channel_idx]
-        img = self.modality.render(truth, channel, self.objective_lens)
+
+        space = self.truth_space.create(xp.zeros)
+        truth = sample.render(space, xp=xp)
+        truth.attrs["space"] = self.truth_space  # TODO
+
+        img = self.modality.render(truth, channel, self.objective_lens, xp=xp)
         img = self.output_space.rescale(img)
         return img

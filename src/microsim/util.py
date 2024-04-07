@@ -2,17 +2,13 @@ from __future__ import annotations
 
 import itertools
 import warnings
-from typing import (
-    TYPE_CHECKING,
-    Callable,
-    Iterator,
-    Protocol,
-    Sequence,
-)
+from typing import TYPE_CHECKING, Callable, Iterator, Protocol, Sequence
 
 import numpy as np
+import numpy.typing as npt
 from dask.array.core import normalize_chunks
 from scipy import signal
+from torch import le
 
 try:
     from tqdm import tqdm
@@ -31,15 +27,12 @@ if TYPE_CHECKING:
     ShapeLike = Sequence[int]
 
 
-def uniformly_spaced_xarray(
+def uniformly_spaced_coords(
     shape: tuple[int, ...] = (64, 128, 128),
     scale: tuple[float, ...] = (),
     extent: tuple[float, ...] = (),
     axes: str | Sequence[str] = "ZYX",
-    array_creator: Callable[[ShapeLike], ArrayLike] = np.zeros,
-) -> xr.DataArray:
-    import xarray as xr
-
+) -> list[tuple[str, npt.NDArray[np.int64]]]:
     # we now calculate the shape, scale, and extent based on input
     # where shape is the shape of the array, scale is the spacing between points
     # and extent is the total size of the array in each dimension (shape * scale)
@@ -72,7 +65,20 @@ def uniformly_spaced_xarray(
         raise ValueError(f"Only {len(axes)} axes provided but got {ndim} dims")
 
     axes = axes[-ndim:]  # pick last ndim axes, in case there are too many provided.
-    coords = [(ax, np.arange(sh) * sc) for ax, sh, sc in zip(axes, shape, scale)]
+    return [(ax, np.arange(sh) * sc) for ax, sh, sc in zip(axes, shape, scale)]
+
+
+def uniformly_spaced_xarray(
+    shape: tuple[int, ...] = (64, 128, 128),
+    scale: tuple[float, ...] = (),
+    extent: tuple[float, ...] = (),
+    axes: str | Sequence[str] = "ZYX",
+    array_creator: Callable[[ShapeLike], ArrayLike] = np.zeros,
+) -> xr.DataArray:
+    import xarray as xr
+
+    coords = uniformly_spaced_coords(shape, scale, extent, axes)
+    shape = tuple(len(c) for _, c in coords)
     return xr.DataArray(array_creator(shape), coords=coords, attrs={"units": "um"})
 
 

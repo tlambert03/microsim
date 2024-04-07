@@ -6,9 +6,11 @@ from pydantic import BaseModel
 
 from microsim.schema.channel import Channel
 from microsim.schema.lens import ObjectiveLens
+from microsim.schema.settings import NumpyAPI
 
 if TYPE_CHECKING:
     from microsim.schema.space import Space
+
 
 
 class Confocal(BaseModel):
@@ -16,11 +18,15 @@ class Confocal(BaseModel):
     pinhole: Annotated[float, Ge(0)] = 1
 
     def render(
-        self, truth: xarray.DataArray, channel: Channel, objective_lens: ObjectiveLens
+        self,
+        truth: xarray.DataArray,
+        channel: Channel,
+        objective_lens: ObjectiveLens,
+        xp: NumpyAPI | None = None,
     ) -> xarray.DataArray:
-        from scipy import signal
-
         from microsim.util import make_confocal_psf
+
+        xp = xp or NumpyAPI()
 
         # FIXME, this is probably derivable from truth.coords
         truth_space = cast("Space", truth.attrs["space"])
@@ -34,6 +40,6 @@ class Confocal(BaseModel):
             dxy=truth_space.scale[-1],
             params={"NA": objective_lens.numerical_aperture},
         )
-
-        img = signal.fftconvolve(truth, psf, mode="same")
+        psf = xp.asarray(psf)
+        img = xp.fftconvolve(truth.data, psf, mode="same")
         return img
