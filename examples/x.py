@@ -5,8 +5,9 @@ import numpy as np
 import torch
 import tqdm
 from matplotlib.colors import PowerNorm
-from microsim.samples import MatsLines
 from psfmodels._cuvec import vectorial_psf_centered
+
+from microsim.samples import MatsLines
 
 
 # convenience function we'll use a couple times
