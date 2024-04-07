@@ -28,11 +28,18 @@ class FloatArray(npt.NDArray[np.floating]):
         return np.array(value, dtype=np.float64)
 
 
-class CoordsSpace(BaseModel):
+class _Space(BaseModel):
+    def rescale(self, img: np.ndarray) -> np.ndarray:
+        from microsim.util import downsample
+
+        return downsample(img, self.downscale)
+
+
+class CoordsSpace(_Space):
     coords: Mapping[str, FloatArray]
 
 
-class _AxesSpace(BaseModel):
+class _AxesSpace(_Space):
     axes: tuple[str, ...] = ("T", "C", "Z", "Y", "X")
 
     @field_validator("axes", mode="before")
@@ -116,18 +123,43 @@ class ShapeExtentSpace(_AxesSpace):
         return tuple(x / s for x, s in zip(self.extent, self.shape))
 
 
-class DownscaledSpace(BaseModel):
+ConcreteSpace = ExtentScaleSpace | ShapeExtentSpace | ShapeScaleSpace
+
+
+class _RelativeSpace(_Space):
+    reference: ConcreteSpace | None = None
+
+    @property
+    def shape(self) -> tuple[int, ...]:
+        raise NotImplementedError
+
+
+class DownscaledSpace(_RelativeSpace):
     downscale: tuple[float, ...] | int
 
+    @computed_field
+    def shape(self) -> tuple[int, ...]:
+        if not self.reference:
+            raise ValueError("Must provide a reference space.")
 
-class UpscaledSpace(BaseModel):
+        if isinstance(self.downscale, (int, float)):
+            return tuple(int(x / self.downscale) for x in self.reference.shape)
+
+        return tuple(int(x / d) for x, d in zip(self.reference.shape, self.downscale))
+
+
+class UpscaledSpace(_RelativeSpace):
     upscale: tuple[float, ...] | int
 
+    @computed_field
+    def shape(self) -> tuple[int, ...]:
+        if not self.reference:
+            raise ValueError("Must provide a reference space.")
 
-Space = (
-    ExtentScaleSpace
-    | ShapeExtentSpace
-    | ShapeScaleSpace
-    | DownscaledSpace
-    | UpscaledSpace
-)
+        if isinstance(self.upscale, (int, float)):
+            return tuple(int(x * self.upscale) for x in self.reference.shape)
+
+        return tuple(int(x * u) for x, u in zip(self.reference.shape, self.upscale))
+
+
+Space = ConcreteSpace | DownscaledSpace | UpscaledSpace

@@ -15,7 +15,7 @@ class Widefield(BaseModel):
 
     def render(
         self, truth: xarray.DataArray, channel: Channel, objective_lens: ObjectiveLens
-    ):
+    ) -> xarray.DataArray:
         from psfmodels import vectorial_psf_centered
         from scipy import signal
 

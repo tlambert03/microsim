@@ -18,7 +18,7 @@ class Confocal(BaseModel):
 
     def render(
         self, truth: xarray.DataArray, channel: Channel, objective_lens: ObjectiveLens
-    ):
+    ) -> xarray.DataArray:
         from scipy import signal
 
         from microsim.util import make_confocal_psf
