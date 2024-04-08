@@ -48,7 +48,7 @@ class Simulation(BaseModel):
         xp = self.settings.backend_module()
         channel = self.channels[channel_idx]
 
-        truth = self.truth_space.create(array_creator=xp.zeros)  # type: ignore
+        truth = self.truth_space.create(array_creator=xp.zeros)
         for label in self.sample.labels:
             truth = label.render(truth, xp=xp)
         truth.attrs["space"] = self.truth_space  # TODO

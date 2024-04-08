@@ -113,7 +113,7 @@ class JaxAPI(NumpyAPI):
         simp = simp.at[::2].set(4)
         simp = simp.at[1::2].set(2)
         simp = simp.at[-1].set(1)
-        return simp  # type: ignore
+        return simp
 
     def _array_assign(  # type: ignore
         self,

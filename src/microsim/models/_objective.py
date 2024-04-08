@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -19,12 +21,13 @@ class Objective(BaseModel):
     )
 
     @model_validator(mode="before")
-    def _vroot(cls, values: dict):
-        na = values.get("na", 0)
-        ri = values.get("immersion_ri_design", 1000)
-        if na > ri:
-            raise ValueError(
-                f"NA ({na}) cannot be greater than the immersion medium RI "
-                f"design value ({ri})"
-            )
+    def _vroot(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            na = values.get("na", 0)
+            ri = values.get("immersion_ri_design", 1000)
+            if na > ri:
+                raise ValueError(
+                    f"NA ({na}) cannot be greater than the immersion medium RI "
+                    f"design value ({ri})"
+                )
         return values

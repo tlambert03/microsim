@@ -1,4 +1,3 @@
-import numpy.typing as npt
 import xarray as xr
 from pydantic import BaseModel
 
@@ -27,9 +26,7 @@ class FluorophoreDistribution(BaseModel):
     distribution: Distribution
     fluorophore: Fluorophore | None = None
 
-    def render(
-        self, space: npt.NDArray | xr.DataArray, xp: NumpyAPI | None = None
-    ) -> xr.DataArray:
+    def render(self, space: xr.DataArray, xp: NumpyAPI | None = None) -> xr.DataArray:
         return self.distribution.render(space, xp)
 
 

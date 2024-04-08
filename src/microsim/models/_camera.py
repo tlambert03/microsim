@@ -1,4 +1,5 @@
 import numpy as np
+import numpy.typing as npt
 from pydantic import BaseModel, Field
 from scipy import stats
 
@@ -23,6 +24,9 @@ class Camera(BaseModel):
     @property
     def dynamic_range(self) -> float:
         return self.full_well / self.read_noise
+
+    def apply_em_gain(self, electron_image: npt.NDArray) -> npt.NDArray:
+        return electron_image
 
     def simulate(
         self,
@@ -57,11 +61,11 @@ class Camera(BaseModel):
 
     @property
     def max_intensity(self) -> int:
-        return 2**self.bit_depth - 1
+        return int(2**self.bit_depth - 1)
 
-    def quantize_electrons(self, total_electrons: np.ndarray) -> np.ndarray:
+    def quantize_electrons(self, total_electrons: npt.NDArray) -> npt.NDArray:
         voltage = stats.norm.rvs(total_electrons, self.read_noise) * self.gain
-        return np.round((voltage / self.adc_gain) + self.offset)
+        return np.round((voltage / self.adc_gain) + self.offset)  # type: ignore
 
 
 class CameraCCD(Camera): ...
@@ -71,7 +75,7 @@ class CameraEMCCD(Camera):
     em_full_well: int
     em_gain: float
 
-    def apply_em_gain(self, electron_image):
+    def apply_em_gain(self, electron_image: npt.NDArray) -> npt.NDArray:
         # FIXME: is there a more elegant way to deal with gamma rvs with shape = 0?
         ind_zero = electron_image <= 0
         electron_image[ind_zero] += 1

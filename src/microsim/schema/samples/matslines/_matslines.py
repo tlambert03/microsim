@@ -63,7 +63,7 @@ class MatsLines(BaseModel, Sample):
         if hasattr(c, "get"):
             c = c.get()
         drawlines_bresenham(c, data, self.max_r)
-        return space + xp.asarray(data)
+        return space + xp.asarray(data)  # type: ignore
 
 
 def drawlines_bresenham(

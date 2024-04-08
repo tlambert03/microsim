@@ -171,7 +171,7 @@ class _RelativeSpace(_Space):
 
 
 class DownscaledSpace(_RelativeSpace):
-    downscale: tuple[float, ...] | int
+    downscale: tuple[int, ...] | int
 
     def rescale(self, img: xr.DataArray) -> xr.DataArray:
         from microsim.util import downsample

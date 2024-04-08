@@ -10,7 +10,7 @@ from microsim.models import CameraCMOS, CameraEMCCD
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from numpy.typing import NDArray
+    import numpy.typing as npt
 
     from microsim.models import Camera
 
@@ -21,7 +21,7 @@ def simulate_camera(
     exposure: float = 0.1,
     binning: int = 1,
     add_poisson: bool = True,
-):
+) -> npt.NDArray:
     """Simulate camera detection.
 
     Parameters
@@ -83,8 +83,11 @@ def simulate_camera(
 
 
 def bin(  # noqa: A001
-    array: NDArray, factor: int | Sequence[int], method="sum", dtype=None
-) -> NDArray:
+    array: npt.NDArray,
+    factor: int | Sequence[int],
+    method: str = "sum",
+    dtype: npt.DTypeLike | None = None,
+) -> npt.NDArray:
     # TODO: deal with xarray
     f = getattr(np, method)
     binfactor = (factor,) * array.ndim if isinstance(factor, int) else factor

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 import warnings
-from typing import TYPE_CHECKING, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -15,7 +15,7 @@ try:
     from tqdm import tqdm
 except ImportError:
 
-    def tqdm(a):
+    def tqdm(a: Any) -> Any:
         return a
 
 
@@ -68,7 +68,8 @@ def uniformly_spaced_coords(
 
     axes = axes[-ndim:]  # pick last ndim axes, in case there are too many provided.
     return [
-        (ax, np.arange(sh) * sc) for ax, sh, sc in zip(axes, shape, scale, strict=False)
+        (ax, np.arange(sh) * sc)  # type: ignore
+        for ax, sh, sc in zip(axes, shape, scale, strict=False)
     ]
 
 
@@ -86,7 +87,12 @@ def uniformly_spaced_xarray(
     return xr.DataArray(array_creator(shape), coords=coords, attrs={"units": "um"})
 
 
-def get_fftconvolve_shape(in1, in2, mode="full", axes=None):
+def get_fftconvolve_shape(
+    in1: npt.NDArray,
+    in2: npt.NDArray,
+    mode: Literal["full", "valid", "same"] = "full",
+    axes: int | Sequence[int] | None = None,
+) -> tuple[int, ...]:
     """Get output shape of an fftconvolve operation (without performing it).
 
     Parameters
@@ -116,7 +122,10 @@ def get_fftconvolve_shape(in1, in2, mode="full", axes=None):
     s1 = in1.shape
     s2 = in2.shape
     ndim = in1.ndim
-    _axes = axes or range(ndim)
+    if axes is None:
+        _axes = set(range(ndim))
+    else:
+        _axes = set(range(axes) if isinstance(axes, int) else axes)
 
     full_shape = tuple(
         max((s1[i], s2[i])) if i not in _axes else s1[i] + s2[i] - 1 for i in _axes
@@ -180,13 +189,13 @@ class Convolver(Protocol):
 
 
 def tiled_convolve(
-    in1: NDArray,
-    in2: NDArray,
+    in1: npt.NDArray,
+    in2: npt.NDArray,
     mode: Literal["full", "valid", "same"] = "full",
     chunks: tuple | None = None,
     func: Convolver = signal.convolve,
     dtype: DTypeLike | None = None,
-):
+) -> npt.NDArray:
     if chunks is None:
         chunks = getattr(in1, "chunks", None) or (100,) * in1.ndim  # TODO: change 100
 
@@ -217,8 +226,8 @@ def make_confocal_psf(
     ex_wvl_um: float = 0.475,
     em_wvl_um: float = 0.525,
     pinhole_au: float = 1.0,
-    xp=np,
-    **kwargs,
+    xp: NumpyAPI | None = None,
+    **kwargs: Any,
 ) -> np.ndarray:
     """Create a confocal PSF.
 
@@ -231,6 +240,7 @@ def make_confocal_psf(
     from psfmodels import vectorial_psf_centered
     from scipy.signal import fftconvolve
 
+    xp = NumpyAPI.create(xp)
     kwargs.pop("wvl", None)
     params: dict = kwargs.setdefault("params", {})
     na = params.setdefault("NA", 1.4)
@@ -256,7 +266,7 @@ def make_confocal_psf(
         eff_em_psf[i] = plane.get() if hasattr(plane, "get") else plane
 
     # The final PSF is the excitation PSF multiplied by the effective emission PSF.
-    return ex_psf * eff_em_psf
+    return ex_psf * eff_em_psf  # type: ignore
 
 
 def _pinhole_mask(
@@ -276,7 +286,7 @@ def _pinhole_mask(
     x = xp.arange(nxy) - nxy // 2
     xx, yy = xp.meshgrid(x, x)
     r = xp.sqrt(xx**2 + yy**2)
-    return (r <= pinhole_px).astype(int)
+    return (r <= pinhole_px).astype(int)  # type: ignore
 
 
 # convenience function we'll use a couple times

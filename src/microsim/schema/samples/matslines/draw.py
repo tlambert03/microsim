@@ -106,4 +106,4 @@ def line_bresenham(
         bline = xp.hstack([start[:, xp.newaxis, :], bline])
     # Approximate to nearest int
     lines = xp.array(xp.rint(bline), dtype=start.dtype)
-    return lines.reshape(-1, start.shape[-1])
+    return lines.reshape(-1, start.shape[-1])  # type: ignore
