@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
+from microsim.schema.backend import NumpyAPI
+
 if TYPE_CHECKING:
     from typing import Self
 

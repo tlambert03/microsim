@@ -5,6 +5,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 import numpy as np
+from attr import has
 
 ZarrWriteModes = Literal["w", "w-", "a", "a-", "r+", "r"]
 
@@ -58,7 +59,7 @@ class DataArray:
     ) -> None:
         import tifffile as tf
 
-        tf.imwrite(path, self.data, description=description)
+        tf.imwrite(path, self._to_cpu(), description=description)
 
     def to_zarr(
         self,
@@ -78,8 +79,17 @@ class DataArray:
     def to_xarray(
         self,
         attrs: Mapping[str, Any] | None = None,
+        get: bool = True,
     ) -> "xr.DataArray":
         import xarray as xr
 
         attrs = {**self.attrs, **(attrs or {})}
-        return xr.DataArray(self.data, coords=self.coords, attrs=attrs)
+        data = self._to_cpu() if get else self.data
+        return xr.DataArray(data, coords=self.coords, attrs=attrs)
+
+    def _to_cpu(self) -> np.ndarray:
+        data = self.data
+        if callable(gettr := getattr(data, "get", None)):
+            # for GPU arrays
+            data = gettr()
+        return data
