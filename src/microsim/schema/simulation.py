@@ -59,7 +59,7 @@ class Simulation(BaseModel):
         if not self.output:
             return
         if self.output.suffix == ".zarr":
-            result.to_zarr(self.output, mode='w')
+            result.to_zarr(self.output, mode="w")
         if self.output.suffix in (".tif", ".tiff"):
             import tifffile as tf
 
