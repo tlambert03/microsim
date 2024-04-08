@@ -1,8 +1,8 @@
 from typing import Any
 
-import xarray as xr
 from pydantic import BaseModel, model_validator
 
+from microsim._data_array import DataArray
 from microsim.schema.backend import NumpyAPI
 
 from .matslines import MatsLines
@@ -28,7 +28,7 @@ class FluorophoreDistribution(BaseModel):
     distribution: Distribution
     fluorophore: Fluorophore | None = None
 
-    def render(self, space: xr.DataArray, xp: NumpyAPI | None = None) -> xr.DataArray:
+    def render(self, space: DataArray, xp: NumpyAPI | None = None) -> DataArray:
         return self.distribution.render(space, xp)
 
     @model_validator(mode="before")

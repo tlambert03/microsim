@@ -9,6 +9,8 @@ import xarray as xr
 from numpy.typing import NDArray
 from tqdm import tqdm
 
+from microsim._data_array import DataArray
+
 from ._widefield import Widefield
 
 try:
@@ -67,8 +69,7 @@ class SIMIllum2D(Widefield):
             spotsize=self.spotsize,
         ).sum(0)[1:]
 
-    def render(self, space: xr.DataArray) -> xr.DataArray:
-        import xarray as xr
+    def render(self, space: DataArray) -> DataArray:
 
         _dz = set(xp.round(xp.diff(space.coords.get("Z", [0, 0.1])), 8).tolist())
         _dx = set(xp.round(xp.diff(space.coords["X"]), 8).tolist())

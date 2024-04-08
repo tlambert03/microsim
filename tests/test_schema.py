@@ -43,9 +43,10 @@ def test_schema(
     assert out1.shape == sim1.output_space.shape
 
     # ensure we have the right datatype
+    # this is tough with xarray proper... so we use our own DataArray wrapper.
     # https://github.com/google/jax/issues/17107
     # https://github.com/pydata/xarray/issues/7848
-    # assert type(out1.data).__module__.split(".")[0] == np_backend
+    assert type(out1.data).__module__.split(".")[0].startswith(np_backend)
 
     out2 = sim1.run()
     if seed is None:

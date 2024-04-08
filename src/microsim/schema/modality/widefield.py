@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING, Literal, cast
 
-import xarray as xr
 from pydantic import BaseModel
 
+from microsim._data_array import DataArray
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.channel import Channel
 from microsim.schema.lens import ObjectiveLens
@@ -16,11 +16,11 @@ class Widefield(BaseModel):
 
     def render(
         self,
-        truth: "xr.DataArray",
+        truth: DataArray,
         channel: Channel,
         objective_lens: ObjectiveLens,
         xp: NumpyAPI | None = None,
-    ) -> "xr.DataArray":
+    ) -> DataArray:
         from psfmodels import vectorial_psf_centered
 
         xp = NumpyAPI.create(xp)
@@ -38,4 +38,4 @@ class Widefield(BaseModel):
 
         em_psf = xp.asarray(em_psf)
         img = xp.fftconvolve(truth.data, em_psf, mode="same")
-        return xr.DataArray(img, coords=truth.coords, attrs=truth.attrs)
+        return DataArray(img, coords=truth.coords, attrs=truth.attrs)

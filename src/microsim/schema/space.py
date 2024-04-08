@@ -2,8 +2,6 @@ from collections.abc import Callable, Sequence
 from typing import Any, Protocol, TypeVar
 
 import numpy as np
-import numpy.typing as npt
-import xarray as xr
 from pydantic import (
     BaseModel,
     GetCoreSchemaHandler,
@@ -14,8 +12,10 @@ from pydantic import (
 )
 from pydantic_core import CoreSchema, core_schema
 
+from microsim._data_array import ArrayProtocol, DataArray
 
-class FloatArray(npt.NDArray[np.floating]):
+
+class FloatArray(Sequence[float]):
     @classmethod
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler
@@ -45,13 +45,13 @@ ArrayType = TypeVar("ArrayType")
 
 
 class _Space(BaseModel):
-    def rescale(self, img: xr.DataArray) -> xr.DataArray:
+    def rescale(self, img: DataArray) -> DataArray:
         return img
 
     def create(
         self: SpaceProtocol,
-        array_creator: Callable[[Sequence[int]], npt.ArrayLike] = np.zeros,
-    ) -> "xr.DataArray":
+        array_creator: Callable[[Sequence[int]], ArrayProtocol] = np.zeros,
+    ) -> DataArray:
         from microsim.util import uniformly_spaced_xarray
 
         return uniformly_spaced_xarray(
@@ -59,11 +59,11 @@ class _Space(BaseModel):
         )
 
     @property
-    def coords(self: SpaceProtocol) -> list[tuple[str, FloatArray]]:
-        return [
-            (ax, np.arange(sh) * sc)  # type: ignore
+    def coords(self: SpaceProtocol) -> dict[str, FloatArray]:
+        return {
+            ax: np.arange(sh) * sc  # type: ignore
             for ax, sh, sc in zip(self.axes, self.shape, self.scale, strict=False)
-        ]
+        }
 
 
 # class CoordsSpace(_Space):
@@ -173,11 +173,11 @@ class _RelativeSpace(_Space):
 class DownscaledSpace(_RelativeSpace):
     downscale: tuple[int, ...] | int
 
-    def rescale(self, img: xr.DataArray) -> xr.DataArray:
+    def rescale(self, img: DataArray) -> DataArray:
         from microsim.util import downsample
 
         new_img = downsample(img.data, self.downscale)
-        return xr.DataArray(new_img, coords=self.coords)
+        return DataArray(new_img, coords=self.coords)
 
     @computed_field  # type: ignore
     @property

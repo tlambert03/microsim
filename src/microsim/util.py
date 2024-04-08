@@ -11,6 +11,8 @@ from scipy import signal
 
 from microsim.schema.backend import NumpyAPI
 
+from ._data_array import ArrayProtocol, DataArray
+
 try:
     from tqdm import tqdm
 except ImportError:
@@ -23,8 +25,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
     from typing import Literal
 
-    import xarray as xr
-    from numpy.typing import ArrayLike, DTypeLike, NDArray
+    from numpy.typing import DTypeLike, NDArray
 
     ShapeLike = Sequence[int]
 
@@ -34,7 +35,7 @@ def uniformly_spaced_coords(
     scale: tuple[float, ...] = (),
     extent: tuple[float, ...] = (),
     axes: str | Sequence[str] = "ZYX",
-) -> list[tuple[str, npt.NDArray[np.int64]]]:
+) -> dict[str, Sequence[float]]:
     # we now calculate the shape, scale, and extent based on input
     # where shape is the shape of the array, scale is the spacing between points
     # and extent is the total size of the array in each dimension (shape * scale)
@@ -67,10 +68,10 @@ def uniformly_spaced_coords(
         raise ValueError(f"Only {len(axes)} axes provided but got {ndim} dims")
 
     axes = axes[-ndim:]  # pick last ndim axes, in case there are too many provided.
-    return [
-        (ax, np.arange(sh) * sc)  # type: ignore
+    return {
+        ax: np.arange(sh) * sc  # type: ignore
         for ax, sh, sc in zip(axes, shape, scale, strict=False)
-    ]
+    }
 
 
 def uniformly_spaced_xarray(
@@ -78,13 +79,11 @@ def uniformly_spaced_xarray(
     scale: tuple[float, ...] = (),
     extent: tuple[float, ...] = (),
     axes: str | Sequence[str] = "ZYX",
-    array_creator: Callable[[ShapeLike], ArrayLike] = np.zeros,
-) -> xr.DataArray:
-    import xarray as xr
-
+    array_creator: Callable[[ShapeLike], ArrayProtocol] = np.zeros,
+) -> DataArray:
     coords = uniformly_spaced_coords(shape, scale, extent, axes)
-    shape = tuple(len(c) for _, c in coords)
-    return xr.DataArray(array_creator(shape), coords=coords, attrs={"units": "um"})
+    shape = tuple(len(c) for c in coords.values())
+    return DataArray(array_creator(shape), coords=coords, attrs={"units": "um"})
 
 
 def get_fftconvolve_shape(
@@ -305,7 +304,7 @@ def ortho_plot(img: npt.NDArray, gamma: float = 0.5, mip: bool = False) -> None:
     plt.show()
 
 
-ArrayType = TypeVar("ArrayType", bound=npt.NDArray)
+ArrayType = TypeVar("ArrayType", bound=ArrayProtocol)
 
 
 def downsample(

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 DeviceName = Literal["cpu", "gpu", "auto"]
 BackendName = Literal["numpy", "torch", "jax", "cupy", "auto"]
 NumpyAPIType = TypeVar("NumpyAPIType", bound="NumpyAPI")
+ArrT = TypeVar("ArrT", bound=npt.ArrayLike)
 
 
 class NumpyAPI:
@@ -52,11 +53,8 @@ class NumpyAPI:
     #     return self.xp.zeros(shape, dtype)
 
     def fftconvolve(
-        self,
-        a: npt.ArrayLike,
-        b: npt.ArrayLike,
-        mode: Literal["full", "valid", "same"] = "full",
-    ) -> npt.ArrayLike:
+        self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
+    ) -> ArrT:
         return self.signal.fftconvolve(a, b, mode=mode)  # type: ignore
 
     def map_coordinates(
@@ -99,11 +97,8 @@ class JaxAPI(NumpyAPI):
         return np.random
 
     def fftconvolve(
-        self,
-        a: npt.ArrayLike,
-        b: npt.ArrayLike,
-        mode: Literal["full", "valid", "same"] = "full",
-    ) -> npt.ArrayLike:
+        self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
+    ) -> ArrT:
         return self.signal.fftconvolve(a, b, mode=mode)  # type: ignore
 
     def _simp_like(self, arr: "jax.Array") -> "jax.Array":  # type: ignore
@@ -137,11 +132,8 @@ class CupyAPI(NumpyAPI):
         self.map_coordinates = map_coordinates  # type: ignore
 
     def fftconvolve(
-        self,
-        a: npt.ArrayLike,
-        b: npt.ArrayLike,
-        mode: Literal["full", "valid", "same"] = "full",
-    ) -> npt.ArrayLike:
+        self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
+    ) -> ArrT:
         return self.signal.fftconvolve(a, b, mode=mode)  # type: ignore
 
 
@@ -152,9 +144,6 @@ class TorchAPI(NumpyAPI):
         self.xp = torch
 
     def fftconvolve(
-        self,
-        a: npt.ArrayLike,
-        b: npt.ArrayLike,
-        mode: Literal["full", "valid", "same"] = "full",
-    ) -> npt.ArrayLike:
+        self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
+    ) -> ArrT:
         raise NotImplementedError("fftconvolve not implemented for torch")

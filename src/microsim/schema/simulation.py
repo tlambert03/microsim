@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING, Annotated
 if TYPE_CHECKING:
     from typing import Self
 
-import xarray as xr
 from pydantic import AfterValidator, BaseModel, Field, model_validator
+
+from microsim._data_array import DataArray
 
 from .channel import Channel
 from .lens import ObjectiveLens
@@ -44,36 +45,28 @@ class Simulation(BaseModel):
             self.output_space.reference = self.truth_space
         return self
 
-    def run(self, channel_idx: int = 0) -> xr.DataArray:
+    def run(self, channel_idx: int = 0) -> DataArray:
         xp = self.settings.backend_module()
         channel = self.channels[channel_idx]
 
         truth = self.truth_space.create(array_creator=xp.zeros)
 
-        assert type(truth.data).__module__.split(".")[0] == self.settings.np_backend
-
         for label in self.sample.labels:
             truth = label.render(truth, xp=xp)
         truth.attrs["space"] = self.truth_space  # TODO
 
-        assert type(truth.data).__module__.split(".")[0] == self.settings.np_backend
-
         img = self.modality.render(truth, channel, self.objective_lens, xp=xp)
-
-        assert type(img.data).__module__.split(".")[0] == self.settings.np_backend
         result = self.output_space.rescale(img)
         self._write(result)
         return result
 
-    def _write(self, result: xr.DataArray) -> None:
+    def _write(self, result: DataArray) -> None:
         if not self.output:
             return
+        self_json = self.model_dump_json()
         if self.output.suffix == ".zarr":
-            result.to_zarr(self.output, mode="w")
+            result.to_zarr(self.output, mode="w", attrs={"microsim": self_json})
         if self.output.suffix in (".tif", ".tiff"):
-            import tifffile as tf
-
-            desc = self.model_dump_json()
-            tf.imwrite(self.output, result, description=desc)
+            result.to_tiff(self.output, description=self_json)
         if self.output.suffix in (".nc",):
-            result.to_netcdf(self.output)
+            result.to_netcdf(self.output, attrs={"microsim": self_json})
