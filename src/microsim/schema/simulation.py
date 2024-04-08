@@ -1,5 +1,8 @@
 from pathlib import Path
-from typing import Annotated, Self
+from typing import TYPE_CHECKING, Annotated
+
+if TYPE_CHECKING:
+    from typing import Self
 
 import xarray as xr
 from pydantic import AfterValidator, BaseModel, Field, model_validator
@@ -32,7 +35,7 @@ class Simulation(BaseModel):
     output: OutPath | None = None
 
     @model_validator(mode="after")
-    def _resolve_spaces(self) -> Self:
+    def _resolve_spaces(self) -> "Self":
         if isinstance(self.truth_space, _RelativeSpace):
             if isinstance(self.output_space, _RelativeSpace):
                 raise ValueError("Cannot have two relative spaces.")
@@ -59,7 +62,7 @@ class Simulation(BaseModel):
         if not self.output:
             return
         if self.output.suffix == ".zarr":
-            result.to_zarr(self.output, mode='w')
+            result.to_zarr(self.output, mode="w")
         if self.output.suffix in (".tif", ".tiff"):
             import tifffile as tf
 
