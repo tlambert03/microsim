@@ -70,7 +70,6 @@ class SIMIllum2D(Widefield):
         ).sum(0)[1:]
 
     def render(self, space: DataArray) -> DataArray:
-
         _dz = set(xp.round(xp.diff(space.coords.get("Z", [0, 0.1])), 8).tolist())
         _dx = set(xp.round(xp.diff(space.coords["X"]), 8).tolist())
         if len(_dz) != 1:
