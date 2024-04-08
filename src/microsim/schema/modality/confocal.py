@@ -4,9 +4,9 @@ import xarray
 from annotated_types import Ge
 from pydantic import BaseModel
 
+from microsim.schema.backend import NumpyAPI
 from microsim.schema.channel import Channel
 from microsim.schema.lens import ObjectiveLens
-from microsim.schema.settings import NumpyAPI
 
 if TYPE_CHECKING:
     from microsim.schema.space import Space

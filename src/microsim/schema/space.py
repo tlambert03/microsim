@@ -1,5 +1,5 @@
-from collections.abc import Callable, Mapping
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -13,6 +13,9 @@ from pydantic import (
 )
 from pydantic_core import CoreSchema, core_schema
 
+if TYPE_CHECKING:
+    import xarray as xr
+
 
 class FloatArray(npt.NDArray[np.floating]):
     @classmethod
@@ -25,21 +28,32 @@ class FloatArray(npt.NDArray[np.floating]):
         )
 
     @classmethod
-    def _wrap_validator(self, value, handler: ValidatorFunctionWrapHandler):
+    def _wrap_validator(
+        self, value: Any, handler: ValidatorFunctionWrapHandler
+    ) -> np.ndarray:
         return np.array(value, dtype=np.float64)
 
 
+class SpaceProtocol(Protocol):
+    @property
+    def axes(self) -> tuple[str, ...]: ...
+    @property
+    def shape(self) -> tuple[int, ...]: ...
+    @property
+    def scale(self) -> tuple[float, ...]: ...
+
+
+ArrayType = TypeVar("ArrayType")
+
+
 class _Space(BaseModel):
-    if TYPE_CHECKING:
-        shape: tuple[int, ...]
-        scale: tuple[float, ...]
+    def rescale(self, img: ArrayType) -> ArrayType:
+        return img
 
-    def rescale(self, img: np.ndarray) -> np.ndarray:
-        from microsim.util import downsample
-
-        return downsample(img, self.downscale)
-
-    def create(self, array_creator: Callable[[], npt.ArrayLike] = np.zeros):
+    def create(
+        self: SpaceProtocol,
+        array_creator: Callable[[Sequence[int]], npt.ArrayLike] = np.zeros,
+    ) -> "xr.DataArray":
         from microsim.util import uniformly_spaced_xarray
 
         return uniformly_spaced_xarray(
@@ -55,11 +69,11 @@ class _AxesSpace(_Space):
     axes: tuple[str, ...] = ("T", "C", "Z", "Y", "X")
 
     @field_validator("axes", mode="before")
-    def _cast_axes(cls, value: Any):
+    def _cast_axes(cls, value: Any) -> tuple[str, ...]:
         return tuple(value)
 
     @model_validator(mode="after")
-    def _validate_axes_space(cls, value: Any):
+    def _validate_axes_space(cls, value: Any) -> Any:
         shape = getattr(value, "shape", ())
         scale = getattr(value, "scale", ())
         axes = getattr(value, "axes", ())
@@ -74,9 +88,9 @@ class _AxesSpace(_Space):
         return value
 
     @computed_field(repr=False)
-    def coords(self) -> Mapping[str, FloatArray]:
+    def coords(self: SpaceProtocol) -> Mapping[str, FloatArray]:
         return {
-            ax: np.arange(sh) * sc
+            ax: np.arange(sh) * sc  # type: ignore
             for ax, sh, sc in zip(self.axes, self.shape, self.scale, strict=False)
         }
 
@@ -86,7 +100,7 @@ class ShapeScaleSpace(_AxesSpace):
     scale: tuple[float, ...] = ()
 
     @model_validator(mode="before")
-    def _cast_ob(cls, value: Any):
+    def _cast_ob(cls, value: Any) -> Any:
         if isinstance(value, dict):
             if "shape" not in value:
                 raise ValueError("Must provide 'shape' in the input dictionary.")
@@ -109,7 +123,7 @@ class ExtentScaleSpace(_AxesSpace):
     scale: tuple[float, ...]
 
     @model_validator(mode="before")
-    def _cast_ob(cls, value: Any):
+    def _cast_ob(cls, value: Any) -> Any:
         if isinstance(value, dict):
             if "extent" not in value:
                 raise ValueError("Must provide 'extent' in the input dictionary.")
@@ -121,7 +135,7 @@ class ExtentScaleSpace(_AxesSpace):
             value["scale"] = scale
         return value
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def shape(self) -> tuple[int, ...]:
         return tuple(int(x / s) for x, s in zip(self.extent, self.scale, strict=False))
@@ -131,7 +145,7 @@ class ShapeExtentSpace(_AxesSpace):
     shape: tuple[int, ...]
     extent: tuple[float, ...]
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def scale(self) -> tuple[float, ...]:
         return tuple(x / s for x, s in zip(self.extent, self.shape, strict=False))
@@ -151,7 +165,13 @@ class _RelativeSpace(_Space):
 class DownscaledSpace(_RelativeSpace):
     downscale: tuple[float, ...] | int
 
-    @computed_field
+    def rescale(self, img: ArrayType) -> ArrayType:
+        from microsim.util import downsample
+
+        return downsample(img, self.downscale)
+
+    @computed_field  # type: ignore
+    @property
     def shape(self) -> tuple[int, ...]:
         if not self.reference:
             raise ValueError("Must provide a reference space.")
@@ -164,11 +184,25 @@ class DownscaledSpace(_RelativeSpace):
             for x, d in zip(self.reference.shape, self.downscale, strict=False)
         )
 
+    @computed_field  # type: ignore
+    @property
+    def scale(self) -> tuple[float, ...]:
+        if not self.reference:
+            raise ValueError("Must provide a reference space.")
+
+        if isinstance(self.downscale, int | float):
+            return tuple(s * self.downscale for s in self.reference.scale)
+
+        return tuple(
+            s * d for s, d in zip(self.reference.scale, self.downscale, strict=False)
+        )
+
 
 class UpscaledSpace(_RelativeSpace):
     upscale: tuple[float, ...] | int
 
-    @computed_field
+    @computed_field  # type: ignore
+    @property
     def shape(self) -> tuple[int, ...]:
         if not self.reference:
             raise ValueError("Must provide a reference space.")
@@ -178,6 +212,19 @@ class UpscaledSpace(_RelativeSpace):
 
         return tuple(
             int(x * u) for x, u in zip(self.reference.shape, self.upscale, strict=False)
+        )
+
+    @computed_field  # type: ignore
+    @property
+    def scale(self) -> tuple[float, ...]:
+        if not self.reference:
+            raise ValueError("Must provide a reference space.")
+
+        if isinstance(self.upscale, int | float):
+            return tuple(s / self.upscale for s in self.reference.scale)
+
+        return tuple(
+            s / u for s, u in zip(self.reference.scale, self.upscale, strict=False)
         )
 
 

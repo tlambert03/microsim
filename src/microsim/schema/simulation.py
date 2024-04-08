@@ -1,3 +1,5 @@
+from typing import Self
+
 import xarray as xr
 from pydantic import BaseModel, Field, model_validator
 
@@ -19,22 +21,21 @@ class Simulation(BaseModel):
     settings: Settings = Field(default_factory=Settings)
 
     @model_validator(mode="after")
-    @classmethod
-    def _resolve_spaces(cls, value: "Simulation") -> "Simulation":
-        if isinstance(value.truth_space, _RelativeSpace):
-            if isinstance(value.output_space, _RelativeSpace):
+    def _resolve_spaces(self) -> Self:
+        if isinstance(self.truth_space, _RelativeSpace):
+            if isinstance(self.output_space, _RelativeSpace):
                 raise ValueError("Cannot have two relative spaces.")
-            value.truth_space.reference = value.output_space
-        elif isinstance(value.output_space, _RelativeSpace):
-            value.output_space.reference = value.truth_space
-        return value
+            self.truth_space.reference = self.output_space
+        elif isinstance(self.output_space, _RelativeSpace):
+            self.output_space.reference = self.truth_space
+        return self
 
     def run(self, sample_idx: int = 0, channel_idx: int = 0) -> xr.DataArray:
         xp = self.settings.backend_module()
         sample = self.samples[sample_idx]
         channel = self.channels[channel_idx]
 
-        truth = self.truth_space.create(xp.zeros)
+        truth = self.truth_space.create(array_creator=xp.zeros)  # type: ignore
         for label in sample.labels:
             truth = label.render(truth, xp=xp)
         truth.attrs["space"] = self.truth_space  # TODO

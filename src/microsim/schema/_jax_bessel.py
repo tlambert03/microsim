@@ -9,12 +9,12 @@ import jax.numpy as jnp
 from jax import Array, config, jit
 
 # this is *absolutely essential* for the jax bessel function to be numerically stable
-config.update("jax_enable_x64", True)  # type: ignore
+config.update("jax_enable_x64", True)
 
 __all__ = ["j0", "j1"]
 
 
-@jit
+@jit  # type: ignore
 def j1(x: Array) -> Array:
     """Bessel function of order one - using the implementation from CEPHES."""
     return jnp.sign(x) * jnp.where(
@@ -22,7 +22,7 @@ def j1(x: Array) -> Array:
     )
 
 
-@jit
+@jit  # type: ignore
 def j0(x: Array) -> Array:
     """Implementation of J0 for all x in Jax."""
     return jnp.where(jnp.abs(x) < 5.0, _j0_small(jnp.abs(x)), _j0_large(jnp.abs(x)))

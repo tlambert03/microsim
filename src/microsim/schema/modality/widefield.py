@@ -1,13 +1,14 @@
 from typing import TYPE_CHECKING, Literal, cast
 
-import xarray
 from pydantic import BaseModel
 
+from microsim.schema.backend import NumpyAPI
 from microsim.schema.channel import Channel
 from microsim.schema.lens import ObjectiveLens
-from microsim.schema.settings import NumpyAPI
 
 if TYPE_CHECKING:
+    import xarray as xr
+
     from microsim.schema.space import Space
 
 
@@ -16,12 +17,14 @@ class Widefield(BaseModel):
 
     def render(
         self,
-        truth: xarray.DataArray,
+        truth: "xr.DataArray",
         channel: Channel,
         objective_lens: ObjectiveLens,
         xp: NumpyAPI | None = None,
-    ) -> xarray.DataArray:
+    ) -> "xr.DataArray":
         from psfmodels import vectorial_psf_centered
+
+        xp = NumpyAPI.create(xp)
 
         # FIXME, this is probably derivable from truth.coords
         truth_space = cast("Space", truth.attrs["space"])

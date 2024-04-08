@@ -1,4 +1,5 @@
 import warnings
+from collections.abc import Sequence
 from contextlib import nullcontext, suppress
 from types import ModuleType
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
@@ -22,7 +23,7 @@ class NumpyAPI:
         if not backend:
             backend = backend or "auto"
 
-        ctx = suppress(ImportError) if backend != "auto" else nullcontext()
+        ctx = suppress(ImportError) if backend == "auto" else nullcontext()
         if backend in ("cupy", "auto"):
             with ctx:
                 return CupyAPI()
@@ -47,7 +48,7 @@ class NumpyAPI:
         return getattr(self.xp, name)
 
     def zeros(
-        self, shape: tuple[int, ...], dtype: npt.DTypeLike = np.float32
+        self, shape: Sequence[int], dtype: npt.DTypeLike = np.float32
     ) -> npt.ArrayLike:
         return self.xp.zeros(shape, dtype)
 

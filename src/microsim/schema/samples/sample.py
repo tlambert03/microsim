@@ -2,7 +2,7 @@ import numpy.typing as npt
 import xarray as xr
 from pydantic import BaseModel
 
-from microsim.schema.settings import NumpyAPI
+from microsim.schema.backend import NumpyAPI
 
 from .matslines import MatsLines
 

@@ -6,12 +6,11 @@ import numpy as np
 from pydantic import BaseModel
 
 from microsim.models import Sample
+from microsim.schema.backend import NumpyAPI
 
 if TYPE_CHECKING:
     import numpy.typing as npt
     import xarray as xr
-
-from microsim.schema.settings import NumpyAPI
 
 
 class MatsLines(BaseModel, Sample):
@@ -54,7 +53,7 @@ class MatsLines(BaseModel, Sample):
             return xp.stack([z1, y1, x1]).T, xp.stack([z2, y2, x2]).T
         return xp.stack([y1, x1]).T, xp.stack([y2, x2]).T
 
-    def render(self, space: npt.NDArray | xr.DataArray, xp: NumpyAPI | None = None):
+    def render(self, space: xr.DataArray, xp: NumpyAPI | None = None) -> xr.DataArray:
         xp = xp or NumpyAPI()
 
         start, end = self._gen_vertices(xp, space.shape)

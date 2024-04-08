@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import itertools
 import warnings
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
 from dask.array.core import normalize_chunks
 from scipy import signal
+
+from microsim.schema.backend import NumpyAPI
 
 try:
     from tqdm import tqdm
@@ -258,9 +260,16 @@ def make_confocal_psf(
 
 
 def _pinhole_mask(
-    nxy: int, pinhole_au: float, wvl: float, na: float, dxy: float, xp=np
-):
+    nxy: int,
+    pinhole_au: float,
+    wvl: float,
+    na: float,
+    dxy: float,
+    xp: NumpyAPI | None = None,
+) -> npt.NDArray:
     """Create a 2D circular pinhole mask of specified `pinhole_au`."""
+    xp = NumpyAPI.create(xp)
+
     pinhole_size = pinhole_au * 0.61 * wvl / na
     pinhole_px = pinhole_size / dxy
 
@@ -271,7 +280,7 @@ def _pinhole_mask(
 
 
 # convenience function we'll use a couple times
-def ortho_plot(img, gamma: float = 0.5, mip: bool = False):
+def ortho_plot(img: npt.NDArray, gamma: float = 0.5, mip: bool = False) -> None:
     import matplotlib.pyplot as plt
     from matplotlib.colors import PowerNorm
 
@@ -286,14 +295,22 @@ def ortho_plot(img, gamma: float = 0.5, mip: bool = False):
     plt.show()
 
 
+ArrayType = TypeVar("ArrayType", bound=npt.NDArray)
+
+
 def downsample(
-    array: np.ndarray, factor: int | Sequence[int], method=np.sum, dtype=None
-) -> np.ndarray:
+    array: ArrayType,
+    factor: int | Sequence[int],
+    method: Callable[
+        [ArrayType, Sequence[int] | int | None, npt.DTypeLike], ArrayType
+    ] = np.sum,
+    dtype: npt.DTypeLike | None = None,
+) -> ArrayType:
     binfactor = (factor,) * array.ndim if isinstance(factor, int) else factor
     new_shape = []
     for s, b in zip(array.shape, binfactor, strict=False):
         new_shape.extend([s // b, b])
-    reshaped = np.reshape(array, new_shape)
+    reshaped = cast("ArrayType", np.reshape(array, new_shape))
     for d in range(array.ndim):
-        reshaped = method(reshaped, axis=-1 * (d + 1), dtype=dtype)
+        reshaped = method(reshaped, -1 * (d + 1), dtype)
     return reshaped
