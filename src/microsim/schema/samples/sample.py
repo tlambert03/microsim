@@ -1,7 +1,7 @@
-from re import L
-from typing import Annotated, Any
+from typing import Any
+
 import xarray as xr
-from pydantic import BaseModel, BeforeValidator, model_validator
+from pydantic import BaseModel, model_validator
 
 from microsim.schema.backend import NumpyAPI
 

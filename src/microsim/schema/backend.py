@@ -1,5 +1,4 @@
 import warnings
-from collections.abc import Sequence
 from contextlib import nullcontext, suppress
 from types import ModuleType
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
