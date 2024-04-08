@@ -237,7 +237,6 @@ def make_confocal_psf(
     """
     import tqdm
     from psfmodels import vectorial_psf_centered
-    from scipy.signal import fftconvolve
 
     xp = NumpyAPI.create(xp)
     kwargs.pop("wvl", None)
