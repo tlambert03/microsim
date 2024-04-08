@@ -1,5 +1,7 @@
+from re import L
+from typing import Annotated, Any
 import xarray as xr
-from pydantic import BaseModel
+from pydantic import BaseModel, BeforeValidator, model_validator
 
 from microsim.schema.backend import NumpyAPI
 
@@ -28,6 +30,12 @@ class FluorophoreDistribution(BaseModel):
 
     def render(self, space: xr.DataArray, xp: NumpyAPI | None = None) -> xr.DataArray:
         return self.distribution.render(space, xp)
+
+    @model_validator(mode="before")
+    def _vmodel(cls, value: Any) -> Any:
+        if isinstance(value, Distribution):
+            return {"distribution": value}
+        return value
 
 
 class Sample(BaseModel):

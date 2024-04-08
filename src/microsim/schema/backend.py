@@ -47,10 +47,10 @@ class NumpyAPI:
     def __getattr__(self, name: str) -> Any:
         return getattr(self.xp, name)
 
-    def zeros(
-        self, shape: Sequence[int], dtype: npt.DTypeLike = np.float32
-    ) -> npt.ArrayLike:
-        return self.xp.zeros(shape, dtype)
+    # def zeros(
+    #     self, shape: Sequence[int], dtype: npt.DTypeLike = np.float32
+    # ) -> npt.ArrayLike:
+    #     return self.xp.zeros(shape, dtype)
 
     def fftconvolve(
         self,

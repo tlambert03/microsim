@@ -49,11 +49,18 @@ class Simulation(BaseModel):
         channel = self.channels[channel_idx]
 
         truth = self.truth_space.create(array_creator=xp.zeros)
+
+        assert type(truth.data).__module__.split(".")[0] == self.settings.np_backend
+
         for label in self.sample.labels:
             truth = label.render(truth, xp=xp)
         truth.attrs["space"] = self.truth_space  # TODO
 
+        assert type(truth.data).__module__.split(".")[0] == self.settings.np_backend
+
         img = self.modality.render(truth, channel, self.objective_lens, xp=xp)
+
+        assert type(img.data).__module__.split(".")[0] == self.settings.np_backend
         result = self.output_space.rescale(img)
         self._write(result)
         return result

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 class Confocal(BaseModel):
     type: Literal["confocal"] = "confocal"
-    pinhole: Annotated[float, Ge(0)] = 1
+    pinhole_au: Annotated[float, Ge(0)] = 1
 
     def render(
         self,
@@ -32,7 +32,7 @@ class Confocal(BaseModel):
         psf = make_confocal_psf(
             ex_wvl_um=channel.excitation.wavelength * 1e-3,
             em_wvl_um=channel.emission.wavelength * 1e-3,
-            pinhole_au=self.pinhole,
+            pinhole_au=self.pinhole_au,
             nz=truth_space.shape[-3] + 1,
             nx=truth_space.shape[-1] + 1,
             dz=truth_space.scale[-3],

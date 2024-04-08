@@ -52,11 +52,12 @@ test = ["pytest", "pytest-cov", "zarr", "tifffile"]
 dev = [
     "microsim[test]",
     "ipython",
+    "matplotlib",
     "mypy",
     "pdbpp",
+    "pre-commit",
     "rich",
     "ruff",
-    "pre-commit",
 ]
 
 [project.urls]
