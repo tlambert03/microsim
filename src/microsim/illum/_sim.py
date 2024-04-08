@@ -1,10 +1,12 @@
-from __future__ import annotations
-
+from collections.abc import Iterable, Sequence
 from functools import lru_cache
 from itertools import product
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import numpy as np
+import numpy.typing as npt
+import xarray as xr
+from numpy.typing import NDArray
 from tqdm import tqdm
 
 from ._widefield import Widefield
@@ -16,13 +18,6 @@ except ImportError:
     from scipy.ndimage import map_coordinates
 
     xp = np
-
-if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
-
-    import napari.types
-    import xarray as xr
-    from numpy.typing import NDArray
 
 
 class SIMIllum2D(Widefield):
@@ -205,7 +200,7 @@ def structillum_2d(
     ampratio: float = 1.0,  # TODO: remove?  ampcenter seems sufficient
     nbeamlets: int = 31,
     spotsize: float = 0.035,
-) -> napari.types.ImageData:
+) -> npt.NDArray:
     """Simulate a single "XZ" plane of structured illumination intensity.
 
     from Lin Shao's psfsimu.py file which is in turn based on Hanser et al (2004)

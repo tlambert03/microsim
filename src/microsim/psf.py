@@ -1,4 +1,5 @@
-from typing import Any, Mapping, Optional, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 import numpy as np
 import numpy.typing as npt
@@ -17,8 +18,7 @@ def simpson(
     wave_num: float,
     xp: NumpyAPI | None = None,
 ) -> npt.ArrayLike:
-    if not xp:
-        xp = NumpyAPI()
+    xp = NumpyAPI.create(xp)
 
     # L_theta calculation
     sintheta = xp.sin(theta)
@@ -76,8 +76,7 @@ def vectorial_rz(
     sf: int = 3,
     xp: NumpyAPI | None = None,
 ) -> npt.ArrayLike:
-    if not xp:
-        xp = NumpyAPI()
+    xp = NumpyAPI.create(xp)
     p = ObjectiveLens(**(params or {}))
 
     wave_num = 2 * np.pi / (wvl * 1e-6)
@@ -111,8 +110,9 @@ def vectorial_rz(
 
 
 def radius_map(
-    shape: Sequence[int], off: Optional[Sequence[int]] = None
+    shape: Sequence[int], off: Sequence[int] | None = None, xp: NumpyAPI | None = None
 ) -> npt.ArrayLike:
+    xp = NumpyAPI.create(xp)
     if off is not None:
         offy, offx = off
     else:
@@ -128,12 +128,11 @@ def rz_to_xyz(
     rz: npt.NDArray,
     xyshape: Sequence[int],
     sf: int = 3,
-    off: Optional[Sequence[int]] = None,
+    off: Sequence[int] | None = None,
     xp: NumpyAPI | None = None,
 ) -> npt.NDArray:
     """Use interpolation to create a 3D XYZ PSF from a 2D ZR PSF."""
-    if xp is None:
-        xp = NumpyAPI()
+    xp = NumpyAPI.create(xp)
 
     # Create XY grid of radius values.
     rmap = radius_map(xyshape, off) * sf
@@ -173,9 +172,7 @@ def vectorial_psf(
     normalize: bool = True,
     xp: NumpyAPI | None = None,
 ) -> npt.ArrayLike:
-    if xp is None:
-        xp = NumpyAPI()
-
+    xp = NumpyAPI.create(xp)
     zv = xp.asarray(zv * 1e-6)  # convert to meters
     ny = ny or nx
     rz = vectorial_rz(zv, np.maximum(ny, nx), pos, dxy, wvl, params, sf, xp=xp)

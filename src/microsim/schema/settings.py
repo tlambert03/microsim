@@ -1,11 +1,6 @@
-from typing import Literal
-
 from pydantic_settings import BaseSettings
 
-from .backend import NumpyAPI
-
-BackendName = Literal["numpy", "torch", "jax", "cupy", "auto"]
-DeviceName = Literal["cpu", "gpu", "auto"]
+from .backend import BackendName, DeviceName, NumpyAPI
 
 
 class Settings(BaseSettings):

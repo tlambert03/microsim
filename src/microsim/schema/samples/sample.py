@@ -2,6 +2,8 @@ import numpy.typing as npt
 import xarray as xr
 from pydantic import BaseModel
 
+from microsim.schema.settings import NumpyAPI
+
 from .matslines import MatsLines
 
 Distribution = MatsLines
@@ -25,7 +27,9 @@ class FluorophoreDistribution(BaseModel):
     distribution: Distribution
     fluorophore: Fluorophore | None = None
 
-    def render(self, space: npt.NDArray | xr.DataArray, xp: NumpyAPI | None = None):
+    def render(
+        self, space: npt.NDArray | xr.DataArray, xp: NumpyAPI | None = None
+    ) -> xr.DataArray:
         return self.distribution.render(space, xp)
 
 

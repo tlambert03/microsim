@@ -1,6 +1,7 @@
 import warnings
+from contextlib import nullcontext, suppress
 from types import ModuleType
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -8,18 +9,31 @@ import numpy.typing as npt
 if TYPE_CHECKING:
     import jax
 
+DeviceName = Literal["cpu", "gpu", "auto"]
+BackendName = Literal["numpy", "torch", "jax", "cupy", "auto"]
+NumpyAPIType = TypeVar("NumpyAPIType", bound="NumpyAPI")
+
 
 class NumpyAPI:
     @classmethod
-    def create(cls, backend: str) -> "NumpyAPI":
+    def create(cls, backend: "BackendName | NumpyAPI | None") -> "NumpyAPI":
+        if isinstance(backend, cls):
+            return backend
+        if not backend:
+            backend = backend or "auto"
+
+        ctx = suppress(ImportError) if backend != "auto" else nullcontext()
         if backend in ("cupy", "auto"):
-            return CupyAPI()
+            with ctx:
+                return CupyAPI()
         elif backend in ("jax", "auto"):
-            return JaxAPI()
+            with ctx:
+                return JaxAPI()
         elif backend in ("torch", "auto"):
-            return TorchAPI()
-        else:
-            return NumpyAPI()
+            with ctx:
+                return TorchAPI()
+
+        return NumpyAPI()
 
     def __init__(self) -> None:
         from scipy import signal, special

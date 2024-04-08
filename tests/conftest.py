@@ -14,7 +14,7 @@ with suppress(ImportError):
 
     AVAILABLE_BACKENDS.append("jax")
 # with suppress(ImportError):
-#     import torch  # noqa
+#     import torch
 
 #     AVAILABLE_BACKENDS.append("torch")
 
