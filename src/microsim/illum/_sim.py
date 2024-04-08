@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from itertools import product
-from typing import TYPE_CHECKING, Any, Iterable, Sequence
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from tqdm import tqdm
@@ -18,6 +18,8 @@ except ImportError:
     xp = np
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+
     import napari.types
     import xarray as xr
     from numpy.typing import NDArray
@@ -318,4 +320,6 @@ def structillum_2d(
 def _enumerated_product(
     *args: Any,
 ) -> Iterable[tuple[tuple[int, int], tuple[Any, ...]]]:
-    yield from zip(product(*(range(len(x)) for x in args)), product(*args))
+    yield from zip(
+        product(*(range(len(x)) for x in args)), product(*args), strict=False
+    )

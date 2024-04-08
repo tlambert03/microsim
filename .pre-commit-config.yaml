@@ -9,11 +9,6 @@ repos:
     hooks:
       - id: validate-pyproject
 
-  # - repo: https://github.com/crate-ci/typos
-  #   rev: v1.20.4
-  #   hooks:
-  #     - id: typos
-
   - repo: https://github.com/charliermarsh/ruff-pre-commit
     rev: v0.3.5
     hooks:
@@ -25,7 +20,7 @@ repos:
   #   rev: v1.9.0
   #   hooks:
   #     - id: mypy
-  #       files: "^src/"
+  #       files: "^src/microsim/schema"
   #       additional_dependencies:
   #         - numpy
   #         - pydantic

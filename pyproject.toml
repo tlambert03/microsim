@@ -65,11 +65,11 @@ repository = "https://github.com/tlambert03/microsim"
 
 [tool.ruff]
 line-length = 88
-target-version = "py38"
 src = ["src"]
 
 [tool.ruff.lint]
 pydocstyle = { convention = "numpy" }
+pyupgrade = { keep-runtime-typing = true }
 select = [
     "E",    # style errors
     "W",    # style warnings
@@ -89,6 +89,7 @@ ignore = [
     "D10",  # Missing docstring in public ...
     "D401", # First line should be in imperative mood
 ]
+
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["D", "S"]

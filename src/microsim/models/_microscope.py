@@ -1,6 +1,6 @@
+from collections.abc import Iterable
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Iterable, Optional
 
 from pydantic import BaseModel, Field
 
@@ -30,11 +30,11 @@ class Microscope(BaseModel):
     @staticmethod  # type: ignore
     @contextmanager
     def context(
-        objective: Optional[Objective] = None,
-        coverslip: Optional[Coverslip] = None,
-        immersion: Optional[ImmersionMedium] = None,
-        illumination: Optional[Illumination] = None,
-        camera: Optional[Camera] = None,
+        objective: Objective | None = None,
+        coverslip: Coverslip | None = None,
+        immersion: ImmersionMedium | None = None,
+        illumination: Illumination | None = None,
+        camera: Camera | None = None,
     ) -> Iterable["Microscope"]:
         kwargs = {k: v for k, v in locals().items() if v is not None}
         current = _GLOBAL_MICROSCOPE.get().model_dump()

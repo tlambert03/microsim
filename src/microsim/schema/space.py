@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Any, Callable, Mapping
+from collections.abc import Callable, Mapping
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -76,7 +77,7 @@ class _AxesSpace(_Space):
     def coords(self) -> Mapping[str, FloatArray]:
         return {
             ax: np.arange(sh) * sc
-            for ax, sh, sc in zip(self.axes, self.shape, self.scale)
+            for ax, sh, sc in zip(self.axes, self.shape, self.scale, strict=False)
         }
 
 
@@ -91,14 +92,16 @@ class ShapeScaleSpace(_AxesSpace):
                 raise ValueError("Must provide 'shape' in the input dictionary.")
             if not (scale := value.get("scale")):
                 scale = 1
-            if isinstance(scale, (float, int)):
+            if isinstance(scale, float | int):
                 scale = (scale,) * len(value.get("shape", ()))
             value["scale"] = scale
         return value
 
     @computed_field
     def extent(self) -> tuple[float, ...]:
-        return tuple(round(s * x, 12) for x, s in zip(self.shape, self.scale))
+        return tuple(
+            round(s * x, 12) for x, s in zip(self.shape, self.scale, strict=False)
+        )
 
 
 class ExtentScaleSpace(_AxesSpace):
@@ -113,7 +116,7 @@ class ExtentScaleSpace(_AxesSpace):
             if "scale" not in value:
                 raise ValueError("Must provide 'scale' in the input dictionary.")
             scale = value.get("scale")
-            if isinstance(scale, (float, int)):
+            if isinstance(scale, float | int):
                 scale = (scale,) * len(value.get("extent", ()))
             value["scale"] = scale
         return value
@@ -121,7 +124,7 @@ class ExtentScaleSpace(_AxesSpace):
     @computed_field
     @property
     def shape(self) -> tuple[int, ...]:
-        return tuple(int(x / s) for x, s in zip(self.extent, self.scale))
+        return tuple(int(x / s) for x, s in zip(self.extent, self.scale, strict=False))
 
 
 class ShapeExtentSpace(_AxesSpace):
@@ -131,7 +134,7 @@ class ShapeExtentSpace(_AxesSpace):
     @computed_field
     @property
     def scale(self) -> tuple[float, ...]:
-        return tuple(x / s for x, s in zip(self.extent, self.shape))
+        return tuple(x / s for x, s in zip(self.extent, self.shape, strict=False))
 
 
 ConcreteSpace = ExtentScaleSpace | ShapeExtentSpace | ShapeScaleSpace
@@ -153,10 +156,13 @@ class DownscaledSpace(_RelativeSpace):
         if not self.reference:
             raise ValueError("Must provide a reference space.")
 
-        if isinstance(self.downscale, (int, float)):
+        if isinstance(self.downscale, int | float):
             return tuple(int(x / self.downscale) for x in self.reference.shape)
 
-        return tuple(int(x / d) for x, d in zip(self.reference.shape, self.downscale))
+        return tuple(
+            int(x / d)
+            for x, d in zip(self.reference.shape, self.downscale, strict=False)
+        )
 
 
 class UpscaledSpace(_RelativeSpace):
@@ -167,10 +173,12 @@ class UpscaledSpace(_RelativeSpace):
         if not self.reference:
             raise ValueError("Must provide a reference space.")
 
-        if isinstance(self.upscale, (int, float)):
+        if isinstance(self.upscale, int | float):
             return tuple(int(x * self.upscale) for x in self.reference.shape)
 
-        return tuple(int(x * u) for x, u in zip(self.reference.shape, self.upscale))
+        return tuple(
+            int(x * u) for x, u in zip(self.reference.shape, self.upscale, strict=False)
+        )
 
 
 Space = ConcreteSpace | DownscaledSpace | UpscaledSpace

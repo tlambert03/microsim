@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import itertools
 import warnings
-from typing import TYPE_CHECKING, Callable, Iterator, Protocol, Sequence
+from typing import TYPE_CHECKING, Protocol
 
 import numpy as np
 import numpy.typing as npt
 from dask.array.core import normalize_chunks
 from scipy import signal
-from torch import le
 
 try:
     from tqdm import tqdm
@@ -19,6 +18,7 @@ except ImportError:
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator, Sequence
     from typing import Literal
 
     import xarray as xr
@@ -42,7 +42,7 @@ def uniformly_spaced_coords(
         if not scale:
             raise ValueError("Must provide 'scale' along with 'extent'.")
         # scale = scale or ((1,) * len(extent))
-        shape = tuple(int(x / s) for x, s in zip(extent, scale))
+        shape = tuple(int(x / s) for x, s in zip(extent, scale, strict=False))
     elif extent:
         if scale:
             warnings.warn(
@@ -51,7 +51,7 @@ def uniformly_spaced_coords(
                 stacklevel=2,
             )
         else:
-            scale = tuple(x / s for x, s in zip(extent, shape))
+            scale = tuple(x / s for x, s in zip(extent, shape, strict=False))
     elif not scale:
         scale = (1,) * len(shape)
 
@@ -65,7 +65,9 @@ def uniformly_spaced_coords(
         raise ValueError(f"Only {len(axes)} axes provided but got {ndim} dims")
 
     axes = axes[-ndim:]  # pick last ndim axes, in case there are too many provided.
-    return [(ax, np.arange(sh) * sc) for ax, sh, sc in zip(axes, shape, scale)]
+    return [
+        (ax, np.arange(sh) * sc) for ax, sh, sc in zip(axes, shape, scale, strict=False)
+    ]
 
 
 def uniformly_spaced_xarray(
@@ -196,7 +198,9 @@ def tiled_convolve(
         result = func(block, in2, mode="full")
         if hasattr(result, "get"):
             result = result.get()
-        out_idx = tuple(slice(i, i + s) for (i, _), s in zip(loc, result.shape))
+        out_idx = tuple(
+            slice(i, i + s) for (i, _), s in zip(loc, result.shape, strict=False)
+        )
         out[out_idx] += result
         del result
 
@@ -208,8 +212,12 @@ def tiled_convolve(
 
 
 def make_confocal_psf(
-    ex_wvl_um=0.475, em_wvl_um=0.525, pinhole_au=1.0, xp=np, **kwargs
-):
+    ex_wvl_um: float = 0.475,
+    em_wvl_um: float = 0.525,
+    pinhole_au: float = 1.0,
+    xp=np,
+    **kwargs,
+) -> np.ndarray:
     """Create a confocal PSF.
 
     This function creates a confocal PSF by multiplying the excitation PSF with
@@ -283,7 +291,7 @@ def downsample(
 ) -> np.ndarray:
     binfactor = (factor,) * array.ndim if isinstance(factor, int) else factor
     new_shape = []
-    for s, b in zip(array.shape, binfactor):
+    for s, b in zip(array.shape, binfactor, strict=False):
         new_shape.extend([s // b, b])
     reshaped = np.reshape(array, new_shape)
     for d in range(array.ndim):

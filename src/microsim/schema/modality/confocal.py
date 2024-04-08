@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from microsim.schema.space import Space
 
 
-
 class Confocal(BaseModel):
     type: Literal["confocal"] = "confocal"
     pinhole: Annotated[float, Ge(0)] = 1

@@ -9,7 +9,7 @@ class WaveBand(BaseModel):
 
 
 def _v_waveband(cls, value: Any):
-    if isinstance(value, (float, int)):
+    if isinstance(value, float | int):
         value = {"wavelength": value, "bandwidth": 1}
     return value
 

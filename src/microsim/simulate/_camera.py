@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.stats import poisson
@@ -8,6 +8,8 @@ from scipy.stats import poisson
 from microsim.models import CameraCMOS, CameraEMCCD
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from numpy.typing import NDArray
 
     from microsim.models import Camera
@@ -87,7 +89,7 @@ def bin(  # noqa: A001
     f = getattr(np, method)
     binfactor = (factor,) * array.ndim if isinstance(factor, int) else factor
     new_shape = []
-    for s, b in zip(array.shape, binfactor):
+    for s, b in zip(array.shape, binfactor, strict=False):
         new_shape.extend([s // b, b])
     reshaped = np.reshape(array, new_shape)
     for d in range(array.ndim):
