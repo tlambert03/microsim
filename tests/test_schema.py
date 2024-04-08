@@ -33,17 +33,13 @@ def sim1() -> Simulation:
 
 @pytest.mark.parametrize("modality", [WIDEFIELD, CONFOCAL_AU0_2], ids=lambda x: x.type)
 def test_schema(
-    sim1: Simulation,
-    np_backend: BackendName,
-    modality: Modality,
-    benchmark: Callable,
-    tmp_path: Path,
+    sim1: Simulation, np_backend: BackendName, modality: Modality, tmp_path: Path
 ) -> None:
     sim1.settings.np_backend = np_backend
     sim1.modality = modality
     sim1.output = tmp_path / "output.zarr"
 
-    output = benchmark(sim1.run)
+    output = sim1.run()
     assert output.shape == sim1.output_space.shape
 
 
