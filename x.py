@@ -11,8 +11,6 @@ import torch
 import torchaudio.functional as taf
 from scipy.signal import fftconvolve
 
-print("imported")
-
 
 def numpy_fftconvolve(signal, kernel):
     """Perform FFT convolution using numpy."""
@@ -49,14 +47,12 @@ def benchmark(function, *args, num_trials=10):
     return avg_time, min(times)
 
 
-def main():
-    print("main")
+def main() -> None:
     np.random.seed(0)
 
     # Example signals
     np_signal = np.random.random((32, 256, 256)).astype(np.float32)
     np_kernel = np.random.random((32, 256, 256)).astype(np.float32)
-    print("generated")
     # Benchmark numpy
     numpy_time, mint = benchmark(numpy_fftconvolve, np_signal, np_kernel)
     print(f"Numpy FFT Convolve: {numpy_time:.6f} seconds, {mint:.6f} seconds")
