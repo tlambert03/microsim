@@ -38,6 +38,7 @@ class Confocal(BaseModel):
             dz=truth_space.scale[-3],
             dxy=truth_space.scale[-1],
             params={"NA": objective_lens.numerical_aperture},
+            xp=xp,
         )
         psf = xp.asarray(psf)
         img = xp.fftconvolve(truth.data, psf, mode="same")

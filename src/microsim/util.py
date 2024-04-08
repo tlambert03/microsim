@@ -254,14 +254,19 @@ def make_confocal_psf(
     # pinhole mask. The pinhole mask is a disk with diameter equal to the pinhole
     # size in AU, converted to pixels.
     pinhole = _pinhole_mask(
-        nxy=ex_psf.shape[-1], pinhole_au=pinhole_au, wvl=em_wvl_um, na=na, dxy=dxy
+        nxy=ex_psf.shape[-1],
+        pinhole_au=pinhole_au,
+        wvl=em_wvl_um,
+        na=na,
+        dxy=dxy,
+        xp=xp,
     )
     pinhole = xp.asarray(pinhole)
 
     print("convolving em_psf with pinhole...")
     eff_em_psf = xp.empty_like(em_psf)
     for i in tqdm.trange(len(em_psf)):
-        plane = fftconvolve(xp.asarray(em_psf[i]), pinhole, mode="same")
+        plane = xp.fftconvolve(xp.asarray(em_psf[i]), pinhole, mode="same")
         eff_em_psf[i] = plane.get() if hasattr(plane, "get") else plane
 
     # The final PSF is the excitation PSF multiplied by the effective emission PSF.
