@@ -1,13 +1,14 @@
 from collections.abc import Callable
+from pathlib import Path
 
 import pytest
 
 from microsim.schema import Simulation
+from microsim.schema.backend import BackendName
 from microsim.schema.channel import Channel
 from microsim.schema.lens import ObjectiveLens
 from microsim.schema.modality import Confocal, Modality, Widefield
 from microsim.schema.samples import FluorophoreDistribution, MatsLines, Sample
-from microsim.schema.settings import BackendName
 from microsim.schema.space import ShapeScaleSpace
 
 TRUTH_SPACE = ShapeScaleSpace(shape=(64, 128, 128), scale=(0.02, 0.01, 0.01))
@@ -24,7 +25,7 @@ def sim1() -> Simulation:
     return Simulation(
         truth_space=TRUTH_SPACE,
         output_space={"downscale": 8},
-        samples=[Sample(labels=[GREEN_MATSLINES])],
+        sample=Sample(labels=[GREEN_MATSLINES]),
         objective_lens=NA1_4,
         channels=[FITC],
     )
@@ -32,10 +33,28 @@ def sim1() -> Simulation:
 
 @pytest.mark.parametrize("modality", [WIDEFIELD, CONFOCAL_AU0_2], ids=lambda x: x.type)
 def test_schema(
-    sim1: Simulation, np_backend: BackendName, modality: Modality, benchmark: Callable
+    sim1: Simulation,
+    np_backend: BackendName,
+    modality: Modality,
+    benchmark: Callable,
+    tmp_path: Path,
 ) -> None:
     sim1.settings.np_backend = np_backend
     sim1.modality = modality
+    sim1.output = tmp_path / "output.zarr"
 
     output = benchmark(sim1.run)
     assert output.shape == sim1.output_space.shape
+
+
+@pytest.mark.parametrize("ext", [".tif", ".zarr", ".nc"])
+def test_simulation_output(tmp_path: Path, ext: str) -> None:
+    sim = Simulation(
+        truth_space=ShapeScaleSpace(shape=(64, 128, 128), scale=(0.2, 0.1, 0.1)),
+        output_space={"downscale": 1},
+        sample=Sample(labels=[GREEN_MATSLINES]),
+        objective_lens=NA1_4,
+        channels=[FITC],
+        output=tmp_path / f"output.{ext}",
+    )
+    sim.run()

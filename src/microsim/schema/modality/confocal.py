@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Annotated, Literal, cast
 
-import xarray
+import xarray as xr
 from annotated_types import Ge
 from pydantic import BaseModel
 
@@ -18,11 +18,11 @@ class Confocal(BaseModel):
 
     def render(
         self,
-        truth: xarray.DataArray,
+        truth: xr.DataArray,
         channel: Channel,
         objective_lens: ObjectiveLens,
         xp: NumpyAPI | None = None,
-    ) -> xarray.DataArray:
+    ) -> xr.DataArray:
         from microsim.util import make_confocal_psf
 
         xp = xp or NumpyAPI()
@@ -41,4 +41,4 @@ class Confocal(BaseModel):
         )
         psf = xp.asarray(psf)
         img = xp.fftconvolve(truth.data, psf, mode="same")
-        return img
+        return xr.DataArray(img, coords=truth.coords, attrs=truth.attrs)

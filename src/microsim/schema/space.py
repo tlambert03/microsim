@@ -1,8 +1,9 @@
-from collections.abc import Callable, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar
+from collections.abc import Callable, Sequence
+from typing import Any, Protocol, TypeVar
 
 import numpy as np
 import numpy.typing as npt
+import xarray as xr
 from pydantic import (
     BaseModel,
     GetCoreSchemaHandler,
@@ -12,9 +13,6 @@ from pydantic import (
     model_validator,
 )
 from pydantic_core import CoreSchema, core_schema
-
-if TYPE_CHECKING:
-    import xarray as xr
 
 
 class FloatArray(npt.NDArray[np.floating]):
@@ -47,7 +45,7 @@ ArrayType = TypeVar("ArrayType")
 
 
 class _Space(BaseModel):
-    def rescale(self, img: ArrayType) -> ArrayType:
+    def rescale(self, img: xr.DataArray) -> xr.DataArray:
         return img
 
     def create(
@@ -60,9 +58,16 @@ class _Space(BaseModel):
             shape=self.shape, scale=self.scale, array_creator=array_creator
         )
 
+    @property
+    def coords(self: SpaceProtocol) -> list[tuple[str, FloatArray]]:
+        return [
+            (ax, np.arange(sh) * sc)  # type: ignore
+            for ax, sh, sc in zip(self.axes, self.shape, self.scale, strict=False)
+        ]
 
-class CoordsSpace(_Space):
-    coords: Mapping[str, FloatArray]
+
+# class CoordsSpace(_Space):
+#     coords: Mapping[str, FloatArray]
 
 
 class _AxesSpace(_Space):
@@ -86,13 +91,6 @@ class _AxesSpace(_Space):
             raise ValueError(f"Only {len(axes)} axes provided but got {ndim} dims")
         value.axes = axes[-ndim:] if ndim else ()
         return value
-
-    @computed_field(repr=False)
-    def coords(self: SpaceProtocol) -> Mapping[str, FloatArray]:
-        return {
-            ax: np.arange(sh) * sc  # type: ignore
-            for ax, sh, sc in zip(self.axes, self.shape, self.scale, strict=False)
-        }
 
 
 class ShapeScaleSpace(_AxesSpace):
@@ -161,14 +159,25 @@ class _RelativeSpace(_Space):
     def shape(self) -> tuple[int, ...]:
         raise NotImplementedError
 
+    @property
+    def scale(self) -> tuple[float, ...]:
+        raise NotImplementedError
+
+    @property
+    def axes(self) -> tuple[str, ...]:
+        if not self.reference:
+            raise ValueError("Must provide a reference space.")
+        return self.reference.axes
+
 
 class DownscaledSpace(_RelativeSpace):
     downscale: tuple[float, ...] | int
 
-    def rescale(self, img: ArrayType) -> ArrayType:
+    def rescale(self, img: xr.DataArray) -> xr.DataArray:
         from microsim.util import downsample
 
-        return downsample(img, self.downscale)
+        new_img = downsample(img.data, self.downscale)
+        return xr.DataArray(new_img, coords=self.coords)
 
     @computed_field  # type: ignore
     @property

@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING, Literal, cast
 
+import xarray as xr
 from pydantic import BaseModel
 
 from microsim.schema.backend import NumpyAPI
@@ -7,8 +8,6 @@ from microsim.schema.channel import Channel
 from microsim.schema.lens import ObjectiveLens
 
 if TYPE_CHECKING:
-    import xarray as xr
-
     from microsim.schema.space import Space
 
 
@@ -38,4 +37,5 @@ class Widefield(BaseModel):
         )
 
         em_psf = xp.asarray(em_psf)
-        return xp.fftconvolve(truth.data, em_psf, mode="same")
+        img = xp.fftconvolve(truth.data, em_psf, mode="same")
+        return xr.DataArray(img, coords=truth.coords, attrs=truth.attrs)
