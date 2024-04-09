@@ -1,6 +1,6 @@
 import numpy as np
 
-from microsim.samples._matslines import drawlines_bresenham
+from microsim.schema.sample.matslines._matslines import drawlines_bresenham
 
 
 def test_bres() -> None:

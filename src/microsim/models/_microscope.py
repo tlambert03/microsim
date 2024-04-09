@@ -1,8 +1,9 @@
+from collections.abc import Iterable
 from contextlib import contextmanager
 from contextvars import ContextVar
-from typing import Iterable, Optional
+from typing import ClassVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from microsim.illum import Widefield
 
@@ -20,8 +21,7 @@ class Microscope(BaseModel):
     illumination: Illumination = Field(default_factory=Widefield)
     camera: Camera = ICX285
 
-    class Config:
-        validate_assignment = True
+    model_config: ClassVar[ConfigDict] = {"validate_assignment": True}
 
     @staticmethod
     def active() -> "Microscope":
@@ -30,14 +30,14 @@ class Microscope(BaseModel):
     @staticmethod  # type: ignore
     @contextmanager
     def context(
-        objective: Optional[Objective] = None,
-        coverslip: Optional[Coverslip] = None,
-        immersion: Optional[ImmersionMedium] = None,
-        illumination: Optional[Illumination] = None,
-        camera: Optional[Camera] = None,
+        objective: Objective | None = None,
+        coverslip: Coverslip | None = None,
+        immersion: ImmersionMedium | None = None,
+        illumination: Illumination | None = None,
+        camera: Camera | None = None,
     ) -> Iterable["Microscope"]:
         kwargs = {k: v for k, v in locals().items() if v is not None}
-        current = _GLOBAL_MICROSCOPE.get().dict()
+        current = _GLOBAL_MICROSCOPE.get().model_dump()
 
         token = _GLOBAL_MICROSCOPE.set(Microscope(**{**current, **kwargs}))
         try:

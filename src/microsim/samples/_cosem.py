@@ -4,7 +4,7 @@ import json
 import warnings
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 from urllib.request import urlopen
 
 from fibsem_tools import io
@@ -17,6 +17,8 @@ except ImportError:
 
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     import numpy as np
     import xarray as xr
 
@@ -255,12 +257,15 @@ def _crop_around(
     """Crop dataarray around position."""
     if len(position) != 3:
         raise ValueError("position must be of length 3 (X, Y, Z)")
-    if isinstance(extent, (float, int)):
+    if isinstance(extent, float | int):
         extent = (extent,) * 3
     if len(extent) != 3:
         raise ValueError("extent must be of length 3")
 
-    slc = {ax: slice(p - e / 2, p + e / 2) for p, e, ax in zip(position, extent, axes)}
+    slc = {
+        ax: slice(p - e / 2, p + e / 2)
+        for p, e, ax in zip(position, extent, axes, strict=False)
+    }
     return ary.sel(**slc)
 
 

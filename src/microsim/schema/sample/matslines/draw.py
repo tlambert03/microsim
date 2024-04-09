@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
 
-def _bresenhamline_nslope(slope: NDArray):
+def _bresenhamline_nslope(slope: NDArray) -> NDArray:
     """
     Normalize slope for Bresenham's line algorithm.
 
@@ -34,12 +34,12 @@ def _bresenhamline_nslope(slope: NDArray):
     scale[zeroslope] = xp.ones(1)
     normalizedslope = xp.array(slope, dtype=np.double) / scale
     normalizedslope[zeroslope] = xp.zeros(slope[0].shape)
-    return normalizedslope
+    return normalizedslope  # type: ignore
 
 
 def line_bresenham(
-    start: NDArray, end: NDArray, max_iter: int = -1, include_start=True
-):
+    start: NDArray, end: NDArray, max_iter: int = -1, include_start: bool = True
+) -> NDArray:
     """Return list of points from (start, end) by ray tracing a line b/w the points.
 
     Parameters
@@ -106,4 +106,4 @@ def line_bresenham(
         bline = xp.hstack([start[:, xp.newaxis, :], bline])
     # Approximate to nearest int
     lines = xp.array(xp.rint(bline), dtype=start.dtype)
-    return lines.reshape(-1, start.shape[-1])
+    return lines.reshape(-1, start.shape[-1])  # type: ignore

@@ -1,5 +1,3 @@
-from typing import Optional, Tuple
-
 import numpy as np
 from scipy.optimize import fsolve
 
@@ -16,10 +14,10 @@ def pindist(t: float, t0: float, w: float, distance: float) -> float:
 
 
 def pinhole_coords(
-    radii: Tuple[int, int] = (15, 25),
+    radii: tuple[int, int] = (15, 25),
     pinhole_spacing: float = 0.253,
     frame_per_rev: float = 12,
-    spiral_spacing: Optional[float] = None,
+    spiral_spacing: float | None = None,
 ) -> np.ndarray:
     # this works ... but is an ugly direct translation from MATLAB code.
     # TODO: get rid of forloops and actually use numpy.

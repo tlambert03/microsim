@@ -2,6 +2,8 @@
 
 import time
 
+import cupy
+import cupyx.scipy.signal as cuf
 import jax.numpy as jnp
 import jax.scipy.signal as jsig
 import numpy as np
@@ -20,6 +22,11 @@ def torch_fftconvolve(signal, kernel):
     return taf.fftconvolve(signal, kernel, mode="same")
 
 
+def cupy_fftconvolve(signal, kernel):
+    """Perform FFT convolution using PyTorch."""
+    return cuf.fftconvolve(signal, kernel, mode="same")
+
+
 def jax_fftconvolve(signal, kernel):
     """Perform FFT convolution using JAX, JIT-compiled."""
     return jsig.fftconvolve(signal, kernel, mode="same")
@@ -27,34 +34,46 @@ def jax_fftconvolve(signal, kernel):
 
 def benchmark(function, *args, num_trials=10):
     """Benchmark a given FFT convolution function."""
-    start_time = time.time()
+    _ = function(*args)  # Warmup
+    times = []
+    print("benchmarking", function)
     for _ in range(num_trials):
-        _ = function(*args)
-    end_time = time.time()
-    avg_time = (end_time - start_time) / num_trials
-    return avg_time
+        start_time = time.time()
+        result = function(*args)
+        end_time = time.time()
+        times.append(end_time - start_time)
+    print(result.min(), result.max(), result.mean(), result.shape)
+    avg_time = sum(times) / num_trials
+    return avg_time, min(times)
 
 
-def main():
+def main() -> None:
+    np.random.seed(0)
+
     # Example signals
-    np_signal = np.random.random((256, 1024, 1024)).astype(np.float32)
-    np_kernel = np.random.random((256, 1024, 1024)).astype(np.float32)
-
+    np_signal = np.random.random((32, 256, 256)).astype(np.float32)
+    np_kernel = np.random.random((32, 256, 256)).astype(np.float32)
     # Benchmark numpy
-    numpy_time = benchmark(numpy_fftconvolve, np_signal, np_kernel)
-    print(f"Numpy FFT Convolve: {numpy_time:.6f} seconds")
+    numpy_time, mint = benchmark(numpy_fftconvolve, np_signal, np_kernel)
+    print(f"Numpy FFT Convolve: {numpy_time:.6f} seconds, {mint:.6f} seconds")
 
     # Benchmark JAX
-    jax_signal = jnp.array(np_signal, dtype=jnp.float32)
-    jax_kernel = jnp.array(np_kernel, dtype=jnp.float32)
-    jax_time = benchmark(jax_fftconvolve, jax_signal, jax_kernel)
-    print(f"JAX FFT Convolve: {jax_time:.6f} seconds")
+    jax_signal = jnp.asarray(np_signal)
+    jax_kernel = jnp.asarray(np_kernel)
+    jax_time, mint = benchmark(jax_fftconvolve, jax_signal, jax_kernel)
+    print(f"JAX FFT Convolve: {jax_time:.6f} seconds, {mint:.6f} seconds")
 
     # Benchmark PyTorch
-    torch_signal = torch.tensor(np_signal, dtype=torch.float32)
-    torch_kernel = torch.tensor(np_kernel, dtype=torch.float32)
-    torch_time = benchmark(torch_fftconvolve, torch_signal, torch_kernel)
-    print(f"PyTorch FFT Convolve: {torch_time:.6f} seconds")
+    torch_signal = torch.asarray(np_signal)
+    torch_kernel = torch.asarray(np_kernel)
+    torch_time, mint = benchmark(torch_fftconvolve, torch_signal, torch_kernel)
+    print(f"PyTorch FFT Convolve: {torch_time:.6f} seconds, {mint:.6f} seconds")
+
+    # Benchmark CuPy
+    cupy_signal = cupy.asarray(np_signal)
+    cupy_kernel = cupy.asarray(np_kernel)
+    cupy_time, mint = benchmark(cupy_fftconvolve, cupy_signal, cupy_kernel)
+    print(f"CuPy FFT Convolve: {cupy_time:.6f} seconds, {mint:.6f} seconds")
 
 
 if __name__ == "__main__":

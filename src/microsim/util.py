@@ -2,18 +2,16 @@ from __future__ import annotations
 
 import itertools
 import warnings
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Iterator,
-    Protocol,
-    Sequence,
-)
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 
 import numpy as np
+import numpy.typing as npt
 from dask.array.core import normalize_chunks
 from scipy import signal
+
+from microsim.schema.backend import NumpyAPI
+
+from ._data_array import ArrayProtocol, DataArray
 
 try:
     from tqdm import tqdm
@@ -24,30 +22,30 @@ except ImportError:
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator, Sequence
     from typing import Literal
 
-    import xarray as xr
-    from numpy.typing import ArrayLike, DTypeLike, NDArray
+    from numpy.typing import DTypeLike, NDArray
 
     ShapeLike = Sequence[int]
 
 
-def uniformly_spaced_xarray(
+def uniformly_spaced_coords(
     shape: tuple[int, ...] = (64, 128, 128),
     scale: tuple[float, ...] = (),
-    extent: tuple[int, ...] = (),
+    extent: tuple[float, ...] = (),
     axes: str | Sequence[str] = "ZYX",
-    array_creator: Callable[[ShapeLike], ArrayLike] = np.zeros,
-) -> xr.DataArray:
-    import xarray as xr
-
+) -> dict[str, Sequence[float]]:
+    # we now calculate the shape, scale, and extent based on input
+    # where shape is the shape of the array, scale is the spacing between points
+    # and extent is the total size of the array in each dimension (shape * scale)
     if not shape:
         if not extent:
             raise ValueError("Must provide either 'shape' or 'extent'")
         if not scale:
             raise ValueError("Must provide 'scale' along with 'extent'.")
         # scale = scale or ((1,) * len(extent))
-        shape = tuple(int(x / s) for x, s in zip(extent, scale))
+        shape = tuple(int(x / s) for x, s in zip(extent, scale, strict=False))
     elif extent:
         if scale:
             warnings.warn(
@@ -56,7 +54,7 @@ def uniformly_spaced_xarray(
                 stacklevel=2,
             )
         else:
-            scale = tuple(x / s for x, s in zip(extent, shape))
+            scale = tuple(x / s for x, s in zip(extent, shape, strict=False))
     elif not scale:
         scale = (1,) * len(shape)
 
@@ -70,16 +68,30 @@ def uniformly_spaced_xarray(
         raise ValueError(f"Only {len(axes)} axes provided but got {ndim} dims")
 
     axes = axes[-ndim:]  # pick last ndim axes, in case there are too many provided.
-    coords = [(ax, np.arange(sh) * sc) for ax, sh, sc in zip(axes, shape, scale)]
-    return xr.DataArray(array_creator(shape), coords=coords, attrs={"units": "um"})
+    return {
+        ax: np.arange(sh) * sc  # type: ignore
+        for ax, sh, sc in zip(axes, shape, scale, strict=False)
+    }
 
 
-def _get_fftconvolve_shape(
-    in1: NDArray,
-    in2: NDArray,
+def uniformly_spaced_xarray(
+    shape: tuple[int, ...] = (64, 128, 128),
+    scale: tuple[float, ...] = (),
+    extent: tuple[float, ...] = (),
+    axes: str | Sequence[str] = "ZYX",
+    array_creator: Callable[[ShapeLike], ArrayProtocol] = np.zeros,
+) -> DataArray:
+    coords = uniformly_spaced_coords(shape, scale, extent, axes)
+    shape = tuple(len(c) for c in coords.values())
+    return DataArray(array_creator(shape), coords=coords, attrs={"units": "um"})
+
+
+def get_fftconvolve_shape(
+    in1: npt.NDArray,
+    in2: npt.NDArray,
     mode: Literal["full", "valid", "same"] = "full",
-    axes: int | NDArray | None = None,
-) -> ShapeLike:
+    axes: int | Sequence[int] | None = None,
+) -> tuple[int, ...]:
     """Get output shape of an fftconvolve operation (without performing it).
 
     Parameters
@@ -109,10 +121,10 @@ def _get_fftconvolve_shape(
     s1 = in1.shape
     s2 = in2.shape
     ndim = in1.ndim
-    if isinstance(axes, Sequence):
-        _axes = axes
+    if axes is None:
+        _axes = set(range(ndim))
     else:
-        _axes = [axes] if axes is not None else list(range(ndim))
+        _axes = set(range(axes) if isinstance(axes, int) else axes)
 
     full_shape = tuple(
         max((s1[i], s2[i])) if i not in _axes else s1[i] + s2[i] - 1 for i in _axes
@@ -176,20 +188,19 @@ class Convolver(Protocol):
 
 
 def tiled_convolve(
-    in1: NDArray,
-    in2: NDArray,
+    in1: npt.NDArray,
+    in2: npt.NDArray,
     mode: Literal["full", "valid", "same"] = "full",
     chunks: tuple | None = None,
     func: Convolver = signal.convolve,
     dtype: DTypeLike | None = None,
-) -> NDArray:
-    """Convolve two arrays in a tiled fashion."""
+) -> npt.NDArray:
     if chunks is None:
         chunks = getattr(in1, "chunks", None) or (100,) * in1.ndim  # TODO: change 100
 
-    _chunks: tuple[tuple[int, ...]] = normalize_chunks(chunks, in1.shape)  # type: ignore
+    _chunks: tuple[tuple[int, ...]] = normalize_chunks(chunks, in1.shape)
 
-    final_shape = _get_fftconvolve_shape(in1, in2, mode="full")
+    final_shape = get_fftconvolve_shape(in1, in2, mode="full")
 
     out = np.zeros(final_shape, dtype=dtype)
     for loc, *_ in tqdm(list(_iter_block_locations(_chunks))):
@@ -197,12 +208,123 @@ def tiled_convolve(
         result = func(block, in2, mode="full")
         if hasattr(result, "get"):
             result = result.get()
-        out_idx = tuple(slice(i, i + s) for (i, _), s in zip(loc, result.shape))
+        out_idx = tuple(
+            slice(i, i + s) for (i, _), s in zip(loc, result.shape, strict=False)
+        )
         out[out_idx] += result
         del result
 
     if mode == "same":
         return _centered(out, in1.shape)
     elif mode == "valid":
-        return _centered(out, _get_fftconvolve_shape(in1, in2, mode="valid"))
+        return _centered(out, get_fftconvolve_shape(in1, in2, mode="valid"))
     return out
+
+
+def make_confocal_psf(
+    ex_wvl_um: float = 0.475,
+    em_wvl_um: float = 0.525,
+    pinhole_au: float = 1.0,
+    xp: NumpyAPI | None = None,
+    **kwargs: Any,
+) -> np.ndarray:
+    """Create a confocal PSF.
+
+    This function creates a confocal PSF by multiplying the excitation PSF with
+    the emission PSF convolved with a pinhole mask.
+
+    All extra keyword arguments are passed to `vectorial_psf_centered`.
+    """
+    import tqdm
+    from psfmodels import vectorial_psf_centered
+
+    xp = NumpyAPI.create(xp)
+    kwargs.pop("wvl", None)
+    params: dict = kwargs.setdefault("params", {})
+    na = params.setdefault("NA", 1.4)
+    dxy = kwargs.setdefault("dxy", 0.01)
+
+    print("making excitation PSF...")
+    ex_psf = vectorial_psf_centered(wvl=ex_wvl_um, **kwargs)
+    print("making emission PSF...")
+    em_psf = vectorial_psf_centered(wvl=em_wvl_um, **kwargs)
+
+    # The effective emission PSF is the regular emission PSF convolved with the
+    # pinhole mask. The pinhole mask is a disk with diameter equal to the pinhole
+    # size in AU, converted to pixels.
+    pinhole = _pinhole_mask(
+        nxy=ex_psf.shape[-1],
+        pinhole_au=pinhole_au,
+        wvl=em_wvl_um,
+        na=na,
+        dxy=dxy,
+        xp=xp,
+    )
+    pinhole = xp.asarray(pinhole)
+
+    print("convolving em_psf with pinhole...")
+    eff_em_psf = xp.empty_like(em_psf)
+    for i in tqdm.trange(len(em_psf)):
+        plane = xp.fftconvolve(xp.asarray(em_psf[i]), pinhole, mode="same")
+        eff_em_psf = xp._array_assign(eff_em_psf, i, plane)
+
+    # The final PSF is the excitation PSF multiplied by the effective emission PSF.
+    return xp.asarray(ex_psf) * eff_em_psf  # type: ignore
+
+
+def _pinhole_mask(
+    nxy: int,
+    pinhole_au: float,
+    wvl: float,
+    na: float,
+    dxy: float,
+    xp: NumpyAPI | None = None,
+) -> npt.NDArray:
+    """Create a 2D circular pinhole mask of specified `pinhole_au`."""
+    xp = NumpyAPI.create(xp)
+
+    pinhole_size = pinhole_au * 0.61 * wvl / na
+    pinhole_px = pinhole_size / dxy
+
+    x = xp.arange(nxy) - nxy // 2
+    xx, yy = xp.meshgrid(x, x)
+    r = xp.sqrt(xx**2 + yy**2)
+    return (r <= pinhole_px).astype(int)  # type: ignore
+
+
+# convenience function we'll use a couple times
+def ortho_plot(img: npt.NDArray, gamma: float = 0.5, mip: bool = False) -> None:
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import PowerNorm
+
+    img = np.asarray(img)
+    """Plot XY and XZ slices of a 3D array."""
+    _, ax = plt.subplots(ncols=2, figsize=(10, 5))
+    xy = img.max(axis=0) if mip else img[img.shape[0] // 2]
+    xz = img.max(axis=1) if mip else img[:, img.shape[1] // 2]
+    ax[0].imshow(xy, norm=PowerNorm(gamma))
+    ax[1].imshow(xz, norm=PowerNorm(gamma))
+    ax[0].set_title("XY slice")
+    ax[1].set_title("XZ slice")
+    plt.show()
+
+
+ArrayType = TypeVar("ArrayType", bound=ArrayProtocol)
+
+
+def downsample(
+    array: ArrayType,
+    factor: int | Sequence[int],
+    method: Callable[
+        [ArrayType, Sequence[int] | int | None, npt.DTypeLike], ArrayType
+    ] = np.sum,
+    dtype: npt.DTypeLike | None = None,
+) -> ArrayType:
+    binfactor = (factor,) * array.ndim if isinstance(factor, int) else factor
+    new_shape = []
+    for s, b in zip(array.shape, binfactor, strict=False):
+        new_shape.extend([s // b, b])
+    reshaped = cast("ArrayType", np.reshape(array, new_shape))
+    for d in range(array.ndim):
+        reshaped = method(reshaped, -1 * (d + 1), dtype)
+    return reshaped

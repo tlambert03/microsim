@@ -1,3 +1,3 @@
-from ._matslines import MatsLines
+from microsim.schema.sample import MatsLines
 
 __all__ = ["MatsLines"]

@@ -1,11 +1,15 @@
-from __future__ import annotations
-
+from collections.abc import Iterable, Sequence
 from functools import lru_cache
 from itertools import product
-from typing import TYPE_CHECKING, Any, Iterable, Sequence
+from typing import Any
 
 import numpy as np
+import numpy.typing as npt
+import xarray as xr
+from numpy.typing import NDArray
 from tqdm import tqdm
+
+from microsim._data_array import DataArray
 
 from ._widefield import Widefield
 
@@ -16,11 +20,6 @@ except ImportError:
     from scipy.ndimage import map_coordinates
 
     xp = np
-
-if TYPE_CHECKING:
-    import napari.types
-    import xarray as xr
-    from numpy.typing import NDArray
 
 
 class SIMIllum2D(Widefield):
@@ -70,9 +69,7 @@ class SIMIllum2D(Widefield):
             spotsize=self.spotsize,
         ).sum(0)[1:]
 
-    def render(self, space: xr.DataArray) -> xr.DataArray:
-        import xarray as xr
-
+    def render(self, space: DataArray) -> DataArray:
         _dz = set(xp.round(xp.diff(space.coords.get("Z", [0, 0.1])), 8).tolist())
         _dx = set(xp.round(xp.diff(space.coords["X"]), 8).tolist())
         if len(_dz) != 1:
@@ -90,7 +87,7 @@ class SIMIllum2D(Widefield):
         d = xr.DataArray(data, dims=list(self.order + "YX"), coords=space.coords)
         d.coords["A"] = self.angles
         d.coords["P"] = self.phases
-        d.attrs["SIM"] = self.dict()
+        d.attrs["SIM"] = self.model_dump()
         return d
 
     def create(self, shape: tuple[int, int, int], dz: float, dx: float) -> np.ndarray:
@@ -203,7 +200,7 @@ def structillum_2d(
     ampratio: float = 1.0,  # TODO: remove?  ampcenter seems sufficient
     nbeamlets: int = 31,
     spotsize: float = 0.035,
-) -> napari.types.ImageData:
+) -> npt.NDArray:
     """Simulate a single "XZ" plane of structured illumination intensity.
 
     from Lin Shao's psfsimu.py file which is in turn based on Hanser et al (2004)
@@ -318,4 +315,6 @@ def structillum_2d(
 def _enumerated_product(
     *args: Any,
 ) -> Iterable[tuple[tuple[int, int], tuple[Any, ...]]]:
-    yield from zip(product(*(range(len(x)) for x in args)), product(*args))
+    yield from zip(
+        product(*(range(len(x)) for x in args)), product(*args), strict=False
+    )

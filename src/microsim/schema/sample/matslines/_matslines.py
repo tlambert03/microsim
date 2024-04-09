@@ -1,33 +1,31 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from pydantic import BaseModel
 
 from microsim.models import Sample
+from microsim.schema.backend import NumpyAPI
 
 if TYPE_CHECKING:
-    import xarray as xr
-    from numpy.typing import NDArray
+    import numpy.typing as npt
 
-try:
-    import cupy as xp
-except ImportError:
-    xp = np
+    from microsim._data_array import DataArray
 
 
 class MatsLines(BaseModel, Sample):
-    density: int = 1
+    type: Literal["matslines"] = "matslines"
+    density: float = 1
     length: int = 10
     azimuth: int = 10
     max_r: float = 0.9
 
     def _gen_vertices(
-        self, shape: tuple[int, ...], xypad: int = 1, zpad: int = 1
-    ) -> tuple[NDArray, NDArray]:
+        self, xp: NumpyAPI, shape: tuple[int, ...], xypad: int = 1, zpad: int = 1
+    ) -> tuple[npt.NDArray, npt.NDArray]:
         *nz, ny, nx = shape
-        numlines = shape[-1] * self.density
+        numlines = int(shape[-1] * self.density)
 
         # random set of angles
         alpha = xp.random.rand(numlines) * 2 * np.pi
@@ -56,19 +54,21 @@ class MatsLines(BaseModel, Sample):
             return xp.stack([z1, y1, x1]).T, xp.stack([z2, y2, x2]).T
         return xp.stack([y1, x1]).T, xp.stack([y2, x2]).T
 
-    def render(self, space: NDArray | xr.DataArray):
-        start, end = self._gen_vertices(space.shape)
+    def render(self, space: DataArray, xp: NumpyAPI | None = None) -> DataArray:
+        xp = xp or NumpyAPI()
+
+        start, end = self._gen_vertices(xp, space.shape)
         c = xp.concatenate([start, end], axis=1).astype(np.int32)
         data = np.zeros(space.shape).astype(np.int32)
         # TODO: make bresenham work on GPU
         if hasattr(c, "get"):
             c = c.get()
         drawlines_bresenham(c, data, self.max_r)
-        return space + data
+        return space + xp.asarray(data)  # type: ignore
 
 
 def drawlines_bresenham(
-    segments: np.ndarray, grid: np.ndarray, max_r: float = 2.0
+    segments: npt.NDArray, grid: npt.NDArray, max_r: float = 2.0
 ) -> None:
     from ._bresenham import bres_draw_segment_2d, bres_draw_segment_3d
 

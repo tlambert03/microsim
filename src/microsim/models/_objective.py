@@ -1,4 +1,6 @@
-from pydantic import BaseModel, Field, root_validator
+from typing import Any
+
+from pydantic import BaseModel, Field, model_validator
 
 
 class Objective(BaseModel):
@@ -18,13 +20,14 @@ class Objective(BaseModel):
         170, description="design (expected) thickness of coverslip in microns"
     )
 
-    @root_validator
-    def _vroot(cls, values: dict):  # sourcery skip: instance-method-first-arg-name
-        na = values.get("na", 0)
-        ri = values.get("immersion_ri_design", 1000)
-        if na > ri:
-            raise ValueError(
-                f"NA ({na}) cannot be greater than the immersion medium RI "
-                f"design value ({ri})"
-            )
+    @model_validator(mode="before")
+    def _vroot(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            na = values.get("na", 0)
+            ri = values.get("immersion_ri_design", 1000)
+            if na > ri:
+                raise ValueError(
+                    f"NA ({na}) cannot be greater than the immersion medium RI "
+                    f"design value ({ri})"
+                )
         return values

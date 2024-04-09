@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.stats import poisson
@@ -8,7 +8,9 @@ from scipy.stats import poisson
 from microsim.models import CameraCMOS, CameraEMCCD
 
 if TYPE_CHECKING:
-    from numpy.typing import NDArray
+    from collections.abc import Sequence
+
+    import numpy.typing as npt
 
     from microsim.models import Camera
 
@@ -19,7 +21,7 @@ def simulate_camera(
     exposure: float = 0.1,
     binning: int = 1,
     add_poisson: bool = True,
-):
+) -> npt.NDArray:
     """Simulate camera detection.
 
     Parameters
@@ -81,13 +83,16 @@ def simulate_camera(
 
 
 def bin(  # noqa: A001
-    array: NDArray, factor: int | Sequence[int], method="sum", dtype=None
-) -> NDArray:
+    array: npt.NDArray,
+    factor: int | Sequence[int],
+    method: str = "sum",
+    dtype: npt.DTypeLike | None = None,
+) -> npt.NDArray:
     # TODO: deal with xarray
     f = getattr(np, method)
     binfactor = (factor,) * array.ndim if isinstance(factor, int) else factor
     new_shape = []
-    for s, b in zip(array.shape, binfactor):
+    for s, b in zip(array.shape, binfactor, strict=False):
         new_shape.extend([s // b, b])
     reshaped = np.reshape(array, new_shape)
     for d in range(array.ndim):

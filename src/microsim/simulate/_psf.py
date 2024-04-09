@@ -1,4 +1,4 @@
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import numpy as np
 from psfmodels import library
@@ -51,7 +51,7 @@ def vectorial_psf(
     return _psf
 
 
-def _ensure_vector(v: Union[float, Sequence]) -> np.ndarray:
+def _ensure_vector(v: float | Sequence) -> np.ndarray:
     if np.isscalar(v):
         return np.array([v])
     elif isinstance(v, Sequence):
