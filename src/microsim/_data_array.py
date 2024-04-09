@@ -51,15 +51,16 @@ class DataArray:
     def __add__(self, other: Any) -> "DataArray":
         return DataArray(self.data + other, self.coords, self.attrs)
 
-    def __array__(self) -> Any:
-        return np.asanyarray(self.data)
+    def __array__(self) -> np.ndarray:
+        data = self.data.get() if hasattr(self.data, "get") else self.data
+        return np.asanyarray(data)
 
     def to_tiff(
         self, path: str | PathLike[str], description: str | None = None
     ) -> None:
         import tifffile as tf
 
-        tf.imwrite(path, self._to_cpu(), description=description)
+        tf.imwrite(path, np.asanyarray(self), description=description)
 
     def to_zarr(
         self,
@@ -79,17 +80,8 @@ class DataArray:
     def to_xarray(
         self,
         attrs: Mapping[str, Any] | None = None,
-        get: bool = True,
     ) -> "xr.DataArray":
         import xarray as xr
 
         attrs = {**self.attrs, **(attrs or {})}
-        data = self._to_cpu() if get else self.data
-        return xr.DataArray(data, coords=self.coords, attrs=attrs)
-
-    def _to_cpu(self) -> np.ndarray:
-        data = self.data
-        if callable(gettr := getattr(data, "get", None)):
-            # for GPU arrays
-            data = gettr()
-        return data
+        return xr.DataArray(np.asanyarray(self), coords=self.coords, attrs=attrs)
