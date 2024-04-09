@@ -27,7 +27,7 @@ OutPath = Annotated[Path, AfterValidator(_check_extensions)]
 
 class Simulation(BaseModel):
     truth_space: Space
-    output_space: Space
+    output_space: Space | None = None
     sample: Sample
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
     channels: list[Channel]
@@ -38,9 +38,10 @@ class Simulation(BaseModel):
     @model_validator(mode="after")
     def _resolve_spaces(self) -> "Self":
         if isinstance(self.truth_space, _RelativeSpace):
-            if isinstance(self.output_space, _RelativeSpace):
-                raise ValueError("Cannot have two relative spaces.")
-            self.truth_space.reference = self.output_space
+            if self.output_space is not None:
+                if isinstance(self.output_space, _RelativeSpace):
+                    raise ValueError("Cannot have two relative spaces.")
+                self.truth_space.reference = self.output_space
         elif isinstance(self.output_space, _RelativeSpace):
             self.output_space.reference = self.truth_space
         return self
@@ -58,8 +59,9 @@ class Simulation(BaseModel):
         truth.attrs["space"] = self.truth_space  # TODO
 
         # let the given modality render the as an image (convolved, etc..)
-        img = self.modality.render(truth, channel, self.objective_lens, xp=xp)
-        result = self.output_space.rescale(img)
+        result = self.modality.render(truth, channel, self.objective_lens, xp=xp)
+        if self.output_space is not None:
+            result = self.output_space.rescale(result)
         self._write(result)
         return result
 

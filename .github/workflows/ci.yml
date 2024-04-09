@@ -49,7 +49,7 @@ jobs:
           python -m pip install .[test] ${{ github.event_name == 'schedule' && '--pre' || ''  }}
 
       - name: 🧪 Run Tests
-        run: pytest --color=yes --cov --cov-report=xml --cov-report=term-missing
+        run: pytest -v --color=yes --cov --cov-report=xml --cov-report=term-missing
 
       - name: 📝 Report --pre Failures
         if: failure() && github.event_name == 'schedule'
