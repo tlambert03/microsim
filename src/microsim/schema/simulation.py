@@ -35,7 +35,7 @@ class Simulation(BaseModel):
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC()])
     modality: Modality = Field(default_factory=Widefield)
     settings: Settings = Field(default_factory=Settings)
-    output: OutPath | None = None
+    output_path: OutPath | None = None
 
     @model_validator(mode="after")
     def _resolve_spaces(self) -> "Self":
@@ -72,12 +72,12 @@ class Simulation(BaseModel):
         return result
 
     def _write(self, result: DataArray) -> None:
-        if not self.output:
+        if not self.output_path:
             return
         self_json = self.model_dump_json()
-        if self.output.suffix == ".zarr":
-            result.to_zarr(self.output, mode="w", attrs={"microsim": self_json})
-        if self.output.suffix in (".tif", ".tiff"):
-            result.to_tiff(self.output, description=self_json)
-        if self.output.suffix in (".nc",):
-            result.to_netcdf(self.output, attrs={"microsim": self_json})
+        if self.output_path.suffix == ".zarr":
+            result.to_zarr(self.output_path, mode="w", attrs={"microsim": self_json})
+        if self.output_path.suffix in (".tif", ".tiff"):
+            result.to_tiff(self.output_path, description=self_json)
+        if self.output_path.suffix in (".nc",):
+            result.to_netcdf(self.output_path, attrs={"microsim": self_json})

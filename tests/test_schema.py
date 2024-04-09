@@ -36,7 +36,7 @@ def test_schema(
 ) -> None:
     sim1.settings.np_backend = np_backend
     sim1.modality = modality
-    sim1.output = tmp_path / "output.zarr"
+    sim1.output_path = tmp_path / "output.zarr"
     sim1.settings.random_seed = seed
 
     out1 = sim1.run()
@@ -63,7 +63,7 @@ def test_simulation_output(tmp_path: Path, ext: str) -> None:
         sample=ms.Sample(labels=[GREEN_MATSLINES]),
         objective_lens=NA1_4,
         channels=[FITC],
-        output=tmp_path / f"output.{ext}",
+        output_path=tmp_path / f"output.{ext}",
     )
     sim.run()
 

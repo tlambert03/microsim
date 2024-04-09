@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from microsim._data_array import DataArray
 from microsim.schema.backend import NumpyAPI
@@ -20,7 +20,7 @@ class Fluorophore(BaseModel):
 
 
 class FluorophoreDistribution(BaseModel):
-    distribution: Distribution
+    distribution: Distribution = Field(..., discriminator="type")
     fluorophore: Fluorophore | None = None
 
     def render(self, space: DataArray, xp: NumpyAPI | None = None) -> DataArray:

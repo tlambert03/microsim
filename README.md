@@ -7,3 +7,45 @@
 [![codecov](https://codecov.io/gh/tlambert03/microsim/branch/main/graph/badge.svg)](https://codecov.io/gh/tlambert03/microsim)
 
 Light microscopy simulation in python
+
+## Installation
+
+For now, please install from github.  This library is in early development,
+expect rapid changes and breakages.
+
+```bash
+pip install git+https://github.com/tlambert03/microsim
+```
+
+## Usage
+
+Construct and run a
+[`microsim.Simulation`](https://www.talleylambert.com/microsim/api/#microsim.schema.simulation.Simulation)
+object.
+
+```python
+from microsim import schema as ms
+from microsim.util import ortho_plot
+
+# define the parameters of the simulation
+sim = ms.Simulation(
+    truth_space=ms.ShapeScaleSpace(shape=(128, 512, 512), scale=(0.02, 0.01, 0.01)),
+    output_space={'downscale': 8},
+    sample=ms.Sample(
+        labels=[ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1)]
+    ),
+    modality=ms.Confocal(pinhole_au=0.2),
+    output_path="au02.tiff",
+)
+
+# run it
+result = sim.run()
+
+# optionally plot the result
+ortho_plot(result)
+```
+
+## Documentation
+
+See the API Reference (<https://tlambert03.github.io/microsim/api/>) for details
+on the `Simulation` object and options for all of the fields.
