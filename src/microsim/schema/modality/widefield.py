@@ -4,8 +4,8 @@ from pydantic import BaseModel
 
 from microsim._data_array import DataArray
 from microsim.schema.backend import NumpyAPI
-from microsim.schema.channel import Channel
 from microsim.schema.lens import ObjectiveLens
+from microsim.schema.optical_config import OpticalConfig
 
 if TYPE_CHECKING:
     from microsim.schema.space import Space
@@ -17,7 +17,7 @@ class Widefield(BaseModel):
     def render(
         self,
         truth: DataArray,
-        channel: Channel,
+        channel: OpticalConfig,
         objective_lens: ObjectiveLens,
         xp: NumpyAPI | None = None,
     ) -> DataArray:
@@ -28,7 +28,7 @@ class Widefield(BaseModel):
         # FIXME, this is probably derivable from truth.coords
         truth_space = cast("Space", truth.attrs["space"])
         em_psf = vectorial_psf_centered(
-            wvl=channel.emission.wavelength * 1e-3,
+            wvl=channel.emission.bandcenter * 1e-3,
             nz=truth_space.shape[-3] + 1,
             nx=truth_space.shape[-1] + 1,
             dz=truth_space.scale[-3],

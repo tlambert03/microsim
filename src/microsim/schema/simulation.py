@@ -8,10 +8,10 @@ from pydantic import AfterValidator, BaseModel, Field, model_validator
 
 from microsim._data_array import DataArray
 
-from .channel import Channel
 from .lens import ObjectiveLens
 from .modality import Modality, Widefield
-from .samples import Sample
+from .optical_config import FITC, OpticalConfig
+from .sample import Sample
 from .settings import Settings
 from .space import Space, _RelativeSpace
 
@@ -26,13 +26,13 @@ OutPath = Annotated[Path, AfterValidator(_check_extensions)]
 
 
 class Simulation(BaseModel):
+    """Top level Simulation object."""
+
     truth_space: Space
     output_space: Space | None = None
     sample: Sample
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
-    channels: list[Channel] = Field(
-        default_factory=lambda: [Channel(name="FITC", excitation=488, emission=525)]
-    )
+    channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC()])
     modality: Modality = Field(default_factory=Widefield)
     settings: Settings = Field(default_factory=Settings)
     output: OutPath | None = None
@@ -49,6 +49,10 @@ class Simulation(BaseModel):
         return self
 
     def run(self, channel_idx: int = 0) -> DataArray:
+        """Run the simulation and return the result.
+
+        This will also write a file to disk if `output` is set.
+        """
         xp = self.settings.backend_module()
         channel = self.channels[channel_idx]
 

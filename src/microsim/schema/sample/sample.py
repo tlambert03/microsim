@@ -4,16 +4,11 @@ from pydantic import BaseModel, model_validator
 
 from microsim._data_array import DataArray
 from microsim.schema.backend import NumpyAPI
+from microsim.schema.spectrum import Spectrum
 
 from .matslines import MatsLines
 
 Distribution = MatsLines
-
-
-class Spectrum(BaseModel):
-    wavelength: list[float]  # nm
-    intensity: list[float]  # normalized to 1
-    scalar: float = 1  # scalar to multiply intensity by, such as EC or QY
 
 
 class Fluorophore(BaseModel):
@@ -35,6 +30,9 @@ class FluorophoreDistribution(BaseModel):
     def _vmodel(cls, value: Any) -> Any:
         if isinstance(value, Distribution):
             return {"distribution": value}
+        if isinstance(value, dict):
+            if "distribution" not in value and "type" in value:
+                return {"distribution": value}
         return value
 
 

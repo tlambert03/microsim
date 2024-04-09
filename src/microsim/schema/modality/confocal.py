@@ -5,8 +5,8 @@ from pydantic import BaseModel
 
 from microsim._data_array import DataArray
 from microsim.schema.backend import NumpyAPI
-from microsim.schema.channel import Channel
 from microsim.schema.lens import ObjectiveLens
+from microsim.schema.optical_config import OpticalConfig
 
 if TYPE_CHECKING:
     from microsim.schema.space import Space
@@ -19,7 +19,7 @@ class Confocal(BaseModel):
     def render(
         self,
         truth: DataArray,
-        channel: Channel,
+        channel: OpticalConfig,
         objective_lens: ObjectiveLens,
         xp: NumpyAPI | None = None,
     ) -> DataArray:
@@ -30,8 +30,8 @@ class Confocal(BaseModel):
         # FIXME, this is probably derivable from truth.coords
         truth_space = cast("Space", truth.attrs["space"])
         psf = make_confocal_psf(
-            ex_wvl_um=channel.excitation.wavelength * 1e-3,
-            em_wvl_um=channel.emission.wavelength * 1e-3,
+            ex_wvl_um=channel.excitation.bandcenter * 1e-3,
+            em_wvl_um=channel.emission.bandcenter * 1e-3,
             pinhole_au=self.pinhole_au,
             nz=truth_space.shape[-3] + 1,
             nx=truth_space.shape[-1] + 1,

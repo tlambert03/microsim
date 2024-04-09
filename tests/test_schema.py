@@ -9,7 +9,7 @@ TRUTH_SPACE = ms.ShapeScaleSpace(shape=(64, 128, 128), scale=(0.04, 0.02, 0.02))
 MATSLINES = ms.MatsLines(density=0.4, length=30, azimuth=5, max_r=1)
 GREEN_MATSLINES = ms.FluorophoreDistribution(distribution=MATSLINES)
 NA1_4 = ms.ObjectiveLens(numerical_aperture=1.4)
-FITC = ms.Channel(name="FITC", excitation=488, emission=525)
+FITC = ms.OpticalConfig(name="FITC", excitation=488, emission=525)
 CONFOCAL_AU0_2 = ms.Confocal(pinhole_au=0.2)
 WIDEFIELD = ms.Widefield()
 
@@ -66,3 +66,34 @@ def test_simulation_output(tmp_path: Path, ext: str) -> None:
         output=tmp_path / f"output.{ext}",
     )
     sim.run()
+
+
+def test_sim_from_json() -> None:
+    json_string = """
+    {
+        "truth_space": {
+            "shape": [128, 512, 512],
+            "scale": [0.02, 0.01, 0.01]
+        },
+        "output_space": {
+            "downscale": 8
+        },
+        "sample": {
+            "labels": [
+            {
+                "type": "matslines",
+                "density": 0.5,
+                "length": 30,
+                "azimuth": 5,
+                "max_r": 1
+            }
+            ]
+        },
+        "modality": {
+            "type": "confocal",
+            "pinhole_au": 0.2
+        }
+    }
+    """
+
+    ms.Simulation.model_validate_json(json_string)

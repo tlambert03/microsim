@@ -8,3 +8,7 @@ except PackageNotFoundError:
     __version__ = "uninstalled"
 __author__ = "Talley Lambert"
 __email__ = "talley.lambert@gmail.com"
+
+from .schema import Simulation
+
+__all__ = ["Simulation", "__version__"]
