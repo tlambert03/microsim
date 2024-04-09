@@ -49,12 +49,15 @@ class Simulation(BaseModel):
         xp = self.settings.backend_module()
         channel = self.channels[channel_idx]
 
+        # make empty space into which we'll add fluorescence
         truth = self.truth_space.create(array_creator=xp.zeros)
 
+        # add fluorophores to the space
         for label in self.sample.labels:
             truth = label.render(truth, xp=xp)
         truth.attrs["space"] = self.truth_space  # TODO
 
+        # let the given modality render the as an image (convolved, etc..)
         img = self.modality.render(truth, channel, self.objective_lens, xp=xp)
         result = self.output_space.rescale(img)
         self._write(result)
