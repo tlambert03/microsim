@@ -1,11 +1,13 @@
 name: docs
+
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    branches:
-      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -16,8 +18,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
-      - run: |
-          pip install -e .[docs]
+      - run: pip install -e .[docs]
       - run: mkdocs build --strict
 
   deploy:
