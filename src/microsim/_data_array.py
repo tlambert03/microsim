@@ -5,7 +5,6 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 import numpy as np
-from attr import has
 
 ZarrWriteModes = Literal["w", "w-", "a", "a-", "r+", "r"]
 
