@@ -59,6 +59,13 @@ dev = [
     "rich",
     "ruff",
 ]
+docs = [
+    "mkdocs >=1.5.3",
+    "mkdocs-material==9.5.17",
+    "mkdocstrings ==0.24.3",
+    "mkdocstrings-python ==1.9.2",
+    "griffe-fieldz",
+]
 
 [project.urls]
 homepage = "https://github.com/tlambert03/microsim"

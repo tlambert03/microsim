@@ -1,8 +1,9 @@
 from collections.abc import Iterable
 from contextlib import contextmanager
 from contextvars import ContextVar
+from typing import ClassVar
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from microsim.illum import Widefield
 
@@ -20,8 +21,7 @@ class Microscope(BaseModel):
     illumination: Illumination = Field(default_factory=Widefield)
     camera: Camera = ICX285
 
-    class Config:
-        validate_assignment = True
+    model_config: ClassVar[ConfigDict] = {"validate_assignment": True}
 
     @staticmethod
     def active() -> "Microscope":
