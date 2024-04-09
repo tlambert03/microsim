@@ -5,7 +5,7 @@ import pytest
 
 import microsim.schema as ms
 
-TRUTH_SPACE = ms.ShapeScaleSpace(shape=(128, 256, 256), scale=(0.04, 0.02, 0.02))
+TRUTH_SPACE = ms.ShapeScaleSpace(shape=(64, 128, 128), scale=(0.04, 0.02, 0.02))
 MATSLINES = ms.MatsLines(density=0.4, length=30, azimuth=5, max_r=1)
 GREEN_MATSLINES = ms.FluorophoreDistribution(distribution=MATSLINES)
 NA1_4 = ms.ObjectiveLens(numerical_aperture=1.4)

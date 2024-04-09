@@ -50,15 +50,16 @@ class DataArray:
     def __add__(self, other: Any) -> "DataArray":
         return DataArray(self.data + other, self.coords, self.attrs)
 
-    def __array__(self) -> Any:
-        return np.asanyarray(self.data)
+    def __array__(self) -> np.ndarray:
+        data = self.data.get() if hasattr(self.data, "get") else self.data
+        return np.asanyarray(data)
 
     def to_tiff(
         self, path: str | PathLike[str], description: str | None = None
     ) -> None:
         import tifffile as tf
 
-        tf.imwrite(path, self.data, description=description)
+        tf.imwrite(path, np.asanyarray(self), description=description)
 
     def to_zarr(
         self,
@@ -82,4 +83,4 @@ class DataArray:
         import xarray as xr
 
         attrs = {**self.attrs, **(attrs or {})}
-        return xr.DataArray(self.data, coords=self.coords, attrs=attrs)
+        return xr.DataArray(np.asanyarray(self), coords=self.coords, attrs=attrs)

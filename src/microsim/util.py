@@ -237,7 +237,6 @@ def make_confocal_psf(
     """
     import tqdm
     from psfmodels import vectorial_psf_centered
-    from scipy.signal import fftconvolve
 
     xp = NumpyAPI.create(xp)
     kwargs.pop("wvl", None)
@@ -267,10 +266,10 @@ def make_confocal_psf(
     eff_em_psf = xp.empty_like(em_psf)
     for i in tqdm.trange(len(em_psf)):
         plane = xp.fftconvolve(xp.asarray(em_psf[i]), pinhole, mode="same")
-        eff_em_psf[i] = plane.get() if hasattr(plane, "get") else plane
+        eff_em_psf = xp._array_assign(eff_em_psf, i, plane)
 
     # The final PSF is the excitation PSF multiplied by the effective emission PSF.
-    return ex_psf * eff_em_psf  # type: ignore
+    return xp.asarray(ex_psf) * eff_em_psf  # type: ignore
 
 
 def _pinhole_mask(
