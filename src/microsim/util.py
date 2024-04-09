@@ -297,7 +297,7 @@ def _pinhole_mask(
 def ortho_plot(img: npt.NDArray, gamma: float = 0.5, mip: bool = False) -> None:
     import matplotlib.pyplot as plt
     from matplotlib.colors import PowerNorm
-
+    img = np.asarray(img)
     """Plot XY and XZ slices of a 3D array."""
     _, ax = plt.subplots(ncols=2, figsize=(10, 5))
     xy = img.max(axis=0) if mip else img[img.shape[0] // 2]
