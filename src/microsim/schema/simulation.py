@@ -30,7 +30,9 @@ class Simulation(BaseModel):
     output_space: Space | None = None
     sample: Sample
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
-    channels: list[Channel]
+    channels: list[Channel] = Field(
+        default_factory=lambda: [Channel(name="FITC", excitation=488, emission=525)]
+    )
     modality: Modality = Field(default_factory=Widefield)
     settings: Settings = Field(default_factory=Settings)
     output: OutPath | None = None
