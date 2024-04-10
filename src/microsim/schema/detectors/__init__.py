@@ -1,5 +1,5 @@
-from typing import Any
+from ._camera import Camera, CameraCCD, CameraCMOS, CameraEMCCD
 
-Detector = Any
+Detector = CameraEMCCD | CameraCMOS | CameraCCD
 
-__all__ = ["Detector"]
+__all__ = ["Detector", "Camera", "CameraCCD", "CameraCMOS", "CameraEMCCD"]

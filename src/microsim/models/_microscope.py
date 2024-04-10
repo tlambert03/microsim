@@ -6,8 +6,8 @@ from typing import ClassVar
 from pydantic import BaseModel, ConfigDict, Field
 
 from microsim.illum import Widefield
+from microsim.schema.detectors._camera import ICX285, Camera
 
-from ._camera import ICX285, Camera
 from ._coverslip import Coverslip
 from ._illum import Illumination
 from ._immersion import ImmersionMedium, OilImmersion

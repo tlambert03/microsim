@@ -3,32 +3,33 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-from scipy.stats import poisson
 
-from microsim.models import CameraCMOS, CameraEMCCD
+from microsim.schema.backend import NumpyAPI
+from microsim.schema.detectors import Camera, CameraCMOS, CameraEMCCD
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
     import numpy.typing as npt
 
-    from microsim.models import Camera
+    from microsim._data_array import ArrayProtocol
 
 
 def simulate_camera(
     camera: Camera,
-    image: np.ndarray,
+    image: ArrayProtocol,
     exposure: float = 0.1,
     binning: int = 1,
     add_poisson: bool = True,
-) -> npt.NDArray:
+    xp: NumpyAPI | None = None,
+) -> ArrayProtocol:
     """Simulate camera detection.
 
     Parameters
     ----------
     camera : Camera
         camera objects
-    image : np.ndarray
+    image : DataArray
         array where each element represents photons / second
     exposure : float
         exposure time in seconds
@@ -36,27 +37,31 @@ def simulate_camera(
         camera binning
     add_poisson: bool
         Whether to include poisson noise.
+    xp: NumpyAPI
+        Numpy API provider.
 
     Returns
     -------
-    np.ndarray
+    DataArray
         simulated image with camera and poisson noise
     """
+    xp = NumpyAPI.create(xp)
+
     incident_photons = image * exposure
 
     # sample poisson noise
     if add_poisson:
-        detected_photons: np.ndarray = poisson.rvs(incident_photons * camera.qe)
+        detected_photons = xp.stats.poisson.rvs(incident_photons * camera.qe)
 
     # dark current
-    thermal_electrons: np.ndarray = poisson.rvs(
+    thermal_electrons = xp.stats.poisson.rvs(
         camera.dark_current * exposure + camera.clock_induced_charge,
         size=detected_photons.shape,
     )
     total_electrons = detected_photons + thermal_electrons
 
     # cap total electrons to full-well-capacity
-    total_electrons = np.minimum(total_electrons, camera.full_well)
+    total_electrons = xp.minimum(total_electrons, camera.full_well)
 
     if binning > 1 and not isinstance(camera, CameraCMOS):
         total_electrons = bin(total_electrons, binning, "sum")
@@ -73,13 +78,15 @@ def simulate_camera(
         gray_values = bin(gray_values, binning, "mean")
 
     # ADC saturation
-    gray_values = np.minimum(gray_values, camera.max_intensity)
+    gray_values = xp.minimum(gray_values, camera.max_intensity)
     if camera.bit_depth > 16:
-        return gray_values.astype("uint32")
+        output = gray_values.astype("uint32")
     if camera.bit_depth > 8:
-        return gray_values.astype("uint16")
+        output = gray_values.astype("uint16")
     else:
-        return gray_values.astype("uint8")
+        output = gray_values.astype("uint8")
+
+    return output
 
 
 def bin(  # noqa: A001

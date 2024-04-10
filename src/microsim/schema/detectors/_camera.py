@@ -3,6 +3,9 @@ import numpy.typing as npt
 from pydantic import BaseModel, Field
 from scipy import stats
 
+from microsim._data_array import ArrayProtocol
+from microsim.schema.backend import NumpyAPI
+
 
 class Camera(BaseModel):
     photodiode_size: float
@@ -28,30 +31,33 @@ class Camera(BaseModel):
     def apply_em_gain(self, electron_image: npt.NDArray) -> npt.NDArray:
         return electron_image
 
-    def simulate(
+    def render(
         self,
-        image: np.ndarray,
+        image: ArrayProtocol,
         exposure: float = 100,
         binning: int = 1,
         add_poisson: bool = True,
-    ) -> np.ndarray:
+        xp: NumpyAPI | None = None,
+    ) -> ArrayProtocol:
         """Simulate imaging process.
 
         Parameters
         ----------
-        image : np.ndarray
+        image : DataArray
             array where each element represents photons / second
         exposure : float, optional
-            _description_, by default 100
+            Exposure time, by default 100
         binning : int, optional
-            _description_, by default 1
+            Binning to apply, by default 1
         add_poisson : bool, optional
-            _description_, by default True
+            Whether to add poisson noise, by default True
+        xp: NumpyAPI | None
+            Numpy API backend
         """
         from microsim.simulate import simulate_camera
 
         return simulate_camera(
-            self, image, exposure, binning=binning, add_poisson=add_poisson
+            self, image, exposure, binning=binning, add_poisson=add_poisson, xp=xp
         )
 
     @property

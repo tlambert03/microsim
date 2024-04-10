@@ -7,7 +7,20 @@ sim = ms.Simulation(
     sample=ms.Sample(labels=[ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1)]),
     modality=ms.Confocal(pinhole_au=1),
     settings=ms.Settings(random_seed=100),
+    detector=ms.CameraCCD(
+        qe=0.82,
+        gain=1,
+        full_well=18000,  # e
+        dark_current=0.0005,  # e/pix/sec
+        clock_induced_charge=1,
+        read_noise=6,
+        bit_depth=12,
+        offset=100,
+        # not used here
+        readout_rate=1,
+        photodiode_size=1,
+    ),
     output_path="au1.tif",
 )
 result = sim.run()
-ortho_plot(result)
+ortho_plot(result.data)

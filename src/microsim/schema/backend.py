@@ -37,32 +37,23 @@ class NumpyAPI:
         return NumpyAPI()
 
     def __init__(self) -> None:
-        from scipy import signal, special
+        from scipy import signal, special, stats
+        from scipy.ndimage import map_coordinates
 
         self.xp = np
         self.signal = signal
+        self.stats = stats
         self.j0 = special.j0
         self.j1 = special.j1
+        self.map_coordinates = map_coordinates
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.xp, name)
-
-    # def zeros(
-    #     self, shape: Sequence[int], dtype: npt.DTypeLike = np.float32
-    # ) -> npt.ArrayLike:
-    #     return self.xp.zeros(shape, dtype)
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
     ) -> ArrT:
         return self.signal.fftconvolve(a, b, mode=mode)  # type: ignore
-
-    def map_coordinates(
-        self, input: npt.ArrayLike, coordinates: npt.ArrayLike, order: int = 3
-    ) -> npt.NDArray:
-        from scipy.ndimage import map_coordinates
-
-        return map_coordinates(input, coordinates, order=order)  # type: ignore
 
     def _simp_like(self, arr: npt.ArrayLike) -> npt.ArrayLike:
         simp = self.xp.empty_like(arr)
@@ -81,14 +72,15 @@ class NumpyAPI:
 class JaxAPI(NumpyAPI):
     def __init__(self) -> None:
         import jax
-        from jax.scipy import signal
+        from jax.scipy import signal, stats
         from jax.scipy.ndimage import map_coordinates
 
         from ._jax_bessel import j0, j1
 
         self.xp = jax.numpy
         self.signal = signal
-        self.map_coordinates = map_coordinates  # type: ignore
+        self.stats = stats
+        self.map_coordinates = map_coordinates
         self.j0 = j0
         self.j1 = j1
 
@@ -125,11 +117,12 @@ class CupyAPI(NumpyAPI):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            from cupyx.scipy import signal
+            from cupyx.scipy import signal, stats
 
         self.xp = cupy
         self.signal = signal
-        self.map_coordinates = map_coordinates  # type: ignore
+        self.stats = stats
+        self.map_coordinates = map_coordinates
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"

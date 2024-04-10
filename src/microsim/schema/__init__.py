@@ -1,4 +1,5 @@
 from .backend import BackendName, DeviceName, NumpyAPI
+from .detectors import Camera, CameraCCD, CameraCMOS, CameraEMCCD
 from .lens import ObjectiveLens
 from .modality import Confocal, Modality, Widefield
 from .optical_config import Bandpass, OpticalConfig
@@ -10,23 +11,27 @@ from .spectrum import Spectrum
 
 __all__ = [
     "BackendName",
-    "OpticalConfig",
+    "Bandpass",
+    "Camera",
+    "CameraCCD",
+    "CameraCMOS",
+    "CameraEMCCD",
     "Confocal",
     "DeviceName",
-    "Spectrum",
     "DownscaledSpace",
     "ExtentScaleSpace",
-    "FluorophoreDistribution",
-    "Bandpass",
     "Fluorophore",
+    "FluorophoreDistribution",
     "MatsLines",
     "Modality",
     "NumpyAPI",
     "ObjectiveLens",
+    "OpticalConfig",
     "Sample",
     "Settings",
     "ShapeExtentSpace",
     "ShapeScaleSpace",
     "Simulation",
+    "Spectrum",
     "Widefield",
 ]

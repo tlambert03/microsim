@@ -1,3 +1,6 @@
+import random
+
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 from .backend import BackendName, DeviceName, NumpyAPI
@@ -6,7 +9,9 @@ from .backend import BackendName, DeviceName, NumpyAPI
 class Settings(BaseSettings):
     np_backend: BackendName = "auto"
     device: DeviceName = "auto"
-    random_seed: int | None = None
+    random_seed: int | None = Field(
+        default_factory=lambda: random.randint(0, 2**32 - 1)
+    )
 
     def backend_module(self) -> NumpyAPI:
         backend = NumpyAPI.create(self.np_backend)

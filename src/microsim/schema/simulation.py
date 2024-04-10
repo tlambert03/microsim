@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING, Annotated
 if TYPE_CHECKING:
     from typing import Self
 
+    from .backend import NumpyAPI
+
 from pydantic import AfterValidator, BaseModel, Field, model_validator
 
 from microsim._data_array import DataArray
@@ -50,14 +52,24 @@ class Simulation(BaseModel):
             self.output_space.reference = self.truth_space
         return self
 
-    def run(self, channel_idx: int = 0) -> DataArray:
+    @property
+    def _xp(self) -> "NumpyAPI":
+        return self.settings.backend_module()
+
+    def run(self, channel_idx: int = 0) -> "DataArray":
         """Run the simulation and return the result.
 
         This will also write a file to disk if `output` is set.
         """
-        xp = self.settings.backend_module()
-        channel = self.channels[channel_idx]
+        truth = self.ground_truth()
+        optical_image = self.optical_image(truth, channel_idx=channel_idx)
+        image = self.digital_image(optical_image)
+        self._write(image)
+        return image
 
+    def ground_truth(self) -> "DataArray":
+        """Return the ground truth data."""
+        xp = self._xp
         # make empty space into which we'll add fluorescence
         truth = self.truth_space.create(array_creator=xp.zeros)
 
@@ -65,15 +77,39 @@ class Simulation(BaseModel):
         for label in self.sample.labels:
             truth = label.render(truth, xp=xp)
         truth.attrs["space"] = self.truth_space  # TODO
+        return truth
 
+    def optical_image(
+        self, truth: "DataArray | None" = None, *, channel_idx: int = 0
+    ) -> "DataArray":
+        if truth is None:
+            truth = self.ground_truth()
+        elif not isinstance(truth, DataArray):
+            raise ValueError("truth must be a DataArray")
         # let the given modality render the as an image (convolved, etc..)
-        result = self.modality.render(truth, channel, self.objective_lens, xp=xp)
-        if self.output_space is not None:
-            result = self.output_space.rescale(result)
-        self._write(result)
-        return result
+        channel = self.channels[channel_idx]  # TODO
+        return self.modality.render(truth, channel, self.objective_lens, xp=self._xp)
 
-    def _write(self, result: DataArray) -> None:
+    def digital_image(
+        self,
+        optical_image: "DataArray | None" = None,
+        *,
+        with_noise: bool = True,
+        channel_idx: int = 0,
+    ) -> "DataArray":
+        if optical_image is None:
+            optical_image = self.optical_image(channel_idx=channel_idx)
+        image = optical_image
+        if self.output_space is not None:
+            image = self.output_space.rescale(image)
+        if self.detector is not None and with_noise:
+            max_photons_pp_ps = 2000
+            photons = image.data * max_photons_pp_ps / self._xp.max(image)
+            gray_values = self.detector.render(photons, exposure=0.2, xp=self._xp)
+            image = DataArray(gray_values, coords=image.coords, attrs=image.attrs)
+        return image
+
+    def _write(self, result: "DataArray") -> None:
         if not self.output_path:
             return
         self_json = self.model_dump_json()

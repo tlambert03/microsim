@@ -284,7 +284,7 @@ def _pinhole_mask(
 
 
 # convenience function we'll use a couple times
-def ortho_plot(img: npt.NDArray, gamma: float = 0.5, mip: bool = False) -> None:
+def ortho_plot(img: ArrayProtocol, gamma: float = 0.5, mip: bool = False) -> None:
     import matplotlib.pyplot as plt
     from matplotlib.colors import PowerNorm
 

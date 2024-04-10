@@ -1,4 +1,5 @@
-from ._camera import Camera, CameraCMOS, CameraEMCCD
+from microsim.schema.detectors._camera import Camera, CameraCMOS, CameraEMCCD
+
 from ._coverslip import Coverslip
 from ._illum import Illumination
 
