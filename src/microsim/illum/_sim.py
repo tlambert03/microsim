@@ -7,6 +7,7 @@ import numpy as np
 import numpy.typing as npt
 import xarray as xr
 from numpy.typing import NDArray
+from pydantic import BaseModel
 from tqdm import tqdm
 
 from microsim._data_array import DataArray
@@ -20,7 +21,7 @@ except ImportError:
     xp = np
 
 
-class SIMIllum2D:
+class SIMIllum2D(BaseModel):
     angles: Sequence[float] = [0, np.pi / 3, np.pi * 2 / 3]
     nphases: int = 3
     linespacing: float = 0.2035
