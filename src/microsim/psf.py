@@ -17,7 +17,7 @@ def simpson(
     zp: float,
     wave_num: float,
     xp: NumpyAPI | None = None,
-) -> npt.ArrayLike:
+) -> npt.NDArray:
     xp = NumpyAPI.create(xp)
 
     # L_theta calculation
@@ -67,7 +67,7 @@ def simpson(
 
 
 def vectorial_rz(
-    zv: npt.ArrayLike,
+    zv: npt.NDArray,
     nx: int = 51,
     pos: tuple[float, float, float] = (0, 0, 0),
     dxy: float = 0.04,
@@ -75,7 +75,7 @@ def vectorial_rz(
     params: Mapping | None = None,
     sf: int = 3,
     xp: NumpyAPI | None = None,
-) -> npt.ArrayLike:
+) -> npt.NDArray:
     xp = NumpyAPI.create(xp)
     p = ObjectiveLens(**(params or {}))
 
@@ -106,12 +106,12 @@ def vectorial_rz(
     step = p.half_angle / nSamples
     theta = xp.arange(1, nSamples + 1) * step
     simpson_integral = simpson(p, theta, constJ, zv, ci, zpos, wave_num)
-    return 8.0 * np.pi / 3.0 * simpson_integral * (step / ud) ** 2  # type: ignore
+    return 8.0 * np.pi / 3.0 * simpson_integral * (step / ud) ** 2
 
 
 def radius_map(
     shape: Sequence[int], off: Sequence[int] | None = None, xp: NumpyAPI | None = None
-) -> npt.ArrayLike:
+) -> npt.NDArray:
     xp = NumpyAPI.create(xp)
     if off is not None:
         offy, offx = off
@@ -121,7 +121,7 @@ def radius_map(
     yi, xi = xp.mgrid[:ny, :nx]
     yi = yi - (ny - 1) / 2 - offy
     xi = xi - (nx - 1) / 2 - offx
-    return xp.hypot(yi, xi)
+    return xp.hypot(yi, xi)  # type: ignore
 
 
 def rz_to_xyz(
@@ -161,7 +161,7 @@ def rz_to_xyz(
 
 
 def vectorial_psf(
-    zv: npt.ArrayLike,
+    zv: npt.NDArray,
     nx: int = 31,
     ny: int | None = None,
     pos: tuple[float, float, float] = (0, 0, 0),
@@ -171,12 +171,12 @@ def vectorial_psf(
     sf: int = 3,
     normalize: bool = True,
     xp: NumpyAPI | None = None,
-) -> npt.ArrayLike:
+) -> npt.NDArray:
     xp = NumpyAPI.create(xp)
     zv = xp.asarray(zv * 1e-6)  # convert to meters
     ny = ny or nx
     rz = vectorial_rz(zv, np.maximum(ny, nx), pos, dxy, wvl, params, sf, xp=xp)
-    _psf = rz_to_xyz(rz, (ny, nx), sf, off=np.array(pos[:2]) / (dxy * 1e-6))
+    _psf = rz_to_xyz(rz, (ny, nx), sf, off=xp.asarray(pos[:2]) / (dxy * 1e-6))
     if normalize:
         _psf /= xp.max(_psf)
     return _psf
@@ -196,13 +196,13 @@ def vectorial_psf_centered(nz: int, dz: float = 0.05, **kwargs: Any) -> npt.NDAr
     return vectorial_psf(zv, **kwargs)
 
 
-if __name__ == "__main__":
-    zv = np.linspace(-3, 3, 61)
-    from time import perf_counter
+# if __name__ == "__main__":
+#     zv = np.linspace(-3, 3, 61)
+#     from time import perf_counter
 
-    t0 = perf_counter()
-    psf = vectorial_psf(zv, nx=512)
-    t1 = perf_counter()
-    print(psf.shape)
-    print(t1 - t0)
-    assert np.allclose(np.load("out.npy"), psf, atol=0.1)
+#     t0 = perf_counter()
+#     psf = vectorial_psf(zv, nx=512)
+#     t1 = perf_counter()
+#     print(psf.shape)
+#     print(t1 - t0)
+#     assert np.allclose(np.load("out.npy"), psf, atol=0.1)

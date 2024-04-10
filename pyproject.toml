@@ -54,6 +54,7 @@ dev = [
     "ipython",
     "matplotlib",
     "mypy",
+    "types-tqdm",
     "pdbpp",
     "pre-commit",
     "rich",

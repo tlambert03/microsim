@@ -6,20 +6,14 @@ from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
+import tqdm
 from dask.array.core import normalize_chunks
 from scipy import signal
 
 from microsim.schema.backend import NumpyAPI
 
 from ._data_array import ArrayProtocol, DataArray
-
-try:
-    from tqdm import tqdm
-except ImportError:
-
-    def tqdm(a: Any) -> Any:
-        return a
-
+from .psf import vectorial_psf_centered
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
@@ -203,7 +197,7 @@ def tiled_convolve(
     final_shape = get_fftconvolve_shape(in1, in2, mode="full")
 
     out = np.zeros(final_shape, dtype=dtype)
-    for loc, *_ in tqdm(list(_iter_block_locations(_chunks))):
+    for loc, *_ in tqdm.tqdm(list(_iter_block_locations(_chunks))):
         block = np.asarray(in1[tuple(slice(*i) for i in loc)])
         result = func(block, in2, mode="full")
         if hasattr(result, "get"):
@@ -235,9 +229,6 @@ def make_confocal_psf(
 
     All extra keyword arguments are passed to `vectorial_psf_centered`.
     """
-    import tqdm
-    from psfmodels import vectorial_psf_centered
-
     xp = NumpyAPI.create(xp)
     kwargs.pop("wvl", None)
     params: dict = kwargs.setdefault("params", {})

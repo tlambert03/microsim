@@ -26,3 +26,4 @@ repos:
           - pydantic
           - pydantic-settings
           - xarray
+          - types-tqdm

@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Literal, cast
 from pydantic import BaseModel
 
 from microsim._data_array import DataArray
+from microsim.psf import vectorial_psf_centered
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.lens import ObjectiveLens
 from microsim.schema.optical_config import OpticalConfig
@@ -21,8 +22,6 @@ class Widefield(BaseModel):
         objective_lens: ObjectiveLens,
         xp: NumpyAPI | None = None,
     ) -> DataArray:
-        from psfmodels import vectorial_psf_centered
-
         xp = NumpyAPI.create(xp)
 
         # FIXME, this is probably derivable from truth.coords

@@ -1,7 +1,7 @@
 from typing import Any
 
 import numpy as np
-from pydantic import BaseModel, Field, computed_field, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 
 class ObjectiveLens(BaseModel):
@@ -30,46 +30,37 @@ class ObjectiveLens(BaseModel):
         return values
 
     @property
-    @computed_field
     def half_angle(self) -> float:
         return np.arcsin(self.numerical_aperture / self.immersion_medium_ri)  # type: ignore
 
     @property
-    @computed_field(repr=False)
     def ni(self) -> float:
         return self.immersion_medium_ri
 
     @property
-    @computed_field(repr=False)
     def ns(self) -> float:
         return self.specimen_ri
 
     @property
-    @computed_field(repr=False)
     def ng(self) -> float:
         return self.coverslip_ri
 
     @property
-    @computed_field(repr=False)
     def tg(self) -> float:
         return self.coverslip_thickness * 1e-6
 
     @property
-    @computed_field(repr=False)
     def tg0(self) -> float:
         return self.coverslip_thickness_spec * 1e-6
 
     @property
-    @computed_field(repr=False)
     def ti0(self) -> float:
         return self.working_distance * 1e-6
 
     @property
-    @computed_field(repr=False)
     def ng0(self) -> float:
         return self.coverslip_ri_spec
 
     @property
-    @computed_field(repr=False)
     def ni0(self) -> float:
         return self.immersion_medium_ri_spec
