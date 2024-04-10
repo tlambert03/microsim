@@ -8,6 +8,7 @@ from pydantic import AfterValidator, BaseModel, Field, model_validator
 
 from microsim._data_array import DataArray
 
+from .detectors import Detector
 from .lens import ObjectiveLens
 from .modality import Modality, Widefield
 from .optical_config import FITC, OpticalConfig
@@ -33,6 +34,7 @@ class Simulation(BaseModel):
     sample: Sample
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC()])
+    detector: Detector | None = None
     modality: Modality = Field(default_factory=Widefield)
     settings: Settings = Field(default_factory=Settings)
     output_path: OutPath | None = None

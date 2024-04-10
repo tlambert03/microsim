@@ -11,8 +11,6 @@ from tqdm import tqdm
 
 from microsim._data_array import DataArray
 
-from ._widefield import Widefield
-
 try:
     import cupy as xp
     from cupyx.scipy.ndimage import map_coordinates
@@ -22,7 +20,7 @@ except ImportError:
     xp = np
 
 
-class SIMIllum2D(Widefield):
+class SIMIllum2D:
     angles: Sequence[float] = [0, np.pi / 3, np.pi * 2 / 3]
     nphases: int = 3
     linespacing: float = 0.2035

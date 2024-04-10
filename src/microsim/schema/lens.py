@@ -1,5 +1,7 @@
+from typing import Any
+
 import numpy as np
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, model_validator
 
 
 class ObjectiveLens(BaseModel):
@@ -12,6 +14,20 @@ class ObjectiveLens(BaseModel):
     working_distance: float = 150.0  # um, working distance, design value (ti0)
     coverslip_thickness: float = 170.0  # um, coverslip thickness (tg)
     coverslip_thickness_spec: float = 170.0  # um, coverslip thickness design (tg0)
+
+    magnification: float = Field(1, description="magnification of objective lens.")
+
+    @model_validator(mode="before")
+    def _vroot(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            na = values.get("numerical_aperture", 1.4)
+            ri = values.get("immersion_medium_ri_spec", 1.515)
+            if na > ri:
+                raise ValueError(
+                    f"NA ({na}) cannot be greater than the immersion medium RI "
+                    f"design value ({ri})"
+                )
+        return values
 
     @property
     @computed_field

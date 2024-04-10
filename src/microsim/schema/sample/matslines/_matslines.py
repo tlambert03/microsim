@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from pydantic import BaseModel
 
-from microsim.models import Sample
 from microsim.schema.backend import NumpyAPI
 
 if TYPE_CHECKING:
@@ -14,7 +13,7 @@ if TYPE_CHECKING:
     from microsim._data_array import DataArray
 
 
-class MatsLines(BaseModel, Sample):
+class MatsLines(BaseModel):
     type: Literal["matslines"] = "matslines"
     density: float = 1
     length: int = 10
