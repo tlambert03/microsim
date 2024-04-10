@@ -4,19 +4,11 @@ from pydantic import BaseModel, Field, model_validator
 
 from microsim._data_array import DataArray
 from microsim.schema.backend import NumpyAPI
-from microsim.schema.spectrum import Spectrum
 
+from .fluorophore import Fluorophore
 from .matslines import MatsLines
 
 Distribution = MatsLines
-
-
-class Fluorophore(BaseModel):
-    name: str
-    excitation_spectrum: Spectrum
-    emission_spectrum: Spectrum
-    bleaching_half_life_s: float | None = None
-    lifetime_ns: float | None = None
 
 
 class FluorophoreDistribution(BaseModel):
