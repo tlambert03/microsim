@@ -36,11 +36,12 @@ classifiers = [
 ]
 # add your package dependencies here
 dependencies = [
-    'pydantic_settings',
-    "dask[array]",
-    "numpy",
-    "psfmodels",
+    # strictly necessary
     "pydantic>=2.4",
+    "numpy",
+    "annotated_types",
+    # probably optional
+    'pydantic-settings',
     "scipy",
     "tqdm",
     "xarray",

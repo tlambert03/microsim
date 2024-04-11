@@ -2,18 +2,14 @@ from __future__ import annotations
 
 import itertools
 import warnings
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Protocol, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
 import tqdm
-from dask.array.core import normalize_chunks
 from scipy import signal
 
-from microsim.schema.backend import NumpyAPI
-
 from ._data_array import ArrayProtocol, DataArray
-from .psf import vectorial_psf_centered
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
@@ -189,6 +185,8 @@ def tiled_convolve(
     func: Convolver = signal.convolve,
     dtype: DTypeLike | None = None,
 ) -> npt.NDArray:
+    from dask.array.core import normalize_chunks
+
     if chunks is None:
         chunks = getattr(in1, "chunks", None) or (100,) * in1.ndim  # TODO: change 100
 
@@ -213,74 +211,6 @@ def tiled_convolve(
     elif mode == "valid":
         return _centered(out, get_fftconvolve_shape(in1, in2, mode="valid"))
     return out
-
-
-def make_confocal_psf(
-    ex_wvl_um: float = 0.475,
-    em_wvl_um: float = 0.525,
-    pinhole_au: float = 1.0,
-    xp: NumpyAPI | None = None,
-    **kwargs: Any,
-) -> np.ndarray:
-    """Create a confocal PSF.
-
-    This function creates a confocal PSF by multiplying the excitation PSF with
-    the emission PSF convolved with a pinhole mask.
-
-    All extra keyword arguments are passed to `vectorial_psf_centered`.
-    """
-    xp = NumpyAPI.create(xp)
-    kwargs.pop("wvl", None)
-    params: dict = kwargs.setdefault("params", {})
-    na = params.setdefault("NA", 1.4)
-    dxy = kwargs.setdefault("dxy", 0.01)
-
-    print("making excitation PSF...")
-    ex_psf = vectorial_psf_centered(wvl=ex_wvl_um, **kwargs)
-    print("making emission PSF...")
-    em_psf = vectorial_psf_centered(wvl=em_wvl_um, **kwargs)
-
-    # The effective emission PSF is the regular emission PSF convolved with the
-    # pinhole mask. The pinhole mask is a disk with diameter equal to the pinhole
-    # size in AU, converted to pixels.
-    pinhole = _pinhole_mask(
-        nxy=ex_psf.shape[-1],
-        pinhole_au=pinhole_au,
-        wvl=em_wvl_um,
-        na=na,
-        dxy=dxy,
-        xp=xp,
-    )
-    pinhole = xp.asarray(pinhole)
-
-    print("convolving em_psf with pinhole...")
-    eff_em_psf = xp.empty_like(em_psf)
-    for i in tqdm.trange(len(em_psf)):
-        plane = xp.fftconvolve(xp.asarray(em_psf[i]), pinhole, mode="same")
-        eff_em_psf = xp._array_assign(eff_em_psf, i, plane)
-
-    # The final PSF is the excitation PSF multiplied by the effective emission PSF.
-    return xp.asarray(ex_psf) * eff_em_psf  # type: ignore
-
-
-def _pinhole_mask(
-    nxy: int,
-    pinhole_au: float,
-    wvl: float,
-    na: float,
-    dxy: float,
-    xp: NumpyAPI | None = None,
-) -> npt.NDArray:
-    """Create a 2D circular pinhole mask of specified `pinhole_au`."""
-    xp = NumpyAPI.create(xp)
-
-    pinhole_size = pinhole_au * 0.61 * wvl / na
-    pinhole_px = pinhole_size / dxy
-
-    x = xp.arange(nxy) - nxy // 2
-    xx, yy = xp.meshgrid(x, x)
-    r = xp.sqrt(xx**2 + yy**2)
-    return (r <= pinhole_px).astype(int)  # type: ignore
 
 
 # convenience function we'll use a couple times

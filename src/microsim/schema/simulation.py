@@ -88,7 +88,13 @@ class Simulation(BaseModel):
             raise ValueError("truth must be a DataArray")
         # let the given modality render the as an image (convolved, etc..)
         channel = self.channels[channel_idx]  # TODO
-        return self.modality.render(truth, channel, self.objective_lens, xp=self._xp)
+        return self.modality.render(
+            truth,
+            channel,
+            objective_lens=self.objective_lens,
+            settings=self.settings,
+            xp=self._xp,
+        )
 
     def digital_image(
         self,

@@ -1,7 +1,20 @@
-from typing import Any
+from typing import Any, TypedDict
 
 import numpy as np
 from pydantic import BaseModel, Field, model_validator
+
+
+class ObjectiveKwargs(TypedDict, total=False):
+    numerical_aperture: float
+    coverslip_ri: float
+    coverslip_ri_spec: float
+    immersion_medium_ri: float
+    immersion_medium_ri_spec: float
+    specimen_ri: float
+    working_distance: float
+    coverslip_thickness: float
+    coverslip_thickness_spec: float
+    magnification: float
 
 
 class ObjectiveLens(BaseModel):
