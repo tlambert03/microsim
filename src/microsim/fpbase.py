@@ -1,6 +1,6 @@
 import json
 from functools import cache
-from typing import Any
+from typing import Any, Literal
 from urllib.request import Request, urlopen
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -8,13 +8,15 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 __all__ = ["get_fluorophore", "get_microscope", "FPbaseFluorophore", "FPbaseMicroscope"]
 
 FPBASE_URL = "https://www.fpbase.org/graphql/"
-
+SpectrumType = Literal[
+    "A_2P", "BM", "BP", "BS", "BX", "EM", "EX", "LP", "PD", "QE", "AB"
+]
 
 ### Models ###
 
 
 class Spectrum(BaseModel):
-    subtype: str
+    subtype: SpectrumType
     data: list[tuple[float, float]] = Field(..., repr=False)
 
 
@@ -31,18 +33,29 @@ class State(BaseModel):
     qy: float
     spectra: list[Spectrum]
 
+    @property
+    def excitation_spectrum(self) -> Spectrum | None:
+        spect = next((s for s in self.spectra if s.subtype == "EX"), None)
+        if not spect:
+            spect = next((s for s in self.spectra if s.subtype == "AB"), None)
+        return spect
+
+    @property
+    def emission_spectrum(self) -> Spectrum | None:
+        return next((s for s in self.spectra if s.subtype == "EM"), None)
+
 
 class FPbaseFluorophore(BaseModel):
     name: str
     id: str
-    states: list[State]
+    states: list[State] = Field(default_factory=list)
     defaultState: int | None = None
 
     @model_validator(mode="before")
     @classmethod
     def _v_model(cls, v: Any) -> Any:
         if isinstance(v, dict):
-            out = {"id": v.get("id", ""), "name": v.pop("name", "")}
+            out = dict(v)
             if "states" not in v and "exMax" in v:
                 out["states"] = [State(**v)]
             return out
