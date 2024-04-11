@@ -94,7 +94,9 @@ class Simulation(BaseModel):
         self,
         optical_image: "DataArray | None" = None,
         *,
-        with_noise: bool = True,
+        photons_pp_ps_max: int = 2000,
+        exposure_ms: float = 100,
+        with_detector_noise: bool = True,
         channel_idx: int = 0,
     ) -> "DataArray":
         if optical_image is None:
@@ -102,10 +104,11 @@ class Simulation(BaseModel):
         image = optical_image
         if self.output_space is not None:
             image = self.output_space.rescale(image)
-        if self.detector is not None and with_noise:
-            max_photons_pp_ps = 2000
-            photons = image.data * max_photons_pp_ps / self._xp.max(image)
-            gray_values = self.detector.render(photons, exposure=0.2, xp=self._xp)
+        if self.detector is not None and with_detector_noise:
+            photon_flux = image.data * photons_pp_ps_max / self._xp.max(image)
+            gray_values = self.detector.render(
+                photon_flux, exposure_ms=exposure_ms, xp=self._xp
+            )
             image = DataArray(gray_values, coords=image.coords, attrs=image.attrs)
         return image
 

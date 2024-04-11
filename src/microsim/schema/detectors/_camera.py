@@ -1,26 +1,32 @@
+from typing import Annotated
+
 import numpy as np
 import numpy.typing as npt
+from annotated_types import Ge, Interval
 from pydantic import BaseModel, Field
 from scipy import stats
 
 from microsim._data_array import ArrayProtocol
 from microsim.schema.backend import NumpyAPI
 
+PositiveFloat = Annotated[float, Ge(0)]
+PositiveInt = Annotated[int, Ge(0)]
+
 
 class Camera(BaseModel):
-    photodiode_size: float
-    qe: float  # TODO: spectrum
-    full_well: int
+    read_noise: PositiveFloat = 8  # as function of readout rate?
+    qe: Annotated[float, Interval(ge=0, le=1)] = 1  # TODO: spectrum
+    full_well: int = 18_000
     # TODO: serial register fullwell?
-    dark_current: float = Field(..., description="e/pix/sec")
-    clock_induced_charge: float
-    read_noise: float  # as function of readout rate?
-    bit_depth: int
-    offset: int
-    gain: float = 1
-    readout_rate: float = Field(..., description="MHz")
-    npixels_h: int = 1000
-    npixels_v: int = 1000
+    dark_current: PositiveFloat = Field(0.001, description="e/pix/sec")
+    clock_induced_charge: PositiveFloat = Field(0, description="e/pix/sec")
+    bit_depth: PositiveInt = 12
+    offset: int = 100
+    gain: PositiveFloat = 1
+    readout_rate: PositiveFloat = Field(1, description="MHz")
+    # npixels_h: int = 1000
+    # npixels_v: int = 1000
+    # photodiode_size: float = 6.5
 
     # binning?  or keep in simulate
 
@@ -34,7 +40,7 @@ class Camera(BaseModel):
     def render(
         self,
         image: ArrayProtocol,
-        exposure: float = 100,
+        exposure_ms: float = 100,
         binning: int = 1,
         add_poisson: bool = True,
         xp: NumpyAPI | None = None,
@@ -45,8 +51,8 @@ class Camera(BaseModel):
         ----------
         image : DataArray
             array where each element represents photons / second
-        exposure : float, optional
-            Exposure time, by default 100
+        exposure_ms : float, optional
+            Exposure time in milliseconds, by default 100
         binning : int, optional
             Binning to apply, by default 1
         add_poisson : bool, optional
@@ -57,7 +63,12 @@ class Camera(BaseModel):
         from microsim.simulate import simulate_camera
 
         return simulate_camera(
-            self, image, exposure, binning=binning, add_poisson=add_poisson, xp=xp
+            camera=self,
+            image=image,
+            exposure_ms=exposure_ms,
+            binning=binning,
+            add_poisson=add_poisson,
+            xp=xp,
         )
 
     @property

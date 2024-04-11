@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 def simulate_camera(
     camera: Camera,
     image: ArrayProtocol,
-    exposure: float = 0.1,
+    exposure_ms: float = 100,
     binning: int = 1,
     add_poisson: bool = True,
     xp: NumpyAPI | None = None,
@@ -31,8 +31,8 @@ def simulate_camera(
         camera objects
     image : DataArray
         array where each element represents photons / second
-    exposure : float
-        exposure time in seconds
+    exposure_ms : float
+        exposure time in milliseconds
     binning: int
         camera binning
     add_poisson: bool
@@ -47,7 +47,8 @@ def simulate_camera(
     """
     xp = NumpyAPI.create(xp)
 
-    incident_photons = image * exposure
+    exposure_s = exposure_ms / 1000
+    incident_photons = image * exposure_s
 
     # sample poisson noise
     if add_poisson:
@@ -55,7 +56,7 @@ def simulate_camera(
 
     # dark current
     thermal_electrons = xp.stats.poisson.rvs(
-        camera.dark_current * exposure + camera.clock_induced_charge,
+        camera.dark_current * exposure_s + camera.clock_induced_charge,
         size=detected_photons.shape,
     )
     total_electrons = detected_photons + thermal_electrons
