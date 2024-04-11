@@ -22,9 +22,6 @@ These are not installed by default, see the
 [jax](https://jax.readthedocs.io/en/latest/installation.html)
 or [cupy](https://docs.cupy.dev/en/stable/install.html) installation instructions.
 
-```bash
-
-
 ## Usage
 
 Construct and run a
