@@ -1,11 +1,10 @@
-from collections.abc import Mapping, Sequence
-from typing import Any
+from collections.abc import Sequence
 
 import numpy as np
 import numpy.typing as npt
 
 from microsim.schema.backend import NumpyAPI
-from microsim.schema.lens import ObjectiveLens
+from microsim.schema.lens import ObjectiveKwargs, ObjectiveLens
 
 
 def simpson(
@@ -72,12 +71,12 @@ def vectorial_rz(
     pos: tuple[float, float, float] = (0, 0, 0),
     dxy: float = 0.04,
     wvl: float = 0.6,
-    params: Mapping | None = None,
+    objective_params: ObjectiveKwargs | None = None,
     sf: int = 3,
     xp: NumpyAPI | None = None,
 ) -> npt.NDArray:
     xp = NumpyAPI.create(xp)
-    p = ObjectiveLens(**(params or {}))
+    p = ObjectiveLens(**(objective_params or {}))
 
     wave_num = 2 * np.pi / (wvl * 1e-6)
 
@@ -167,7 +166,7 @@ def vectorial_psf(
     pos: tuple[float, float, float] = (0, 0, 0),
     dxy: float = 0.05,
     wvl: float = 0.6,
-    params: Mapping | None = None,
+    objective_params: ObjectiveKwargs | None = None,
     sf: int = 3,
     normalize: bool = True,
     xp: NumpyAPI | None = None,
@@ -175,7 +174,16 @@ def vectorial_psf(
     xp = NumpyAPI.create(xp)
     zv = xp.asarray(zv * 1e-6)  # convert to meters
     ny = ny or nx
-    rz = vectorial_rz(zv, np.maximum(ny, nx), pos, dxy, wvl, params, sf, xp=xp)
+    rz = vectorial_rz(
+        zv,
+        np.maximum(ny, nx),
+        pos,
+        dxy,
+        wvl,
+        objective_params=objective_params,
+        sf=sf,
+        xp=xp,
+    )
     _psf = rz_to_xyz(rz, (ny, nx), sf, off=xp.asarray(pos[:2]) / (dxy * 1e-6))
     if normalize:
         _psf /= xp.max(_psf)
@@ -187,13 +195,36 @@ def _centered_zv(nz: int, dz: float, pz: float = 0) -> npt.NDArray:
     return np.linspace(-lim + pz, lim + pz, nz)
 
 
-def vectorial_psf_centered(nz: int, dz: float = 0.05, **kwargs: Any) -> npt.NDArray:
+def vectorial_psf_centered(
+    nz: int,
+    dz: float = 0.05,
+    pz: float = 0,
+    nx: int = 31,
+    ny: int | None = None,
+    pos: tuple[float, float, float] = (0, 0, 0),
+    dxy: float = 0.05,
+    wvl: float = 0.6,
+    objective_params: ObjectiveKwargs | None = None,
+    sf: int = 3,
+    normalize: bool = True,
+    xp: NumpyAPI | None = None,
+) -> npt.NDArray:
     """Compute a vectorial model of the microscope point spread function.
 
     The point source is always in the center of the output volume.
     """
-    zv = _centered_zv(nz, dz, kwargs.get("pz", 0))
-    return vectorial_psf(zv, **kwargs)
+    return vectorial_psf(
+        zv=_centered_zv(nz, dz, pz),
+        nx=nx,
+        ny=ny,
+        pos=pos,
+        dxy=dxy,
+        wvl=wvl,
+        objective_params=objective_params,
+        sf=sf,
+        normalize=normalize,
+        xp=xp,
+    )
 
 
 # if __name__ == "__main__":

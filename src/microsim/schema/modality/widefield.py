@@ -32,7 +32,7 @@ class Widefield(BaseModel):
             nx=truth_space.shape[-1] + 1,
             dz=truth_space.scale[-3],
             dxy=truth_space.scale[-1],
-            params={"NA": objective_lens.numerical_aperture},
+            objective_params={"numerical_aperture": objective_lens.numerical_aperture},
         )
 
         em_psf = xp.asarray(em_psf)

@@ -27,17 +27,20 @@ class Confocal(BaseModel):
 
         xp = xp or NumpyAPI()
 
-        # FIXME, this is probably derivable from truth.coords
         truth_space = cast("Space", truth.attrs["space"])
+        nz, ny, nx = truth.shape
+        dz, dy, dx = truth_space.scale
+        ex_wvl_um = channel.excitation.bandcenter * 1e-3
+        # FIXME, this is probably derivable from truth.coords
         psf = make_confocal_psf(
             ex_wvl_um=channel.excitation.bandcenter * 1e-3,
             em_wvl_um=channel.emission.bandcenter * 1e-3,
             pinhole_au=self.pinhole_au,
-            nz=truth_space.shape[-3] + 1,
-            nx=truth_space.shape[-1] + 1,
-            dz=truth_space.scale[-3],
-            dxy=truth_space.scale[-1],
-            params={"NA": objective_lens.numerical_aperture},
+            nz=nz // 2 + 1,
+            nx=nx // 8 + 1,
+            dz=dz,
+            dxy=dx,
+            objective_params={"numerical_aperture": objective_lens.numerical_aperture},
             xp=xp,
         )
         psf = xp.asarray(psf)

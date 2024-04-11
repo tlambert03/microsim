@@ -231,7 +231,7 @@ def make_confocal_psf(
     """
     xp = NumpyAPI.create(xp)
     kwargs.pop("wvl", None)
-    params: dict = kwargs.setdefault("params", {})
+    params: dict = kwargs.setdefault("objective_params", {})
     na = params.setdefault("NA", 1.4)
     dxy = kwargs.setdefault("dxy", 0.01)
 
