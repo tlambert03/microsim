@@ -1,10 +1,16 @@
 import json
 from functools import cache
+from typing import Any
 from urllib.request import Request, urlopen
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
+
+__all__ = ["get_fluorophore", "get_microscope", "FPbaseFluorophore", "FPbaseMicroscope"]
 
 FPBASE_URL = "https://www.fpbase.org/graphql/"
+
+
+### Models ###
 
 
 class Spectrum(BaseModel):
@@ -15,6 +21,46 @@ class Spectrum(BaseModel):
 class SpectrumOwner(BaseModel):
     name: str
     spectrum: Spectrum
+
+
+class State(BaseModel):
+    id: int
+    exMax: float
+    emMax: float
+    extCoeff: float
+    qy: float
+    spectra: list[Spectrum]
+
+
+class FPbaseFluorophore(BaseModel):
+    name: str
+    id: str
+    states: list[State]
+    defaultState: int | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _v_model(cls, v: Any) -> Any:
+        if isinstance(v, dict):
+            out = {"id": v.get("id", ""), "name": v.pop("name", "")}
+            if "states" not in v and "exMax" in v:
+                out["states"] = [State(**v)]
+            return out
+        return v
+
+    @field_validator("defaultState", mode="before")
+    @classmethod
+    def _v_default_state(cls, v: Any) -> int:
+        if isinstance(v, dict) and "id" in v:
+            return int(v["id"])
+        return int(v)
+
+    @property
+    def default_state(self) -> State | None:
+        for state in self.states:
+            if state.id == self.defaultState:
+                return state
+        return next(iter(self.states), None)
 
 
 class OpticalConfig(BaseModel):
@@ -35,8 +81,27 @@ class MicroscopePayload(BaseModel):
     microscope: FPbaseMicroscope
 
 
-class GQLResponse(BaseModel):
+class MicroscopeResponse(BaseModel):
     data: MicroscopePayload
+
+
+class ProteinPayload(BaseModel):
+    protein: FPbaseFluorophore
+
+
+class ProteinResponse(BaseModel):
+    data: ProteinPayload
+
+
+class DyePayload(BaseModel):
+    dye: FPbaseFluorophore
+
+
+class DyeResponse(BaseModel):
+    data: DyePayload
+
+
+### Getter Functions ###
 
 
 @cache
@@ -48,18 +113,9 @@ def get_microscope(id: str) -> FPbaseMicroscope:
             name
             opticalConfigs {{
                 name
-                filters {{
-                    name
-                    spectrum {{ subtype data }}
-                }}
-                camera {{
-                    name
-                    spectrum {{ subtype data }}
-                }}
-                light {{
-                    name
-                    spectrum {{ subtype data }}
-                }}
+                filters {{ name spectrum {{ subtype data }} }}
+                camera {{ name spectrum {{ subtype data }} }}
+                light {{ name spectrum {{ subtype data }} }}
                 laser
             }}
         }}
@@ -71,31 +127,97 @@ def get_microscope(id: str) -> FPbaseMicroscope:
     with urlopen(req) as response:
         if response.status != 200:
             raise RuntimeError(f"HTTP status {response.status}")
-        resp = GQLResponse.model_validate_json(response.read().decode("utf-8"))
+        resp = MicroscopeResponse.model_validate_json(response.read())
         return resp.data.microscope
 
 
-# ALL AVAILABLE SPECTRA
-# {
-# 	spectra{
-#     id
-#     subtype
-#     category
-#     owner{
-#       name
-#       id
-#     }
-#   }
-# }
+@cache
+def fluorophore_ids() -> dict:
+    query = "{ dyes { id name slug } proteins { id name slug } }"
+    headers = {"Content-Type": "application/json", "User-Agent": "microsim"}
+    query_data = json.dumps({"query": query}).encode("utf-8")
+    req = Request(FPBASE_URL, data=query_data, headers=headers)
+    with urlopen(req) as response:
+        if response.status != 200:
+            raise RuntimeError(f"HTTP status {response.status}")
+        data: dict[str, list[dict[str, str]]] = json.load(response)["data"]
 
-# ALL AVAILABLE DYES AND PROTEINS
-# {
-#   dyes {
-#     id
-#     name
-#   }
-#   proteins{
-#     id
-#     name
-#   }
-# }
+    lookup: dict[str, dict[str, str]] = {}
+    for key in ["dyes", "proteins"]:
+        for item in data[key]:
+            lookup[item["name"].lower()] = {"id": item["id"], "type": key[0]}
+            lookup[item["slug"]] = {"id": item["id"], "type": key[0]}
+            if key == "proteins":
+                lookup[item["id"]] = {"id": item["id"], "type": key[0]}
+    return lookup
+
+
+@cache
+def get_fluorophore(id: str) -> FPbaseFluorophore:
+    try:
+        fluor_info = fluorophore_ids()[id.lower()]
+    except KeyError as e:
+        raise ValueError(f"Fluorophore {id!r} not found") from e
+
+    if fluor_info["type"] == "d":
+        return get_dye_by_id(fluor_info["id"])
+    elif fluor_info["type"] == "p":
+        return get_protein_by_id(fluor_info["id"])
+    raise ValueError(f"Invalid fluorophore type {fluor_info['type']!r}")
+
+
+@cache
+def get_dye_by_id(id: str | int) -> FPbaseFluorophore:
+    query = """
+    {{
+        dye(id: {id}) {{
+            name
+            id
+            exMax
+            emMax
+            extCoeff
+            qy
+            spectra {{ subtype data }}
+        }}
+    }}
+    """
+    headers = {"Content-Type": "application/json", "User-Agent": "microsim"}
+    data = json.dumps({"query": query.format(id=id)}).encode("utf-8")
+    req = Request(FPBASE_URL, data=data, headers=headers)
+    with urlopen(req) as response:
+        if response.status != 200:
+            raise RuntimeError(f"HTTP status {response.status}")
+        resp = DyeResponse.model_validate_json(response.read())
+    return resp.data.dye
+
+
+@cache
+def get_protein_by_id(id: str) -> FPbaseFluorophore:
+    query = """
+    {{
+        protein(id: "{id}") {{
+            name
+            id
+            states {{
+                id
+                name
+                exMax
+                emMax
+                extCoeff
+                qy
+                spectra {{ subtype data }}
+            }}
+            defaultState {{
+                id
+            }}
+        }}
+    }}
+    """
+    headers = {"Content-Type": "application/json", "User-Agent": "microsim"}
+    data = json.dumps({"query": query.format(id=id)}).encode("utf-8")
+    req = Request(FPBASE_URL, data=data, headers=headers)
+    with urlopen(req) as response:
+        if response.status != 200:
+            raise RuntimeError(f"HTTP status {response.status}")
+        resp = ProteinResponse.model_validate_json(response.read())
+    return resp.data.protein
