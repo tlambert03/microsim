@@ -49,6 +49,8 @@ def simulate_camera(
 
     exposure_s = exposure_ms / 1000
     incident_photons = image * exposure_s
+    # restrict to positive values
+    incident_photons = xp.maximum(incident_photons, 0)
 
     # sample poisson noise
     if add_poisson:

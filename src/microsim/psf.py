@@ -1,10 +1,22 @@
-from collections.abc import Sequence
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 import numpy as np
 import numpy.typing as npt
+import tqdm
 
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.lens import ObjectiveKwargs, ObjectiveLens
+
+from ._data_array import ArrayProtocol
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from microsim._data_array import ArrayProtocol
+    from microsim.schema.optical_config import OpticalConfig
+    from microsim.schema.space import SpaceProtocol
 
 
 def simpson(
@@ -65,19 +77,26 @@ def simpson(
     return xp.real(sum_I0**2 + 2.0 * sum_I1**2 + sum_I2**2)  # type: ignore
 
 
+def _cast_objective(objective: ObjectiveKwargs | ObjectiveLens | None) -> ObjectiveLens:
+    if isinstance(objective, ObjectiveLens):
+        return objective
+    if objective is None or isinstance(objective, dict):
+        return ObjectiveLens.model_validate(objective or {})
+    raise TypeError(f"Expected ObjectiveLens, got {type(objective)}")
+
+
 def vectorial_rz(
     zv: npt.NDArray,
     nx: int = 51,
     pos: tuple[float, float, float] = (0, 0, 0),
     dxy: float = 0.04,
     wvl: float = 0.6,
-    objective_params: ObjectiveKwargs | None = None,
+    objective: ObjectiveKwargs | ObjectiveLens | None = None,
     sf: int = 3,
     xp: NumpyAPI | None = None,
 ) -> npt.NDArray:
     xp = NumpyAPI.create(xp)
-    p = ObjectiveLens(**(objective_params or {}))
-
+    p = _cast_objective(objective)
     wave_num = 2 * np.pi / (wvl * 1e-6)
 
     xpos, ypos, zpos = pos
@@ -104,7 +123,7 @@ def vectorial_rz(
 
     step = p.half_angle / nSamples
     theta = xp.arange(1, nSamples + 1) * step
-    simpson_integral = simpson(p, theta, constJ, zv, ci, zpos, wave_num)
+    simpson_integral = simpson(p, theta, constJ, zv, ci, zpos, wave_num, xp=xp)
     return 8.0 * np.pi / 3.0 * simpson_integral * (step / ud) ** 2
 
 
@@ -166,7 +185,7 @@ def vectorial_psf(
     pos: tuple[float, float, float] = (0, 0, 0),
     dxy: float = 0.05,
     wvl: float = 0.6,
-    objective_params: ObjectiveKwargs | None = None,
+    objective: ObjectiveKwargs | ObjectiveLens | None = None,
     sf: int = 3,
     normalize: bool = True,
     xp: NumpyAPI | None = None,
@@ -175,14 +194,7 @@ def vectorial_psf(
     zv = xp.asarray(zv * 1e-6)  # convert to meters
     ny = ny or nx
     rz = vectorial_rz(
-        zv,
-        np.maximum(ny, nx),
-        pos,
-        dxy,
-        wvl,
-        objective_params=objective_params,
-        sf=sf,
-        xp=xp,
+        zv, np.maximum(ny, nx), pos, dxy, wvl, objective=objective, sf=sf, xp=xp
     )
     _psf = rz_to_xyz(rz, (ny, nx), sf, off=xp.asarray(pos[:2]) / (dxy * 1e-6))
     if normalize:
@@ -204,7 +216,7 @@ def vectorial_psf_centered(
     pos: tuple[float, float, float] = (0, 0, 0),
     dxy: float = 0.05,
     wvl: float = 0.6,
-    objective_params: ObjectiveKwargs | None = None,
+    objective: ObjectiveKwargs | ObjectiveLens | None = None,
     sf: int = 3,
     normalize: bool = True,
     xp: NumpyAPI | None = None,
@@ -220,20 +232,150 @@ def vectorial_psf_centered(
         pos=pos,
         dxy=dxy,
         wvl=wvl,
-        objective_params=objective_params,
+        objective=objective,
         sf=sf,
         normalize=normalize,
         xp=xp,
     )
 
 
-# if __name__ == "__main__":
-#     zv = np.linspace(-3, 3, 61)
-#     from time import perf_counter
+def make_confocal_psf(
+    nz: int,
+    ex_wvl_um: float = 0.475,
+    em_wvl_um: float = 0.525,
+    pinhole_au: float = 1.0,
+    dz: float = 0.05,
+    pz: float = 0,
+    nx: int = 31,
+    ny: int | None = None,
+    pos: tuple[float, float, float] = (0, 0, 0),
+    dxy: float = 0.05,
+    objective: ObjectiveKwargs | ObjectiveLens | None = None,
+    sf: int = 3,
+    normalize: bool = True,
+    xp: NumpyAPI | None = None,
+) -> np.ndarray:
+    """Create a confocal PSF.
 
-#     t0 = perf_counter()
-#     psf = vectorial_psf(zv, nx=512)
-#     t1 = perf_counter()
-#     print(psf.shape)
-#     print(t1 - t0)
-#     assert np.allclose(np.load("out.npy"), psf, atol=0.1)
+    This function creates a confocal PSF by multiplying the excitation PSF with
+    the emission PSF convolved with a pinhole mask.
+
+    All extra keyword arguments are passed to `vectorial_psf_centered`.
+    """
+    xp = NumpyAPI.create(xp)
+
+    objective = _cast_objective(objective)
+    ex_psf = vectorial_psf_centered(
+        nz=nz,
+        wvl=ex_wvl_um,
+        dz=dz,
+        pz=pz,
+        nx=nx,
+        ny=ny,
+        pos=pos,
+        dxy=dxy,
+        objective=objective,
+        xp=xp,
+        sf=sf,
+        normalize=normalize,
+    )
+    em_psf = vectorial_psf_centered(
+        nz=nz,
+        wvl=em_wvl_um,
+        dz=dz,
+        pz=pz,
+        nx=nx,
+        ny=ny,
+        pos=pos,
+        dxy=dxy,
+        objective=objective,
+        xp=xp,
+        sf=sf,
+        normalize=normalize,
+    )
+
+    # The effective emission PSF is the regular emission PSF convolved with the
+    # pinhole mask. The pinhole mask is a disk with diameter equal to the pinhole
+    # size in AU, converted to pixels.
+    pinhole = _pinhole_mask(
+        nxy=ex_psf.shape[-1],
+        pinhole_au=pinhole_au,
+        wvl=em_wvl_um,
+        na=objective.numerical_aperture,
+        dxy=dxy,
+        xp=xp,
+    )
+    pinhole = xp.asarray(pinhole)
+
+    eff_em_psf = xp.empty_like(em_psf)
+    for i in tqdm.trange(len(em_psf), desc="convolving em_psf with pinhole..."):
+        plane = xp.fftconvolve(xp.asarray(em_psf[i]), pinhole, mode="same")
+        eff_em_psf = xp._array_assign(eff_em_psf, i, plane)
+
+    # The final PSF is the excitation PSF multiplied by the effective emission PSF.
+    return xp.asarray(ex_psf) * eff_em_psf  # type: ignore
+
+
+def _pinhole_mask(
+    nxy: int,
+    pinhole_au: float,
+    wvl: float,
+    na: float,
+    dxy: float,
+    xp: NumpyAPI | None = None,
+) -> npt.NDArray:
+    """Create a 2D circular pinhole mask of specified `pinhole_au`."""
+    xp = NumpyAPI.create(xp)
+
+    pinhole_size = pinhole_au * 0.61 * wvl / na
+    pinhole_px = pinhole_size / dxy
+
+    x = xp.arange(nxy) - nxy // 2
+    xx, yy = xp.meshgrid(x, x)
+    r = xp.sqrt(xx**2 + yy**2)
+    return (r <= pinhole_px).astype(int)  # type: ignore
+
+
+def make_psf(
+    space: SpaceProtocol,
+    channel: OpticalConfig,
+    objective: ObjectiveLens,
+    pinhole_au: float | None = None,
+    max_au_relative: float | None = None,
+    xp: NumpyAPI | None = None,
+) -> ArrayProtocol:
+    xp = NumpyAPI.create(xp)
+    nz, _ny, nx = space.shape
+    dz, _dy, dx = space.scale
+    ex_wvl_um = channel.excitation.bandcenter * 1e-3
+    em_wvl_um = channel.emission.bandcenter * 1e-3
+    objective = _cast_objective(objective)
+
+    # now restrict nx to no more than max_au_relative
+    if max_au_relative is not None:
+        airy_radius = 0.61 * ex_wvl_um / objective.numerical_aperture
+        n_pix_per_airy_radius = airy_radius / dx
+        max_nx = int(n_pix_per_airy_radius * max_au_relative * 2)
+        nx = min(nx, max_nx)
+        # if even make odd
+        if nx % 2 == 0:
+            nx += 1
+
+    if pinhole_au is None:
+        psf = vectorial_psf_centered(
+            wvl=em_wvl_um, nz=nz + 1, nx=nx + 1, dz=dz, dxy=dx, objective=objective
+        )
+    else:
+        psf = make_confocal_psf(
+            nz=nz,
+            ex_wvl_um=ex_wvl_um,
+            em_wvl_um=em_wvl_um,
+            pinhole_au=pinhole_au,
+            nx=nx,
+            dz=dz,
+            dxy=dx,
+            objective=objective,
+            xp=xp,
+        )
+
+    return xp.asarray(psf)  # type: ignore
