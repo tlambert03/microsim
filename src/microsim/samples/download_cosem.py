@@ -7,7 +7,7 @@ from dask.diagnostics import ProgressBar
 from dask.distributed import Client
 
 from microsim.samples import _cosem
-from microsim.simulate._camera import bin
+from microsim.schema.detectors._simulate import bin
 
 datasets = ["jrc_hela-2"]
 sources = [

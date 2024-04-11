@@ -1,4 +1,5 @@
 import warnings
+from collections.abc import Sequence
 from contextlib import nullcontext, suppress
 from types import ModuleType
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
@@ -18,10 +19,11 @@ ArrT = TypeVar("ArrT", bound=npt.ArrayLike)
 class NumpyAPI:
     @classmethod
     def create(cls, backend: "BackendName | NumpyAPI | None") -> "NumpyAPI":
-        if isinstance(backend, cls):
+        if isinstance(backend, NumpyAPI):
             return backend
         if not backend:
             backend = backend or "auto"
+        backend = backend.lower()  # type: ignore
 
         ctx = suppress(ImportError) if backend == "auto" else nullcontext()
         if backend in ("cupy", "auto"):
@@ -47,8 +49,16 @@ class NumpyAPI:
         self.j1 = special.j1
         self.map_coordinates = map_coordinates
 
+    def set_random_seed(self, seed: int) -> None:
+        self.xp.random.seed(seed)
+
     def __getattr__(self, name: str) -> Any:
         return getattr(self.xp, name)
+
+    def poisson_rvs(
+        self, lam: npt.ArrayLike, shape: Sequence[int] | None = None
+    ) -> npt.NDArray:
+        return self.stats.poisson.rvs(lam, size=shape)  # type: ignore
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
@@ -72,6 +82,7 @@ class NumpyAPI:
 class JaxAPI(NumpyAPI):
     def __init__(self) -> None:
         import jax
+        from jax.random import PRNGKey
         from jax.scipy import signal, stats
         from jax.scipy.ndimage import map_coordinates
 
@@ -83,10 +94,30 @@ class JaxAPI(NumpyAPI):
         self.map_coordinates = map_coordinates
         self.j0 = j0
         self.j1 = j1
+        self._key = PRNGKey(0)
 
     @property
-    def random(self) -> ModuleType:
+    def random(self) -> ModuleType:  # TODO
         return np.random
+
+    def set_random_seed(self, seed: int) -> None:
+        from jax.random import PRNGKey
+
+        self._key = PRNGKey(seed)
+        # FIXME
+        # tricky... we actually still do use the numpy random seed in addition to
+        # the jax key.  It would be nice to get rid of this line while keeping the
+        # tests passing.
+        np.random.seed(seed)
+
+    def poisson_rvs(  # type: ignore
+        self,
+        lam: "jax.Array | float",
+        shape: Sequence[int] | None = None,
+    ) -> "jax.Array":
+        from jax.random import poisson
+
+        return poisson(self._key, lam, shape=shape)
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"

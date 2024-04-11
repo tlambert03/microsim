@@ -116,7 +116,6 @@ class SIMIllum2D(BaseModel):
         _order = self.order.upper() + "YX"
         if _order != "APZYX":
             out = np.transpose(out, tuple("APZYX".index(i) for i in _order))
-        print(out.shape, "out")
         return out
 
     def _render_plane(

@@ -20,6 +20,7 @@ def sim1() -> ms.Simulation:
         truth_space=TRUTH_SPACE,
         output_space={"downscale": 4},
         sample=ms.Sample(labels=[GREEN_MATSLINES]),
+        detector=ms.CameraCCD(qe=0.82, read_noise=6, bit_depth=12),
         objective_lens=NA1_4,
         channels=[FITC],
     )

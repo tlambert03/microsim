@@ -54,12 +54,12 @@ def simulate_camera(
 
     # sample poisson noise
     if add_poisson:
-        detected_photons = xp.stats.poisson.rvs(incident_photons * camera.qe)
+        detected_photons = xp.poisson_rvs(incident_photons * camera.qe)
 
     # dark current
-    thermal_electrons = xp.stats.poisson.rvs(
+    thermal_electrons = xp.poisson_rvs(
         camera.dark_current * exposure_s + camera.clock_induced_charge,
-        size=detected_photons.shape,
+        shape=detected_photons.shape,
     )
     total_electrons = detected_photons + thermal_electrons
 

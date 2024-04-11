@@ -60,7 +60,7 @@ class Camera(BaseModel):
         xp: NumpyAPI | None
             Numpy API backend
         """
-        from microsim.simulate import simulate_camera
+        from microsim.schema.detectors import simulate_camera
 
         return simulate_camera(
             camera=self,

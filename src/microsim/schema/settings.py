@@ -25,5 +25,5 @@ class Settings(BaseSettings):
     def backend_module(self) -> NumpyAPI:
         backend = NumpyAPI.create(self.np_backend)
         if self.random_seed is not None:
-            backend.random.seed(self.random_seed)
+            backend.set_random_seed(self.random_seed)
         return backend
