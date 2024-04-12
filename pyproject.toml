@@ -49,7 +49,7 @@ dependencies = [
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
-cosem = ["xarray-datatree", "dask", "imageio", "supabase"]
+cosem = ["xarray-datatree", "s3fs", "dask", "imageio", "supabase"]
 test = [
     "microsim[cosem]",
     "pytest",
