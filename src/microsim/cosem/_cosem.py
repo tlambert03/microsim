@@ -1,3 +1,5 @@
+"""Module slated for removal. see ._dataset instead."""
+
 from __future__ import annotations
 
 import json
@@ -7,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.request import urlopen
 
-from fibsem_tools import io
+from fibsem_tools import read_xarray
 from typing_extensions import TypedDict
 
 try:
@@ -82,7 +84,7 @@ class CosemDataset:
         self.id = id
 
     def read_xarray(self):
-        io.read_xarray()
+        read_xarray()
 
     @property
     def name(self) -> str:
@@ -128,9 +130,7 @@ class CosemDataset:
                 f"Can only read n5 sources, (not {source['format']!r})"
             )
 
-        return io.read_xarray(
-            f"{source['url']}/s{level}", storage_options={"anon": True}
-        )
+        return read_xarray(f"{source['url']}/s{level}", storage_options={"anon": True})
 
     def view(self, name: str) -> DatasetView:
         for d in self.views:
@@ -271,7 +271,7 @@ def _crop_around(
 
 def read_dataset(dataset: str, source: str, level: int = 0) -> xr.Dataset:
     uri = f"{COSEM_S3}/{dataset}/{dataset}.n5/{source}/s{level}"
-    return io.read_xarray(uri, storage_options={"anon": True})
+    return read_xarray(uri, storage_options={"anon": True})
 
 
 SAMPLES = {
