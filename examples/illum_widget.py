@@ -1,7 +1,8 @@
 import napari
+import napari.types
 from magicgui import magicgui
 
-from microsim.models._illum import structillum_2d
+from microsim.illum._sim import structillum_2d
 
 v = napari.Viewer()
 kwargs = {
@@ -18,6 +19,7 @@ kwargs = {
     "spotsize": {"max": 0.1, "min": 0.001, "step": 0.001},
 }
 
+structillum_2d.__annotations__["return"] = napari.types.ImageData
 w = magicgui(structillum_2d, **kwargs)
 v.window.add_dock_widget(w)
 napari.run()
