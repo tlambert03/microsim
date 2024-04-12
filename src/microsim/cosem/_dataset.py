@@ -136,21 +136,24 @@ class CosemDataset(BaseModel):
 
     @classmethod
     def names(cls) -> list[str]:
+        """Return list of all available dataset names."""
         return list(fetch_datasets())
 
     @classmethod
-    def get(cls, name: str) -> "CosemDataset":
+    def fetch(cls, name: str) -> "CosemDataset":
+        """Fetch dataset with a specific name."""
         return fetch_datasets()[name]
 
-    def read_image(self, key: str, level: int = 0) -> "DataTree":
+    def read_image(self, image_key: str, level: int = 0) -> "DataTree":
+        """Return DataTree for `image_key`."""
         try:
-            image = next(i for i in self.images if i.name == key)
+            image = next(i for i in self.images if i.name == image_key)
         except StopIteration as e:
-            raise KeyError(f"Image {key!r} not found in {self.name!r}") from e
+            raise KeyError(f"Image {image_key!r} not found in {self.name!r}") from e
         return image.read()
 
 
 if __name__ == "__main__":
     from rich import print
 
-    print(CosemDataset.get("jrc_hela-2").thumbnail)
+    print(CosemDataset.fetch("jrc_hela-2").thumbnail)
