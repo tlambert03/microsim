@@ -49,7 +49,15 @@ dependencies = [
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
-test = ["pytest", "pytest-cov", "zarr", "tifffile", "jax[cpu]"]
+cosem = ["xarray", "datatree", "dask", "imageio", "supabase"]
+test = [
+    "microsim[cosem]",
+    "pytest",
+    "pytest-cov",
+    "zarr",
+    "tifffile",
+    "jax[cpu]",
+]
 dev = [
     "microsim[test]",
     "ipython",
