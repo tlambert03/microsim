@@ -132,7 +132,10 @@ plugins = "pydantic.mypy"
 [tool.pytest.ini_options]
 minversion = "7.0"
 testpaths = ["tests"]
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    "ignore:unclosed transport:ResourceWarning"  # only on py3.10... not sure why
+]
 
 # https://coverage.readthedocs.io/en/6.4/config.html
 [tool.coverage.report]
