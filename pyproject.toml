@@ -49,7 +49,15 @@ dependencies = [
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
-test = ["pytest", "pytest-cov", "zarr", "tifffile", "jax[cpu]"]
+cosem = ["xarray-datatree", "s3fs", "dask", "imageio", "supabase"]
+test = [
+    "microsim[cosem]",
+    "pytest",
+    "pytest-cov",
+    "zarr",
+    "tifffile",
+    "jax[cpu]",
+]
 dev = [
     "microsim[test]",
     "ipython",
@@ -124,7 +132,10 @@ plugins = "pydantic.mypy"
 [tool.pytest.ini_options]
 minversion = "7.0"
 testpaths = ["tests"]
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    "ignore:unclosed transport:ResourceWarning"  # only on py3.10... not sure why
+]
 
 # https://coverage.readthedocs.io/en/6.4/config.html
 [tool.coverage.report]
