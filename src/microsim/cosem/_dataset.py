@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 @cache
 def _client() -> "Client":
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     try:
         from supabase import Client
     except ImportError as e:
@@ -32,7 +33,7 @@ def _client() -> "Client":
     return Client(url, key)
 
 
-DATASET_QUERY = """
+DATASETS_QUERY = """
 name,
 description,
 thumbnail_url,
@@ -67,17 +68,47 @@ images:image(
 )
 """.strip().replace("\n", "")
 
+VIEWS_QUERY = """
+name,
+dataset_name,
+description,
+thumbnail_url,
+position,
+scale,
+orientation,
+taxa:taxon(name, short_name),
+created_at,
+images:image(
+    name,
+    description,
+    url,
+    format,
+    grid_scale,
+    grid_translation,
+    grid_dims,
+    grid_units,
+    sample_type,
+    content_type
+)
+""".strip().replace("\n", "")
+
 
 @cache
 def fetch_datasets() -> dict[str, "CosemDataset"]:
     """Fetch all dataset metadata from the COSEM database."""
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    response = _client().from_("dataset").select(DATASET_QUERY).execute()
+    response = _client().from_("dataset").select(DATASETS_QUERY).execute()
     datasets: dict[str, CosemDataset] = {}
     for x in response.data:
         ds = CosemDataset.model_validate(x)
         datasets[ds.name] = ds
     return datasets
+
+
+@cache
+def fetch_views() -> list["CosemView"]:
+    """Fetch all view metadata from the COSEM database."""
+    response = _client().from_("view").select(VIEWS_QUERY).execute()
+    return [CosemView.model_validate(x) for x in response.data]
 
 
 # ------------------------ MODELS ------------------------
@@ -153,7 +184,24 @@ class CosemDataset(BaseModel):
         return image.read()
 
 
+class CosemTaxon(BaseModel): ...
+
+
+class CosemView(BaseModel):
+    name: str
+    dataset_name: str
+    description: str
+    thumbnail_url: str
+    position: list[float] | None
+    scale: float | None
+    orientation: str | list[int] | None
+    created_at: datetime.datetime
+    taxa: list[CosemTaxon]
+    images: list[CosemImage]
+
+
 if __name__ == "__main__":
     from rich import print
 
-    print(CosemDataset.fetch("jrc_hela-2").thumbnail)
+    # print(CosemDataset.fetch("jrc_hela-2").thumbnail)
+    print(fetch_views())
