@@ -45,6 +45,10 @@ class DataArray:
         return self.data.shape
 
     @property
+    def dtype(self) -> np.dtype:
+        return self.data.dtype
+
+    @property
     def sizes(self) -> MappingProxyType[str, int]:
         return MappingProxyType({k: len(v) for k, v in self.coords.items()})
 
