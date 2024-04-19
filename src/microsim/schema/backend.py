@@ -148,11 +148,13 @@ class CupyAPI(NumpyAPI):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            from cupyx.scipy import signal, stats
+            from cupyx.scipy import signal, stats, special
 
         self.xp = cupy
         self.signal = signal
         self.stats = stats
+        self.j0 = special.j0
+        self.j1 = special.j1
         self.map_coordinates = map_coordinates
 
     def fftconvolve(
