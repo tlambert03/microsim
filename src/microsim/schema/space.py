@@ -65,6 +65,10 @@ class _Space(BaseModel):
             for ax, sh, sc in zip(self.axes, self.shape, self.scale, strict=False)
         }
 
+    @property
+    def sizes(self: SpaceProtocol) -> dict[str, int]:
+        return dict(zip(self.axes, self.shape, strict=False))
+
 
 # class CoordsSpace(_Space):
 #     coords: Mapping[str, FloatArray]

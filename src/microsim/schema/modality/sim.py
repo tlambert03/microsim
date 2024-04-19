@@ -1,35 +1,33 @@
 from collections.abc import Iterable, Sequence
-from functools import lru_cache
+from functools import cache
 from itertools import product
-from typing import Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 import numpy as np
 import numpy.typing as npt
-import xarray as xr
+from annotated_types import Ge
 from numpy.typing import NDArray
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 from tqdm import tqdm
 
 from microsim._data_array import DataArray
+from microsim.schema.backend import NumpyAPI
 
-try:
-    import cupy as xp
-    from cupyx.scipy.ndimage import map_coordinates
-except ImportError:
-    from scipy.ndimage import map_coordinates
-
-    xp = np
+if TYPE_CHECKING:
+    from microsim.schema import ObjectiveLens, OpticalConfig, Settings
 
 
-class SIMIllum2D(BaseModel):
+class SIM2D(BaseModel):
     angles: Sequence[float] = [0, np.pi / 3, np.pi * 2 / 3]
     nphases: int = 3
     linespacing: float = 0.2035
     defocus: float = 0  # TODO: implement
-    spotsize: float = 0.035  # BFP spot size as fraction of NA
+    spotsize: Annotated[float, Ge(0)] = 0.035  # BFP spot size as fraction of NA
     nbeamlets: int = 31  # number of beamlets in each BFP spot
     ampcenter: float = 0
     order: str = "PZA"
+
+    _xp: NumpyAPI = PrivateAttr()
 
     @property
     def nangles(self) -> int:
@@ -54,7 +52,7 @@ class SIMIllum2D(BaseModel):
         wvl: float = 0.488,
     ) -> np.ndarray:
         """Return single axial SIM illumination plane."""
-        return structillum_2d(
+        return structillum_2d(  # type: ignore[no-any-return]
             nz=nz + 1,
             nx=nx,
             dz=dz,
@@ -66,28 +64,46 @@ class SIMIllum2D(BaseModel):
             ampcenter=self.ampcenter,
             nbeamlets=self.nbeamlets,
             spotsize=self.spotsize,
+            xp=self._xp,
         ).sum(0)[1:]
 
-    def render(self, space: DataArray) -> DataArray:
-        _dz = set(xp.round(xp.diff(space.coords.get("Z", [0, 0.1])), 8).tolist())
-        _dx = set(xp.round(xp.diff(space.coords["X"]), 8).tolist())
+    def render(
+        self,
+        truth: DataArray,
+        channel: "OpticalConfig",
+        objective_lens: "ObjectiveLens",
+        settings: "Settings",
+        xp: NumpyAPI | None = None,
+    ) -> DataArray:
+        self._xp = xp = NumpyAPI.create(xp)
+
+        space = truth.attrs["space"]
+        _dz = set(xp.round(xp.diff(truth.coords.get("Z", [0, 0.1])), 8).tolist())
+        _dx = set(xp.round(xp.diff(truth.coords["X"]), 8).tolist())
         if len(_dz) != 1:
             raise ValueError("Non-uniform spacing detected in Z")
         if len(_dx) != 1:
             raise ValueError("Non-uniform spacing detected in X")
-        dz = _dz.pop()
-        dx = _dx.pop()
-        nz = space.sizes.get("Z", 1)
-        ny = space.sizes["Y"]
-        nx = space.sizes["X"]
+        nz = truth.sizes.get("Z", 1)
+        ny = truth.sizes["Y"]
+        nx = truth.sizes["X"]
 
-        data = self.create((nz, ny, nx), dz, dx)
+        illum_pattern = self.create((nz, ny, nx), dz=_dz.pop(), dx=_dx.pop())
+        print(illum_pattern.shape)
+        print(truth.data.shape)
+        emission_pattern = truth.data * illum_pattern
 
-        d = xr.DataArray(data, dims=list(self.order + "YX"), coords=space.coords)
-        d.coords["A"] = self.angles
-        d.coords["P"] = self.phases
-        d.attrs["SIM"] = self.model_dump()
-        return d
+        coords = {}
+        for dim in self.order + "YX":
+            if dim == "A":
+                coords[dim] = self.angles
+            elif dim == "P":
+                coords[dim] = list(self.phases)
+            else:
+                coords[dim] = space.coords[dim]
+
+        attrs = {**truth.attrs, "SIM": self.model_dump()}
+        return DataArray(emission_pattern, coords=coords, attrs=attrs)
 
     def create(self, shape: tuple[int, int, int], dz: float, dx: float) -> np.ndarray:
         """Create illumination volume (generic variant of render)."""
@@ -119,24 +135,30 @@ class SIMIllum2D(BaseModel):
         return out
 
     def _render_plane(
-        self, sim_plane: NDArray, coords: NDArray, theta: float, phase: float
+        self,
+        sim_plane: NDArray,
+        coords: NDArray,
+        theta: float,
+        phase: float,
     ) -> NDArray:
-        if map_coordinates.__module__.startswith("cupy"):
+        xp = self._xp
+        if xp.map_coordinates.__module__.startswith("cupy"):
             _i = []
             CHUNKSIZE = 128  # TODO: determine better strategy
             for chunk in np.array_split(coords, CHUNKSIZE, axis=1):
                 new_coords = self._map_coords(xp.asarray(chunk), theta, phase)
-                _i.append(map_coordinates(sim_plane, new_coords, order=1).get())
+                _i.append(xp.map_coordinates(sim_plane, new_coords, order=1).get())
             img: np.ndarray = np.concatenate(_i)
         else:
             new_coords = self._map_coords(coords, theta, phase)
-            img = map_coordinates(sim_plane, new_coords, order=1)
+            img = xp.map_coordinates(sim_plane, new_coords, order=1)
         return img
 
     def _map_coords(self, coords: NDArray, theta: float, phase: float) -> NDArray:
         """Map a set of img coordinates to new coords after phaseshift and rotation."""
         matrix = self._get_matrix(theta, phase)
         new_coordinates = (matrix[:-1, :-1] @ coords)[:2]
+        xp = self._xp
         return new_coordinates + xp.expand_dims(xp.asarray(matrix[:2, -1]), -1)  # type: ignore
 
     def _get_matrix(self, theta: float, phase: float) -> NDArray:
@@ -154,6 +176,7 @@ class SIMIllum2D(BaseModel):
         NDArray
             tranformation matrix
         """
+        xp = self._xp
         scale = xp.eye(4)
         scale[2, 2] = 0  # flatten the z dimension to the 2D plane
 
@@ -172,7 +195,7 @@ class SIMIllum2D(BaseModel):
         return scale @ translate @ rotate  # type: ignore
 
 
-class SIMIllum3D(SIMIllum2D):
+class SIM3D(SIM2D):
     nphases: int = 5
     ampcenter: float = 1.0
 
@@ -180,11 +203,32 @@ class SIMIllum3D(SIMIllum2D):
 TAU = 1j * 2 * np.pi
 
 
-def efield(kvec: tuple[float, float], zarr: NDArray, xarr: NDArray) -> NDArray:
-    return xp.exp(TAU * (kvec[0] * xarr + kvec[1] * zarr))  # type: ignore
+def efield(
+    kvec: tuple[float, float], zarr: NDArray, xarr: NDArray, xp: NumpyAPI | None = None
+) -> NDArray:
+    """
+    Calculate the electric field at each point in space.
+
+    Parameters
+    ----------
+    kvec : tuple[float, float]
+        A tuple representing the wave vector components.
+    zarr : NDArray
+        An array representing the z-coordinate values.
+    xarr : NDArray
+        An array representing the x-coordinate values.
+    xp : NumpyAPI, optional
+        The numpy backend to use, by default will use numpy.
+
+    Returns
+    -------
+    NDArray
+        An array representing the electric field at each point in space.
+    """
+    return (xp or np).exp(TAU * (kvec[0] * xarr + kvec[1] * zarr))  # type: ignore
 
 
-@lru_cache(maxsize=128)
+@cache
 def structillum_2d(
     nz: int = 128,
     nx: int = 256,
@@ -198,6 +242,7 @@ def structillum_2d(
     ampratio: float = 1.0,  # TODO: remove?  ampcenter seems sufficient
     nbeamlets: int = 31,
     spotsize: float = 0.035,
+    xp: NumpyAPI | None = None,
 ) -> npt.NDArray:
     """Simulate a single "XZ" plane of structured illumination intensity.
 
@@ -239,6 +284,8 @@ def structillum_2d(
         the proportion of illum spot size vs entire NA.  This represents the size of
         a partially coherent (e.g. multimode fiber) spot at the back focal plane.
         Increasing spotratio will reduce the axial envelope of the pattern.
+    xp : NumpyAPI, optional
+        The numpy backend to use, by default will use numpy.
 
     Returns
     -------
@@ -249,6 +296,7 @@ def structillum_2d(
     if NA > nimm:
         raise ValueError("NA must be less than immersion refractive index `nimm`.")
 
+    xp = NumpyAPI.create(xp)
     # steepest angle of illumination based on NA and nimm, in radians
     max_half_angle = xp.arcsin(NA / nimm)
     # angular span of each beam (where higher numbers mean a larger spot in the BFP)
