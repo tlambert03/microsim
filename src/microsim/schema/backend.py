@@ -148,7 +148,7 @@ class CupyAPI(NumpyAPI):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            from cupyx.scipy import signal, stats, special
+            from cupyx.scipy import signal, special, stats
 
         self.xp = cupy
         self.signal = signal
