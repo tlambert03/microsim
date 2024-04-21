@@ -1,3 +1,5 @@
+"""Experimental module for fast convolution using vkFFT."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal
@@ -7,12 +9,17 @@ import pyvkfft.fft as vkfft
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+    from typing import TypeAlias
 
+    import pyopencl as cl
     import pyopencl.array as cla
 
     from ._data_array import ArrayProtocol
 
     Mode = Literal["full", "valid", "same"]
+
+    TwoTupleOrLess: TypeAlias = tuple[int] | tuple[int, int]
+    ThreeTupleOrLess: TypeAlias = tuple[int] | tuple[int, int] | tuple[int, int, int]
 
 
 def fftconvolve(
@@ -30,18 +37,9 @@ def fftconvolve(
         raise ValueError("mode must be one of ['same', 'full', 'valid']")
 
     in1, in2, axes = _init_freq_conv_axes(in1, in2, mode, axes)
-
-    s1 = in1.shape
-    s2 = in2.shape
-
-    shape = [
-        max((s1[i], s2[i])) if i not in axes else s1[i] + s2[i] - 1
-        for i in range(in1.ndim)
-    ]
-    ret = _freq_domain_conv(in1, in2, axes, shape, calc_fast_len=True, tune=tune)
-    slc = _get_slice(ret, s1, s2, mode, axes)
-    cropped = ret if slc is None else ret[slc]
-    return cropped.map_to_host()
+    ret = _freq_domain_conv(in1, in2, axes, calc_fast_len=True, tune=tune)
+    cropped = _crop_to_mode(ret, in1.shape, in2.shape, mode, axes)
+    return cropped.map_to_host()  # type: ignore
 
 
 def _init_nd_axes(in1: ArrayProtocol, axes: int | Sequence[int] | None) -> list[int]:
@@ -101,17 +99,17 @@ def _pad_with_zeros(src: ArrayProtocol, sh: Sequence[int]) -> ArrayProtocol:
             raise NotImplementedError("pad_with_zeros not implemented for GPUArray")
     if vkfft.has_opencl:
         if isinstance(src, vkfft.cla.Array):
-            return pad(src, sh, value=0)
+            return pad(src, sh, value=0)  # type: ignore[no-any-return]
     if vkfft.has_cupy:
         if isinstance(src, vkfft.cp.ndarray):
             raise NotImplementedError("pad_with_zeros not implemented for cupy")
+    raise NotImplementedError("pad_with_zeros not implemented for this array type")
 
 
 def _freq_domain_conv(
     in1: ArrayProtocol,
     in2: ArrayProtocol,
     axes: Sequence[int],
-    shape: Sequence[int],
     calc_fast_len: bool = False,
     tune: bool = False,
 ) -> ArrayProtocol:
@@ -119,45 +117,24 @@ def _freq_domain_conv(
 
     This function implements only base the FFT-related operations.
     Specifically, it converts the signals to the frequency domain, multiplies
-    them, then converts them back to the time domain.  Calculations of axes,
-    shapes, convolution mode, etc. are implemented in higher level-functions,
-    such as `fftconvolve` and `oaconvolve`.  Those functions should be used
-    instead of this one.
-
-    Parameters
-    ----------
-    in1 : array_like
-        First input.
-    in2 : array_like
-        Second input. Should have the same number of dimensions as `in1`.
-    axes : array_like of ints
-        Axes over which to compute the FFTs.
-    shape : array_like of ints
-        The sizes of the FFTs.
-    calc_fast_len : bool, optional
-        If `True`, set each value of `shape` to the next fast FFT length.
-        Default is `False`, use `axes` as-is.
-    tune : bool, optional
-        If `True`, tune the FFTs for optimal performance.
-        Default is `False`.
-
-    Returns
-    -------
-    out : array
-        An N-dimensional array containing the discrete linear convolution of
-        `in1` with `in2`.
+    them, then converts them back to the time domain.
     """
     if not len(axes):
         return in1 * in2
 
     complex_result = in1.dtype.kind == "c" or in2.dtype.kind == "c"
 
-    if calc_fast_len:
-        # Speed up FFT by padding to optimal size.
-        fshape = [_next_fast_len(shape[a], not complex_result) for a in axes]
-    else:
-        fshape = shape
+    # Determine the shape of the output array (for padding purposes)
+    # Without this, the result is prone to wraparound errors.
+    s1 = in1.shape
+    s2 = in2.shape
+    shape = [
+        max((s1[i], s2[i])) if i not in axes else s1[i] + s2[i] - 1
+        for i in range(in1.ndim)
+    ]
 
+    # Speed up FFT by padding to optimal size.
+    fshape = [_next_fast_len(shape[a]) for a in axes] if calc_fast_len else list(shape)
     in1 = _pad_with_zeros(in1, fshape)
     in2 = _pad_with_zeros(in2, fshape)
 
@@ -179,33 +156,37 @@ def _freq_domain_conv(
     return ret  # type: ignore
 
 
-def _next_fast_len(target, real=False):
-    """Find the next fast size of input data to ``fft``, for zero-padding, etc."""
-    if target <= 2:
-        return target
+_NEXT_FAST_LEN: dict[int, int] = {}
 
+
+def _next_fast_len(size: int) -> int:
+    try:
+        return _NEXT_FAST_LEN[size]
+    except KeyError:
+        pass
+
+    assert isinstance(size, int) and size > 0
+    next_size = size
     while True:
-        n = target
-        while n % 2 == 0:
-            n //= 2
-        while n % 3 == 0:
-            n //= 3
-        while n % 5 == 0:
-            n //= 5
-        if n == 1:
-            return target
-        target += 1
+        remaining = next_size
+        for n in (2, 3, 5):
+            while remaining % n == 0:
+                remaining //= n
+        if remaining == 1:
+            _NEXT_FAST_LEN[size] = next_size
+            return next_size
+        next_size += 1
 
 
-def _get_slice(
+def _crop_to_mode(
     ret: ArrayProtocol,
     s1: tuple[int, ...],
     s2: tuple[int, ...],
     mode: Mode,
     axes: list[int],
-) -> tuple | None:
+) -> ArrayProtocol:
     if mode == "full":
-        return None
+        return ret
     elif mode == "same":
         return _center_slice(ret, s1)
     elif mode == "valid":
@@ -218,23 +199,22 @@ def _get_slice(
         raise ValueError("acceptable mode flags are 'valid'," " 'same', or 'full'")
 
 
-def _center_slice(arr: ArrayProtocol, newshape: Sequence[int]) -> tuple:
+def _center_slice(arr: ArrayProtocol, newshape: Sequence[int]) -> ArrayProtocol:
     # Return the center newshape portion of the array.
     newshape_ = np.asarray(newshape)
     currshape = np.array(arr.shape)
     startind = (currshape - newshape_) // 2
     endind = startind + newshape_
     myslice = [slice(startind[k], endind[k]) for k in range(len(endind))]
-    print(arr.shape, myslice)
-    return tuple(myslice)
+    return arr[tuple(myslice)]  # type: ignore
 
 
 def pad(
     src: cla.Array,
-    final_shape=tuple[int, ...],
-    value=0,
-    queue=None,
-    block=False,
+    final_shape: tuple[int, ...],
+    value: int = 0,
+    queue: cl.CommandQueue = None,
+    block: bool = False,
 ) -> cla.Array:
     """Pad an array to a new shape with a constant value.
 
@@ -256,10 +236,10 @@ def pad(
 def _copy_array(
     src: cla.Array,
     dst: cla.Array,
-    src_origin: tuple,
-    dst_origin: tuple,
-    region: tuple,
-    block=False,
+    src_origin: ThreeTupleOrLess,
+    dst_origin: ThreeTupleOrLess,
+    region: ThreeTupleOrLess,
+    block: bool = False,
 ) -> cla.Array:
     import pyopencl as cl
 
