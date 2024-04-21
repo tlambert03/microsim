@@ -1,7 +1,7 @@
-from pydantic import BaseModel
+from ._base_model import SimBaseModel
 
 
-class Spectrum(BaseModel):
+class Spectrum(SimBaseModel):
     wavelength: list[float]  # nm
     intensity: list[float]  # normalized to 1
     scalar: float = 1  # scalar to multiply intensity by, such as EC or QY

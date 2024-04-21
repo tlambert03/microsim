@@ -1,9 +1,8 @@
-from pydantic import BaseModel
-
+from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
 
 
-class Fluorophore(BaseModel):
+class Fluorophore(SimBaseModel):
     name: str
     excitation_spectrum: Spectrum
     emission_spectrum: Spectrum

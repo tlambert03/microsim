@@ -1,8 +1,9 @@
 from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
 
 from microsim._data_array import DataArray
+from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 
 from .fluorophore import Fluorophore
@@ -11,7 +12,7 @@ from .matslines import MatsLines
 Distribution = MatsLines
 
 
-class FluorophoreDistribution(BaseModel):
+class FluorophoreDistribution(SimBaseModel):
     distribution: Distribution = Field(..., discriminator="type")
     fluorophore: Fluorophore | None = None
 
@@ -28,5 +29,5 @@ class FluorophoreDistribution(BaseModel):
         return value
 
 
-class Sample(BaseModel):
+class Sample(SimBaseModel):
     labels: list[FluorophoreDistribution]

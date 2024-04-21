@@ -1,7 +1,9 @@
 from typing import Any, TypedDict
 
 import numpy as np
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
+
+from ._base_model import SimBaseModel
 
 
 class ObjectiveKwargs(TypedDict, total=False):
@@ -17,7 +19,7 @@ class ObjectiveKwargs(TypedDict, total=False):
     magnification: float
 
 
-class ObjectiveLens(BaseModel):
+class ObjectiveLens(SimBaseModel):
     numerical_aperture: float = Field(1.4, alias="na")
     coverslip_ri: float = 1.515  # coverslip RI experimental value (ng)
     coverslip_ri_spec: float = 1.515  # coverslip RI design value (ng0)

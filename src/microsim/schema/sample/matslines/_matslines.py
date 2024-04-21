@@ -3,8 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
-from pydantic import BaseModel
 
+from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 
 if TYPE_CHECKING:
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from microsim._data_array import DataArray
 
 
-class MatsLines(BaseModel):
+class MatsLines(SimBaseModel):
     type: Literal["matslines"] = "matslines"
     density: float = 1
     length: int = 10
@@ -63,7 +63,7 @@ class MatsLines(BaseModel):
         if hasattr(c, "get"):
             c = c.get()
         drawlines_bresenham(c, data, self.max_r)
-        return space + xp.asarray(data)  # type: ignore
+        return space + xp.asarray(data).astype(space.dtype)
 
 
 def drawlines_bresenham(
