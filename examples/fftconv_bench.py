@@ -43,7 +43,7 @@ def vk_fftconvolve(signal, kernel):
     return vkfft.fftconvolve(signal, kernel, mode=MODE)
 
 
-def benchmark(function: Callable, *args: Any, num_trials: int = 5) -> None:
+def benchmark(function: Callable, *args: Any, num_trials: int = 2) -> None:
     """Benchmark a given FFT convolution function."""
     _ = function(*args)  # Warmup
     times = []
@@ -60,27 +60,34 @@ def benchmark(function: Callable, *args: Any, num_trials: int = 5) -> None:
     avg_time = sum(times) / num_trials
     print(f"Avg {avg_time:.6f} seconds,  min: {min(times):.6f} seconds")
     print("L2 norm:", np.linalg.norm(result))
-    mi, ma, me, sh = result.min(), result.max(), result.mean(), result.shape
-    print(f"{mi=} {ma=} {me=} {sh=}")
+    # mi, ma, me, sh = result.min(), result.max(), result.mean(), result.shape
+    # print(f"{mi=} {ma=} {me=} {sh=}")
+    return result
 
 
 def main() -> None:
     np.random.seed(0)
+    import napari
     from skimage import data
+
+    v = napari.Viewer()
 
     # Example signals
     # np_signal = np.random.random((32, 128, 128)).astype(np.float32)
     np_signal = data.cells3d()[:, 1].astype(np.float32)
     np_kernel = np.zeros(np_signal.shape).astype(np.float32)
-    np_kernel[32, 128, 128] = 1
-    np_kernel[32, 120, 120] = 1
+    np_kernel[29, 127, 127] = 1
+    np_kernel[32, 122, 122] = 1
     # Benchmark numpy
-    benchmark(numpy_fftconvolve, np_signal, np_kernel)
+    np_result = benchmark(numpy_fftconvolve, np_signal, np_kernel)
+    v.add_image(np_result)
 
     # Benchmark JAX
     jax_signal = jnp.asarray(np_signal)
     jax_kernel = jnp.asarray(np_kernel)
-    benchmark(jax_fftconvolve, jax_signal, jax_kernel)
+    jax_result = benchmark(jax_fftconvolve, jax_signal, jax_kernel)
+    v.add_image(jax_result)
+    # assert np.allclose(np_result, jax_result, rtol=1e-6, atol=np_result.max() * 1e-6)
 
     # Benchmark PyTorch
     try:
@@ -112,9 +119,10 @@ def main() -> None:
         cq = cl.CommandQueue(cl_ctx)
 
         cl_signal = cla.to_device(cq, np_signal)
-        cl_kernel = cla.to_device(cq, np.fft.fftshift(np_kernel))
-        benchmark(vk_fftconvolve, cl_signal, cl_kernel)
-
+        cl_kernel = cla.to_device(cq, np_kernel)
+        vk_result = benchmark(vk_fftconvolve, cl_signal, cl_kernel)
+        v.add_image(vk_result)
+        assert np.allclose(np_result, vk_result, rtol=1e-6, atol=np_result.max() * 1e-6)
     plt.show()
 
 
