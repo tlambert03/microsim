@@ -1,11 +1,10 @@
 from typing import Literal
 
-from pydantic import BaseModel
-
+from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
 
 
-class _Filter(BaseModel):
+class _Filter(SimBaseModel):
     type: str
     name: str = ""
 

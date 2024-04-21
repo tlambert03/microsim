@@ -1,6 +1,8 @@
 from typing import Any
 
-from pydantic import BaseModel, field_validator
+from pydantic import field_validator
+
+from microsim.schema._base_model import SimBaseModel
 
 from .filter import Bandpass, Filter
 
@@ -11,7 +13,7 @@ def _validate_filter(cls: type, value: Any) -> Any:
     return value
 
 
-class OpticalConfig(BaseModel):
+class OpticalConfig(SimBaseModel):
     name: str
     excitation: Filter
     emission: Filter
