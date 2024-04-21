@@ -6,10 +6,11 @@ if TYPE_CHECKING:
 
     from .backend import NumpyAPI
 
-from pydantic import AfterValidator, BaseModel, Field, model_validator
+from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import DataArray
 
+from ._base_model import SimBaseModel
 from .detectors import Detector
 from .lens import ObjectiveLens
 from .modality import Modality, Widefield
@@ -28,7 +29,7 @@ def _check_extensions(path: Path) -> Path:
 OutPath = Annotated[Path, AfterValidator(_check_extensions)]
 
 
-class Simulation(BaseModel):
+class Simulation(SimBaseModel):
     """Top level Simulation object."""
 
     truth_space: Space
@@ -69,15 +70,16 @@ class Simulation(BaseModel):
 
     def ground_truth(self) -> "DataArray":
         """Return the ground truth data."""
-        xp = self._xp
-        # make empty space into which we'll add fluorescence
-        truth = self.truth_space.create(array_creator=xp.zeros)
-
-        # add fluorophores to the space
-        for label in self.sample.labels:
-            truth = label.render(truth, xp=xp)
-        truth.attrs["space"] = self.truth_space  # TODO
-        return truth
+        if not hasattr(self, "_ground_truth"):
+            xp = self._xp
+            # make empty space into which we'll add fluorescence
+            truth = self.truth_space.create(array_creator=xp.zeros)
+            # add fluorophores to the space
+            for label in self.sample.labels:
+                truth = label.render(truth, xp=xp)
+            truth.attrs["space"] = self.truth_space  # TODO
+            self._ground_truth = truth
+        return self._ground_truth
 
     def optical_image(
         self, truth: "DataArray | None" = None, *, channel_idx: int = 0
@@ -88,13 +90,15 @@ class Simulation(BaseModel):
             raise ValueError("truth must be a DataArray")
         # let the given modality render the as an image (convolved, etc..)
         channel = self.channels[channel_idx]  # TODO
-        return self.modality.render(
+        result = self.modality.render(
             truth,
             channel,
             objective_lens=self.objective_lens,
             settings=self.settings,
             xp=self._xp,
         )
+
+        return result
 
     def digital_image(
         self,

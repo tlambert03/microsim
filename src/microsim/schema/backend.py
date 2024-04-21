@@ -1,14 +1,23 @@
+from __future__ import annotations
+
 import warnings
-from collections.abc import Sequence
 from contextlib import nullcontext, suppress
-from types import ModuleType
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import numpy as np
 import numpy.typing as npt
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from types import ModuleType
+    from typing import SupportsIndex, TypeAlias
+
     import jax
+
+    _Shape: TypeAlias = tuple[int, ...]
+
+    # Anything that can be coerced to a shape tuple
+    _ShapeLike: TypeAlias = SupportsIndex | Sequence[SupportsIndex]
 
 DeviceName = Literal["cpu", "gpu", "auto"]
 BackendName = Literal["numpy", "torch", "jax", "cupy", "auto"]
@@ -18,7 +27,7 @@ ArrT = TypeVar("ArrT", bound=npt.ArrayLike)
 
 class NumpyAPI:
     @classmethod
-    def create(cls, backend: "BackendName | NumpyAPI | None") -> "NumpyAPI":
+    def create(cls, backend: BackendName | NumpyAPI | None) -> NumpyAPI:
         if isinstance(backend, NumpyAPI):
             return backend
         if not backend:
@@ -48,9 +57,41 @@ class NumpyAPI:
         self.j0 = special.j0
         self.j1 = special.j1
         self.map_coordinates = map_coordinates
+        self._float_dtype: np.dtype | None = None
+
+    @property
+    def float_dtype(self) -> np.dtype | None:
+        return self._float_dtype
+
+    @float_dtype.setter
+    def float_dtype(self, dtype: npt.DTypeLike) -> None:
+        self._float_dtype = np.dtype(dtype)
+        if not np.issubdtype(self._float_dtype, np.floating):
+            raise ValueError(
+                f"Expected a floating-point dtype, got {self._float_dtype}"
+            )
 
     def set_random_seed(self, seed: int) -> None:
         self.xp.random.seed(seed)
+
+    def asarray(
+        self, x: npt.ArrayLike, dtype: npt.DTypeLike | None = None
+    ) -> npt.NDArray:
+        return self.xp.asarray(x, dtype=dtype)
+
+    def zeros(
+        self, shape: int | Sequence[int], dtype: npt.DTypeLike = None
+    ) -> npt.NDArray:
+        if dtype is None:
+            dtype = self.float_dtype
+        return self.xp.zeros(shape, dtype=dtype)
+
+    def ones(
+        self, shape: int | Sequence[int], dtype: npt.DTypeLike = None
+    ) -> npt.NDArray:
+        if dtype is None:
+            dtype = self.float_dtype
+        return self.xp.ones(shape, dtype=dtype)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self.xp, name)
@@ -112,9 +153,9 @@ class JaxAPI(NumpyAPI):
 
     def poisson_rvs(  # type: ignore
         self,
-        lam: "jax.Array | float",
+        lam: jax.Array | float,
         shape: Sequence[int] | None = None,
-    ) -> "jax.Array":
+    ) -> jax.Array:
         from jax.random import poisson
 
         return poisson(self._key, lam, shape=shape)
@@ -122,9 +163,9 @@ class JaxAPI(NumpyAPI):
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
     ) -> ArrT:
-        return self.signal.fftconvolve(a, b, mode=mode)  # type: ignore
+        return self.signal.fftconvolve(a, b, mode=mode)  # type: ignore[no-any-return]
 
-    def _simp_like(self, arr: "jax.Array") -> "jax.Array":  # type: ignore
+    def _simp_like(self, arr: jax.Array) -> jax.Array:
         simp = self.xp.empty_like(arr)
 
         simp = simp.at[::2].set(4)
@@ -134,10 +175,10 @@ class JaxAPI(NumpyAPI):
 
     def _array_assign(  # type: ignore
         self,
-        arr: "jax.Array",
+        arr: jax.Array,
         mask: npt.ArrayLike,
-        value: "jax.Array",
-    ) -> "jax.Array":
+        value: jax.Array,
+    ) -> jax.Array:
         return arr.at[mask].set(value)
 
 
@@ -148,7 +189,7 @@ class CupyAPI(NumpyAPI):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            from cupyx.scipy import signal, stats, special
+            from cupyx.scipy import signal, special, stats
 
         self.xp = cupy
         self.signal = signal

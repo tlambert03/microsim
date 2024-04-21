@@ -155,15 +155,14 @@ def rz_to_xyz(
     # Create XY grid of radius values.
     rmap = radius_map(xyshape, off) * sf
     nz = rz.shape[0]
-    out = xp.zeros((nz, *xyshape))
-    out = []
-    for z in range(nz):
-        o = xp.map_coordinates(
-            rz, xp.asarray([xp.ones(rmap.size) * z, rmap.ravel()]), order=1
-        ).reshape(xyshape)
-        out.append(o)
-
-    out = xp.asarray(out)
+    out = xp.asarray(
+        [
+            xp.map_coordinates(
+                rz, xp.asarray([xp.ones(rmap.size) * z, rmap.ravel()]), order=1
+            ).reshape(xyshape)
+            for z in range(nz)
+        ]
+    )
     return out.get() if hasattr(out, "get") else out  # type: ignore
 
 
@@ -195,8 +194,10 @@ def vectorial_psf(
     ny = ny or nx
     rz = vectorial_rz(
         zv, np.maximum(ny, nx), pos, dxy, wvl, objective=objective, sf=sf, xp=xp
-    )
-    _psf = rz_to_xyz(rz, (ny, nx), sf, off=xp.asarray(pos[:2]) / (dxy * 1e-6))
+    ).astype(xp.float_dtype)
+
+    offsets = xp.asarray(pos[:2]) / (dxy * 1e-6)
+    _psf = rz_to_xyz(rz, (ny, nx), sf, off=offsets)  # type: ignore [arg-type]
     if normalize:
         _psf /= xp.max(_psf)
     return _psf
@@ -363,7 +364,13 @@ def make_psf(
 
     if pinhole_au is None:
         psf = vectorial_psf_centered(
-            wvl=em_wvl_um, nz=nz + 1, nx=nx + 1, dz=dz, dxy=dx, objective=objective
+            wvl=em_wvl_um,
+            nz=nz + 1,
+            nx=nx + 1,
+            dz=dz,
+            dxy=dx,
+            objective=objective,
+            xp=xp,
         )
     else:
         psf = make_confocal_psf(
@@ -378,4 +385,4 @@ def make_psf(
             xp=xp,
         )
 
-    return xp.asarray(psf)  # type: ignore
+    return xp.asarray(psf)

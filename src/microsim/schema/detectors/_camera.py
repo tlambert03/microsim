@@ -3,17 +3,18 @@ from typing import Annotated
 import numpy as np
 import numpy.typing as npt
 from annotated_types import Ge, Interval
-from pydantic import BaseModel, Field
+from pydantic import Field
 from scipy import stats
 
 from microsim._data_array import ArrayProtocol
+from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 
 PositiveFloat = Annotated[float, Ge(0)]
 PositiveInt = Annotated[int, Ge(0)]
 
 
-class Camera(BaseModel):
+class Camera(SimBaseModel):
     read_noise: PositiveFloat = 8  # as function of readout rate?
     qe: Annotated[float, Interval(ge=0, le=1)] = 1  # TODO: spectrum
     full_well: int = 18_000

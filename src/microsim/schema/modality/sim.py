@@ -342,7 +342,7 @@ def structillum_2d(
     minus_kvecs = kmag * xp.stack([minus_sideNA, xp.sqrt(1 - minus_sideNA**2)]).T
 
     # output array
-    intensity: NDArray = xp.zeros((3, nz, nx), np.float32)
+    intensity: NDArray = xp.zeros((3, nz, nx))
     for i, wght in enumerate(weight_arr):
         a0 = efield(kvecs[i], zarr, xarr) * ampcenter
         a1 = efield(plus_kvecs[i], zarr, xarr) * ampratio
