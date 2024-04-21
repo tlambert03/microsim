@@ -1,17 +1,17 @@
 from typing import Annotated, Literal
 
 from annotated_types import Ge
-from pydantic import BaseModel
 
 from microsim._data_array import DataArray
 from microsim.psf import make_psf
+from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.lens import ObjectiveLens
 from microsim.schema.optical_config import OpticalConfig
 from microsim.schema.settings import Settings
 
 
-class Confocal(BaseModel):
+class Confocal(SimBaseModel):
     type: Literal["confocal"] = "confocal"
     pinhole_au: Annotated[float, Ge(0)] = 1
 

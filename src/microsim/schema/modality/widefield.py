@@ -1,16 +1,15 @@
 from typing import Literal
 
-from pydantic import BaseModel
-
 from microsim._data_array import DataArray
 from microsim.psf import make_psf
+from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.lens import ObjectiveLens
 from microsim.schema.optical_config import OpticalConfig
 from microsim.schema.settings import Settings
 
 
-class Widefield(BaseModel):
+class Widefield(SimBaseModel):
     type: Literal["widefield"] = "widefield"
 
     def render(
