@@ -1,4 +1,5 @@
-from collections.abc import Mapping, MutableMapping, Sequence
+import warnings
+from collections.abc import Hashable, Mapping, MutableMapping, Sequence
 from dataclasses import dataclass, field
 from os import PathLike
 from types import MappingProxyType
@@ -21,6 +22,7 @@ class ArrayProtocol(Protocol):
     def dtype(self) -> np.dtype: ...
     def __array__(self) -> np.ndarray: ...
     def __mul__(self, other: Any) -> "ArrayProtocol": ...
+    def __getitem__(self, key: Any) -> "ArrayProtocol": ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,7 +37,7 @@ class DataArray:
     """
 
     data: ArrayProtocol
-    coords: Mapping[str, Sequence[float]] = field(default_factory=dict)
+    coords: Mapping[str, Sequence[Any]] = field(default_factory=dict)
     attrs: MutableMapping[str, Any] = field(default_factory=dict)
 
     @property
@@ -60,6 +62,15 @@ class DataArray:
     def __array__(self) -> np.ndarray:
         data = self.data.get() if hasattr(self.data, "get") else self.data
         return np.asanyarray(data)
+
+    def __mul__(self, other: Any) -> "DataArray":
+        coords = {**self.coords}
+        attrs = {**self.attrs}
+        if isinstance(other, DataArray):
+            coords = {**other.coords, **coords}
+            attrs = {**other.attrs, **attrs}
+            other = other.data
+        return DataArray(self.data * other, coords, attrs)
 
     def to_tiff(
         self, path: str | PathLike[str], description: str | None = None
@@ -91,3 +102,15 @@ class DataArray:
 
         attrs = {**self.attrs, **(attrs or {})}
         return xr.DataArray(np.asanyarray(self), coords=self.coords, attrs=attrs)
+
+    def transpose(self, *dims: Hashable) -> "DataArray":
+        warnings.warn("DataArray.transpose casts to numpy", stacklevel=2)
+        return DataArray.from_xarray(self.to_xarray().transpose(*dims))
+
+    def __getitem__(self, key: Any) -> "ArrayProtocol":
+        return self.data[key]
+
+    @classmethod
+    def from_xarray(cls, da: "xr.DataArray") -> "DataArray":
+        coords = {c: np.asanyarray(da.coords[c]) for c in da.dims}
+        return cls(da.data, coords, da.attrs)  # type: ignore

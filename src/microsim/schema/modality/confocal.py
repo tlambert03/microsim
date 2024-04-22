@@ -15,6 +15,10 @@ class Confocal(SimBaseModel):
     type: Literal["confocal"] = "confocal"
     pinhole_au: Annotated[float, Ge(0)] = 1
 
+    @classmethod
+    def supports_optical_image(cls) -> bool:
+        return True
+
     def render(
         self,
         truth: DataArray,

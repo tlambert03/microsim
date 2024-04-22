@@ -12,6 +12,10 @@ from microsim.schema.settings import Settings
 class Widefield(SimBaseModel):
     type: Literal["widefield"] = "widefield"
 
+    @classmethod
+    def supports_optical_image(cls) -> bool:
+        return True
+
     def render(
         self,
         truth: DataArray,

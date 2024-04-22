@@ -1,7 +1,7 @@
 from collections.abc import Iterable, Sequence
 from functools import cache
 from itertools import product
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -10,11 +10,16 @@ from numpy.typing import NDArray
 from pydantic import BaseModel, PrivateAttr
 from tqdm import tqdm
 
-from microsim._data_array import DataArray
+from microsim._data_array import ArrayProtocol, DataArray
+from microsim.psf import vectorial_psf_centered
 from microsim.schema.backend import NumpyAPI
+from microsim.schema.lens import ObjectiveLens
+from microsim.schema.optical_config import OpticalConfig
+from microsim.schema.settings import Settings
+from microsim.schema.space import Space
 
 if TYPE_CHECKING:
-    from microsim.schema import ObjectiveLens, OpticalConfig, Settings
+    from microsim.schema.space import SpaceProtocol
 
 
 class SIM2D(BaseModel):
@@ -28,6 +33,10 @@ class SIM2D(BaseModel):
     order: str = "PZA"
 
     _xp: NumpyAPI = PrivateAttr()
+
+    @classmethod
+    def supports_optical_image(cls) -> bool:
+        return False
 
     @property
     def nangles(self) -> int:
@@ -47,7 +56,7 @@ class SIM2D(BaseModel):
         nx: int,
         dz: float,
         dx: float,
-        NA: float = 1.42,
+        na: float = 1.42,
         nimm: float = 1.515,
         wvl: float = 0.488,
     ) -> np.ndarray:
@@ -57,7 +66,7 @@ class SIM2D(BaseModel):
             nx=nx,
             dz=dz,
             dx=dx,
-            NA=NA,
+            NA=na,
             nimm=nimm,
             wvl=wvl,
             linespacing=self.linespacing,
@@ -67,80 +76,176 @@ class SIM2D(BaseModel):
             xp=self._xp,
         ).sum(0)[1:]
 
-    def render(
+    def digital_image(
         self,
         truth: DataArray,
-        channel: "OpticalConfig",
-        objective_lens: "ObjectiveLens",
-        settings: "Settings",
+        channel: OpticalConfig,
+        objective_lens: ObjectiveLens,
+        settings: Settings,
+        outspace: Space,
         xp: NumpyAPI | None = None,
     ) -> DataArray:
+        # out_shape, upscale_xy, upscale_z, illum, truth, psf
         self._xp = xp = NumpyAPI.create(xp)
 
-        space = truth.attrs["space"]
-        _dz = set(xp.round(xp.diff(truth.coords.get("Z", [0, 0.1])), 8).tolist())
-        _dx = set(xp.round(xp.diff(truth.coords["X"]), 8).tolist())
-        if len(_dz) != 1:
-            raise ValueError("Non-uniform spacing detected in Z")
-        if len(_dx) != 1:
-            raise ValueError("Non-uniform spacing detected in X")
-        nz = truth.sizes.get("Z", 1)
-        ny = truth.sizes["Y"]
-        nx = truth.sizes["X"]
+        space = cast("SpaceProtocol", truth.attrs["space"])
+        truth_nz = truth.sizes.get("Z", 1)
+        truth_ny = truth.sizes["Y"]
+        truth_nx = truth.sizes["X"]
+        truth_dz = space.scales["Z"]
+        truth_dx = space.scales["X"]
+        ex_wvl_um = channel.excitation.bandcenter * 1e-3
+        em_wvl_um = channel.emission.bandcenter * 1e-3
 
-        illum_pattern = self.create((nz, ny, nx), dz=_dz.pop(), dx=_dx.pop())
-        print(illum_pattern.shape)
-        print(truth.data.shape)
-        emission_pattern = truth.data * illum_pattern
+        illum = self.illum_volume(
+            (truth_nz * 2, truth_ny, truth_nx),
+            truth_dz,
+            truth_dx,
+            na=objective_lens.numerical_aperture,
+            wvl=ex_wvl_um,
+            nimm=objective_lens.numerical_aperture,
+        )
+        # normalize?
+        illum -= xp.min(illum)
+        illum *= 1 / xp.max(illum)
+        # adjust contrast  TODO
+        # illum *= max(0, min(illum_contrast, 1))
+        # illum += 1 - xp.max(illum)
 
-        coords = {}
-        for dim in self.order + "YX":
-            if dim == "A":
-                coords[dim] = self.angles
-            elif dim == "P":
-                coords[dim] = list(self.phases)
-            else:
-                coords[dim] = space.coords[dim]
+        # coords = {}
+        # for dim in "APZYX":
+        #     if dim == "A":
+        #         coords[dim] = self.angles
+        #     elif dim == "P":
+        #         coords[dim] = list(self.phases)
+        #     else:
+        #         coords[dim] = space.coords[dim]
 
-        attrs = {**truth.attrs, "SIM": self.model_dump()}
-        return DataArray(emission_pattern, coords=coords, attrs=attrs)
+        # these make sure that the psf is generated with an odd number of pixels
+        # while np.pad at the bottom will retain the original shape
+        trimz = int(not truth_nz % 2)
+        trimx = int(not truth_nx % 2)
+        psf = vectorial_psf_centered(
+            truth_nz - trimz,
+            nx=truth_nx - trimx,
+            dz=truth_dz,
+            dxy=truth_dx,
+            pz=0,
+            wvl=em_wvl_um,
+            objective=objective_lens,
+            xp=xp,
+        )
+        psf /= psf.sum()
+        psf = np.pad(psf, ((trimz, 0), (trimx, 0), (trimx, 0)))
 
-    def create(self, shape: tuple[int, int, int], dz: float, dx: float) -> np.ndarray:
-        """Create illumination volume (generic variant of render)."""
+        yield from self._do_sim(outspace, illum, truth, psf)
+
+    def _do_sim(
+        self,
+        outspace: Space,
+        illum: ArrayProtocol,
+        truth: DataArray,
+        psf: ArrayProtocol,
+    ) -> Iterable[DataArray]:
+        # TODO clean this up...
+        z_scale_factor = outspace.scales["Z"] / truth.attrs["space"].scales["Z"]
+        if z_scale_factor % 1 != 0:
+            raise ValueError("Z scale factor must be an integer")
+        z_scale_factor = int(z_scale_factor)
+        truth_nz = truth.sizes.get("Z", 1)
+        illum = illum.astype(np.float32)
+        nangles, nphases = illum.shape[:2]
+        nplanes = outspace.sizes["Z"]
+        desc = f"plane: {{}}/{nplanes}, angle: {{}}/{nangles}, phase: {{}}/{nphases}"
+        xp = self._xp
+        otf = xp.fft.rfftn(psf).astype(np.complex64)
+        # FIXME: loosen dtype requirement
+        with tqdm(total=nangles * nphases * nplanes) as pbar:
+            for plane in range(nplanes):
+                start = plane * z_scale_factor
+                need_plane = truth_nz - (z_scale_factor // 2 + start) - 1
+                for a, p in product(range(nangles), range(nphases)):
+                    pbar.set_description(desc.format(plane + 1, a + 1, p + 1))
+                    # get the illumination pattern for this angle and phase and plane
+                    illum_chunk = illum[a, p, start : start + truth_nz]
+                    # generate emission density
+                    emission = truth * illum_chunk
+                    # apply optical transfer function
+                    emission = xp.fft.irfftn(xp.fft.rfftn(emission) * otf)
+                    yield xp.real(xp.fft.fftshift(emission)[need_plane])
+                    pbar.update()
+
+    # def render(
+    #     self,
+    #     truth: DataArray,
+    #     channel: "OpticalConfig",
+    #     objective_lens: "ObjectiveLens",
+    #     settings: "Settings",
+    #     xp: NumpyAPI | None = None,
+    # ) -> DataArray:
+    #     self._xp = xp = NumpyAPI.create(xp)
+
+    #     space = cast("SpaceProtocol", truth.attrs["space"])
+    #     nz = truth.sizes.get("Z", 1)
+    #     ny = truth.sizes["Y"]
+    #     nx = truth.sizes["X"]
+    #     dz = space.scales["Z"]
+    #     dx = space.scales["X"]
+
+    #     illum_vol = self.illum_volume((nz, ny, nx), dz, dx)
+    #     emission = truth * illum_vol
+
+    #     attrs = {**truth.attrs, "SIM": self.model_dump()}
+    #     return DataArray(emission.data, coords=emission.coords, attrs=attrs)
+
+    def illum_volume(
+        self,
+        shape: tuple[int, int, int],
+        dz: float,
+        dx: float,
+        na: float = 1.42,
+        wvl: float = 0.488,
+        nimm: float = 1.515,
+    ) -> ArrayProtocol:
+        """Create illumination volume."""
         nz, ny, nx = shape
 
+        # nx_extended is the longest possible diagonal in the XY plane
+        # we calculate this to ensure that the illumination pattern is large enough
+        # for all possible rotations
         nx_extended = int(3 * np.hypot(ny, nx))
         phases = self.phases / dx + nx_extended / 2
 
         # TODO: figure out the transformations without all the transpositions
-        sim_plane = self.axial_sim_plane(nz=nz, nx=nx_extended, dz=dz, dx=dx).T
+        sim_plane = self.axial_sim_plane(
+            nz=nz, nx=nx_extended, dz=dz, dx=dx, na=na, wvl=wvl, nimm=nimm
+        ).T
 
-        out = np.empty((self.nangles, self.nphases, nz, ny, nx))
+        # coordinates for each point in the final rendered volume
+        plane_shape = (ny, nz, nx)
+        volume_coords = np.indices(plane_shape).reshape((3, -1))
 
-        coords = np.indices((ny, nz, nx)).reshape((3, -1))
+        # generate each angle and phase combination
+        data = np.empty((self.nangles, self.nphases, nz, ny, nx))
         with tqdm(total=(self.nangles * self.nphases)) as pbar:
             for (ai, pi), (theta, phase) in _enumerated_product(self.angles, phases):
-                pbar.set_description(
-                    f"SIM: angle {ai + 1}/{self.nangles}, "
-                    f"phase {pi + 1}/{self.nphases}"
-                )
-                img = self._render_plane(sim_plane, coords, theta, phase)
-                img = img.reshape((ny, nz, nx)).transpose((1, 0, 2))
+                d = f"SIM: angle {ai + 1}/{self.nangles}, phase {pi + 1}/{self.nphases}"
+                pbar.set_description(d)
+                img = self._render_sim_volume(sim_plane, volume_coords, theta, phase)
+                img = img.reshape(plane_shape).transpose((1, 0, 2))  # YZX -> ZYX
                 pbar.update()
-                out[ai, pi] = img.get() if hasattr(img, "get") else img
+                data[ai, pi] = img.get() if hasattr(img, "get") else img
 
-        _order = self.order.upper() + "YX"
-        if _order != "APZYX":
-            out = np.transpose(out, tuple("APZYX".index(i) for i in _order))
-        return out
+        return data
 
-    def _render_plane(
+    def _render_sim_volume(
         self,
         sim_plane: NDArray,
         coords: NDArray,
         theta: float,
         phase: float,
     ) -> NDArray:
+        """Take a single RZ SIM plane and map it to the 3D volume."""
         xp = self._xp
         if xp.map_coordinates.__module__.startswith("cupy"):
             _i = []

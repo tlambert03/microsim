@@ -33,6 +33,8 @@ class FloatArray(Sequence[float]):
         return np.array(value, dtype=np.float64)
 
 
+# clean this up... The protocol here is to define the interface for the Space classes
+# used outside of this module, but I may also be leaking _Space elsewhere as well.
 class SpaceProtocol(Protocol):
     @property
     def axes(self) -> tuple[str, ...]: ...
@@ -40,6 +42,10 @@ class SpaceProtocol(Protocol):
     def shape(self) -> tuple[int, ...]: ...
     @property
     def scale(self) -> tuple[float, ...]: ...
+    @property
+    def scales(self) -> dict[str, float]: ...
+    @property
+    def coords(self) -> dict[str, FloatArray]: ...
 
 
 ArrayType = TypeVar("ArrayType")
@@ -69,6 +75,10 @@ class _Space(SimBaseModel):
     @property
     def sizes(self: SpaceProtocol) -> dict[str, int]:
         return dict(zip(self.axes, self.shape, strict=False))
+
+    @property
+    def scales(self: SpaceProtocol) -> dict[str, float]:
+        return dict(zip(self.axes, self.scale, strict=False))
 
 
 # class CoordsSpace(_Space):
