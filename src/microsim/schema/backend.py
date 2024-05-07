@@ -51,7 +51,7 @@ class NumpyAPI:
         from scipy import signal, special, stats
         from scipy.ndimage import map_coordinates
 
-        self._random_seed = None
+        self._random_seed: int | None = None
         self.xp = np
         self.signal = signal
         self.stats = stats
