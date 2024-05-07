@@ -51,6 +51,7 @@ class NumpyAPI:
         from scipy import signal, special, stats
         from scipy.ndimage import map_coordinates
 
+        self._random_seed = None
         self.xp = np
         self.signal = signal
         self.stats = stats
@@ -72,6 +73,7 @@ class NumpyAPI:
             )
 
     def set_random_seed(self, seed: int) -> None:
+        self._random_seed = seed
         self.xp.random.seed(seed)
 
     def asarray(
@@ -119,6 +121,12 @@ class NumpyAPI:
         arr[mask] = value  # type: ignore
         return arr
 
+    def __hash__(self) -> int:
+        return hash(type(self)) + hash(self._random_seed)
+
+    def __eq__(self, other: Any) -> bool:
+        return type(self) == type(other)
+
 
 class JaxAPI(NumpyAPI):
     def __init__(self) -> None:
@@ -144,6 +152,7 @@ class JaxAPI(NumpyAPI):
     def set_random_seed(self, seed: int) -> None:
         from jax.random import PRNGKey
 
+        self._random_seed = seed
         self._key = PRNGKey(seed)
         # FIXME
         # tricky... we actually still do use the numpy random seed in addition to

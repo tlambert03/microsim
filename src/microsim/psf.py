@@ -181,7 +181,6 @@ def rz_to_xyz(
 #     return o.reshape((nx, ny, nz)).T
 
 
-@cache
 def vectorial_psf(
     zv: Sequence[float],
     nx: int = 31,
@@ -355,8 +354,34 @@ def make_psf(
     dz, _dy, dx = space.scale
     ex_wvl_um = channel.excitation.bandcenter * 1e-3
     em_wvl_um = channel.emission.bandcenter * 1e-3
-    objective = _cast_objective(objective)
+    return cached_psf(
+        nz=nz,
+        nx=nx,
+        dx=dx,
+        dz=dz,
+        ex_wvl_um=ex_wvl_um,
+        em_wvl_um=em_wvl_um,
+        objective=_cast_objective(objective),
+        pinhole_au=pinhole_au,
+        max_au_relative=max_au_relative,
+        xp=xp,
+    )
 
+
+# variant of make_psf that only accepts hashable arguments
+@cache
+def cached_psf(
+    nz: int,
+    nx: int,
+    dx: float,
+    dz: float,
+    ex_wvl_um: float,
+    em_wvl_um: float,
+    objective: ObjectiveLens,
+    pinhole_au: float | None,
+    max_au_relative: float | None,
+    xp: NumpyAPI,
+) -> ArrayProtocol:
     # now restrict nx to no more than max_au_relative
     if max_au_relative is not None:
         airy_radius = 0.61 * ex_wvl_um / objective.numerical_aperture
