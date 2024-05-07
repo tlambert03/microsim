@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import cache
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -38,7 +39,7 @@ def simpson(
     ni2sin2theta = objective.ni**2 * sintheta**2
     nsroot = xp.sqrt(objective.ns**2 - ni2sin2theta)
     ngroot = xp.sqrt(objective.ng**2 - ni2sin2theta)
-    _z = zv[:, xp.newaxis, xp.newaxis] if zv.ndim else zv
+    _z = xp.asarray(zv if np.isscalar(zv) else zv[:, xp.newaxis, xp.newaxis])
     L0 = (
         objective.ni * (ci - _z) * costheta
         + zp * nsroot
@@ -85,8 +86,9 @@ def _cast_objective(objective: ObjectiveKwargs | ObjectiveLens | None) -> Object
     raise TypeError(f"Expected ObjectiveLens, got {type(objective)}")
 
 
+@cache
 def vectorial_rz(
-    zv: npt.NDArray,
+    zv: Sequence[float],
     nx: int = 51,
     pos: tuple[float, float, float] = (0, 0, 0),
     dxy: float = 0.04,
@@ -123,7 +125,9 @@ def vectorial_rz(
 
     step = p.half_angle / nSamples
     theta = xp.arange(1, nSamples + 1) * step
-    simpson_integral = simpson(p, theta, constJ, zv, ci, zpos, wave_num, xp=xp)
+    simpson_integral = simpson(
+        p, theta, constJ, xp.asarray(zv), ci, zpos, wave_num, xp=xp
+    )
     return 8.0 * np.pi / 3.0 * simpson_integral * (step / ud) ** 2
 
 
@@ -177,8 +181,9 @@ def rz_to_xyz(
 #     return o.reshape((nx, ny, nz)).T
 
 
+@cache
 def vectorial_psf(
-    zv: npt.NDArray,
+    zv: Sequence[float],
     nx: int = 31,
     ny: int | None = None,
     pos: tuple[float, float, float] = (0, 0, 0),
@@ -190,7 +195,7 @@ def vectorial_psf(
     xp: NumpyAPI | None = None,
 ) -> npt.NDArray:
     xp = NumpyAPI.create(xp)
-    zv = xp.asarray(zv * 1e-6)  # convert to meters
+    zv = tuple(np.asarray(zv) * 1e-6)  # convert to meters
     ny = ny or nx
     rz = vectorial_rz(
         zv, np.maximum(ny, nx), pos, dxy, wvl, objective=objective, sf=sf, xp=xp
@@ -203,9 +208,9 @@ def vectorial_psf(
     return _psf
 
 
-def _centered_zv(nz: int, dz: float, pz: float = 0) -> npt.NDArray:
+def _centered_zv(nz: int, dz: float, pz: float = 0) -> tuple[float, ...]:
     lim = (nz - 1) * dz / 2
-    return np.linspace(-lim + pz, lim + pz, nz)
+    return tuple(np.linspace(-lim + pz, lim + pz, nz))
 
 
 def vectorial_psf_centered(
