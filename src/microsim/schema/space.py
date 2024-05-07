@@ -3,7 +3,6 @@ from typing import Any, Protocol, TypeVar
 
 import numpy as np
 from pydantic import (
-    BaseModel,
     GetCoreSchemaHandler,
     ValidatorFunctionWrapHandler,
     computed_field,
@@ -13,6 +12,8 @@ from pydantic import (
 from pydantic_core import CoreSchema, core_schema
 
 from microsim._data_array import ArrayProtocol, DataArray
+
+from ._base_model import SimBaseModel
 
 
 class FloatArray(Sequence[float]):
@@ -44,7 +45,7 @@ class SpaceProtocol(Protocol):
 ArrayType = TypeVar("ArrayType")
 
 
-class _Space(BaseModel):
+class _Space(SimBaseModel):
     def rescale(self, img: DataArray) -> DataArray:
         return img
 
@@ -89,7 +90,7 @@ class _AxesSpace(_Space):
             )
         if len(axes) < ndim:
             raise ValueError(f"Only {len(axes)} axes provided but got {ndim} dims")
-        value.axes = axes[-ndim:] if ndim else ()
+        object.__setattr__(value, "axes", axes[-ndim:] if ndim else ())
         return value
 
 

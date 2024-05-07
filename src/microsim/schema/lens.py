@@ -1,7 +1,9 @@
 from typing import Any, TypedDict
 
 import numpy as np
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
+
+from ._base_model import SimBaseModel
 
 
 class ObjectiveKwargs(TypedDict, total=False):
@@ -17,7 +19,7 @@ class ObjectiveKwargs(TypedDict, total=False):
     magnification: float
 
 
-class ObjectiveLens(BaseModel):
+class ObjectiveLens(SimBaseModel):
     numerical_aperture: float = Field(1.4, alias="na")
     coverslip_ri: float = 1.515  # coverslip RI experimental value (ng)
     coverslip_ri_spec: float = 1.515  # coverslip RI design value (ng0)
@@ -29,6 +31,22 @@ class ObjectiveLens(BaseModel):
     coverslip_thickness_spec: float = 170.0  # um, coverslip thickness design (tg0)
 
     magnification: float = Field(1, description="magnification of objective lens.")
+
+    def __hash__(self) -> int:
+        return hash(
+            (
+                self.numerical_aperture,
+                self.coverslip_ri,
+                self.coverslip_ri_spec,
+                self.immersion_medium_ri,
+                self.immersion_medium_ri_spec,
+                self.specimen_ri,
+                self.working_distance,
+                self.coverslip_thickness,
+                self.coverslip_thickness_spec,
+                self.magnification,
+            )
+        )
 
     @model_validator(mode="before")
     def _vroot(cls, values: Any) -> Any:

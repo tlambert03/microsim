@@ -26,6 +26,7 @@ def sim1() -> ms.Simulation:
     )
 
 
+@pytest.mark.parametrize("precision", ["f4", "f8"])
 @pytest.mark.parametrize("seed", [None, 100])
 @pytest.mark.parametrize("modality", [WIDEFIELD, CONFOCAL_AU0_2], ids=lambda x: x.type)
 def test_schema(
@@ -33,15 +34,19 @@ def test_schema(
     np_backend: ms.BackendName,
     modality: ms.Modality,
     tmp_path: Path,
+    precision: str,
     seed: int | None,
 ) -> None:
     sim1.settings.np_backend = np_backend
+    sim1.settings.float_dtype = precision  # type: ignore
     sim1.modality = modality
     sim1.output_path = tmp_path / "output.zarr"
     sim1.settings.random_seed = seed
 
     out1 = sim1.run()
+    assert sim1.output_space
     assert out1.shape == sim1.output_space.shape
+    assert sim1.ground_truth().dtype == np.dtype(precision)
 
     # ensure we have the right datatype
     # this is tough with xarray proper... so we use our own DataArray wrapper.

@@ -17,6 +17,8 @@ class ArrayProtocol(Protocol):
     def shape(self) -> tuple[int, ...]: ...
     @property
     def ndim(self) -> int: ...
+    @property
+    def dtype(self) -> np.dtype: ...
     def __array__(self) -> np.ndarray: ...
     def __mul__(self, other: Any) -> "ArrayProtocol": ...
 
@@ -43,6 +45,10 @@ class DataArray:
     @property
     def shape(self) -> tuple[int, ...]:
         return self.data.shape
+
+    @property
+    def dtype(self) -> np.dtype:
+        return self.data.dtype
 
     @property
     def sizes(self) -> MappingProxyType[str, int]:

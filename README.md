@@ -10,8 +10,15 @@ Light microscopy simulation in python
 
 ## Installation
 
-For now, please install from github.  This library is in early development,
-expect rapid changes and breakages.
+### from PyPI
+
+```bash
+pip install microsim
+```
+
+### from github
+
+To get the bleeding edge version, which will change rapidly, you can install from github.
 
 ```bash
 pip install git+https://github.com/tlambert03/microsim
@@ -20,7 +27,8 @@ pip install git+https://github.com/tlambert03/microsim
 If available, microsim can use either Jax or Cupy to accelerate computations.
 These are not installed by default, see the
 [jax](https://jax.readthedocs.io/en/latest/installation.html)
-or [cupy](https://docs.cupy.dev/en/stable/install.html) installation instructions.
+or [cupy](https://docs.cupy.dev/en/stable/install.html) installation instructions,
+paying attention to your GPU requirements.  Support for torch is planned.
 
 ## Usage
 
