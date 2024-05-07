@@ -32,6 +32,22 @@ class ObjectiveLens(SimBaseModel):
 
     magnification: float = Field(1, description="magnification of objective lens.")
 
+    def __hash__(self) -> int:
+        return hash(
+            (
+                self.numerical_aperture,
+                self.coverslip_ri,
+                self.coverslip_ri_spec,
+                self.immersion_medium_ri,
+                self.immersion_medium_ri_spec,
+                self.specimen_ri,
+                self.working_distance,
+                self.coverslip_thickness,
+                self.coverslip_thickness_spec,
+                self.magnification,
+            )
+        )
+
     @model_validator(mode="before")
     def _vroot(cls, values: Any) -> Any:
         if isinstance(values, dict):
