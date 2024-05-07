@@ -121,6 +121,9 @@ class NumpyAPI:
         arr[mask] = value  # type: ignore
         return arr
 
+    # WARNING: these hash and eq methods may be problematic later?
+    # the goal is to make any instance of a NumpyAPI hashable and equal to any
+    # other instance, as long as they are of the same type and random seed.
     def __hash__(self) -> int:
         return hash(type(self)) + hash(self._random_seed)
 
