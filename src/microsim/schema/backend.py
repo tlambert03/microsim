@@ -140,6 +140,7 @@ class JaxAPI(NumpyAPI):
 
         from ._jax_bessel import j0, j1
 
+        self._random_seed: int | None = None
         self.xp = jax.numpy
         self.signal = signal
         self.stats = stats
