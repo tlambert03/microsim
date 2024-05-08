@@ -11,7 +11,7 @@ from microsim.fft.convolve import patched_fftconvolve
 np.random.seed(0)
 SHAPE = (128, 128, 128)
 ARY = np.random.rand(*SHAPE).astype(np.float32)
-KERNEL = np.ones((3, 3, 3)).astype(np.uint8)
+KERNEL = np.random.randint(0, 200, (3, 3, 3)).astype(np.uint8)
 EXPECTED = fftconvolve(ARY, KERNEL, mode="same")
 BACKENDS = {"scipy": "scipy", "jax": JaxFFTBackend(), "torch": TorchFFTBackend()}
 
