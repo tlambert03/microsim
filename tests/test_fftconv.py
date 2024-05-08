@@ -25,4 +25,7 @@ def test_fft_backend(backend: Any) -> None:
         # torch tensor ... required before calling assert_allclose
         result = result.cpu()
 
-    np.testing.assert_allclose(result, EXPECTED, rtol=1e-6)
+    # in many case this is accurate to 1e-6 tolerance, but it's os-dependent
+    # so we set the tolerance to 1e-5
+    TOL = 1e-5
+    np.testing.assert_allclose(result, EXPECTED, rtol=TOL)
