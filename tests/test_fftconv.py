@@ -33,4 +33,4 @@ def test_fft_backend(backend: Any) -> None:
         # torch tensor ... required before calling assert_allclose
         result = result.cpu()
 
-    np.testing.assert_allclose(result, EXPECTED, rtol=1e-2, atol=1e-2)
+    np.testing.assert_allclose(result, EXPECTED, rtol=1e-6)
