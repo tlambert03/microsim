@@ -8,20 +8,12 @@ from scipy.signal import fftconvolve
 from microsim.fft.backends import JaxFFTBackend, TorchFFTBackend
 from microsim.fft.convolve import patched_fftconvolve
 
-# point source
 np.random.seed(0)
 SHAPE = (128, 128, 128)
 ARY = np.random.rand(*SHAPE).astype(np.float32)
-ARY[tuple(s // 2 for s in ARY.shape)] = 1
 KERNEL = np.ones((3, 3, 3)).astype(np.uint8)
 EXPECTED = fftconvolve(ARY, KERNEL, mode="same")
-
-
-BACKENDS = {
-    "scipy": "scipy",
-    "jax": JaxFFTBackend("cpu"),
-    "torch": TorchFFTBackend("cpu"),
-}
+BACKENDS = {"scipy": "scipy", "jax": JaxFFTBackend(), "torch": TorchFFTBackend()}
 
 
 @pytest.mark.parametrize("backend", ["scipy", "jax", "torch"])
