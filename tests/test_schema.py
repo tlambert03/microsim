@@ -103,3 +103,11 @@ def test_sim_from_json() -> None:
     """
 
     ms.Simulation.model_validate_json(json_string)
+
+
+def test_simulation_from_ground_truth() -> None:
+    ground_truth = np.random.rand(64, 128, 128)
+    scale = (0.04, 0.02, 0.02)
+    sim = ms.Simulation.from_ground_truth(ground_truth=ground_truth, scale=scale)
+    assert sim.truth_space.scale == scale
+    np.testing.assert_array_almost_equal(sim.ground_truth(), ground_truth)
