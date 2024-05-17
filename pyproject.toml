@@ -49,6 +49,7 @@ test = [
     "zarr",
     "tifffile",
     "jax[cpu]",
+    "torch",
 ]
 dev = [
     "microsim[test]",
