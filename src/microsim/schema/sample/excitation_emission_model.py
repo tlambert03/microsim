@@ -1,6 +1,6 @@
+from microsim._data_array import DataArray
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
-from microsim._data_array import DataArray
 
 
 class ExcitationModel(SimBaseModel):
@@ -10,14 +10,12 @@ class ExcitationModel(SimBaseModel):
     duration: float
     """
     The excitation model simulates excitation of fluorophores by the light. This should be instantiated for each fluorophore
-    It is defined by the excitation spectrum, the spatial density of the fluorophores in the sample and the duration of the excitation. Sampling 
+    It is defined by the excitation spectrum, the spatial density of the fluorophores in the sample and the duration of the excitation. Sampling
     from Poisson distribution happens here.
     """
 
-
-    def sample(self, fluorophore_spatial_density: DataArray
-):
-        # TODO: Multi-fluorophore setup: model the excitation.  
+    def sample(self, fluorophore_spatial_density: DataArray):
+        # TODO: Multi-fluorophore setup: model the excitation.
         pass
 
 
@@ -38,6 +36,6 @@ class ExcitationEmissionModel(SimBaseModel):
     excitation: ExcitationModel
     emission: EmissionModel
 
-    def sample(self)->DataArray:
+    def sample(self) -> DataArray:
         sample = self.excitation.sample()
         return self.emission.attach_emission_spectra(sample)
