@@ -22,6 +22,7 @@ class Widefield(SimBaseModel):
     ) -> DataArray:
         xp = NumpyAPI.create(xp)
 
+        # TODO: @ashesh: Here, we can iterate over the psfs. 
         em_psf = make_psf(
             space=truth.attrs["space"],
             channel=channel,

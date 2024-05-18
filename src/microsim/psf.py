@@ -343,6 +343,8 @@ def _pinhole_mask(
 
 def make_psf(
     space: SpaceProtocol,
+    # TODO: @ashesh: Instead of the channel argument, we can explicitly pass the excitation and emission wavelengths? This will 
+    # enable calling this function multiple times for a single channel.
     channel: OpticalConfig,
     objective: ObjectiveLens,
     pinhole_au: float | None = None,

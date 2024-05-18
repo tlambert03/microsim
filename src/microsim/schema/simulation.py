@@ -73,6 +73,7 @@ class Simulation(SimBaseModel):
         if not hasattr(self, "_ground_truth"):
             xp = self._xp
             # make empty space into which we'll add fluorescence
+            # TODO: Multi-fluorophore setup: use len(self.sample.labels) to create the space with that many channels.
             truth = self.truth_space.create(array_creator=xp.zeros)
             # add fluorophores to the space
             for label in self.sample.labels:
@@ -81,6 +82,7 @@ class Simulation(SimBaseModel):
             self._ground_truth = truth
         return self._ground_truth
 
+    # TODO: Multi-fluorophore setup: incident light spectrum needs to be passed to the optical system as an additional arguement.
     def optical_image(
         self, truth: "DataArray | None" = None, *, channel_idx: int = 0
     ) -> "DataArray":
@@ -90,6 +92,7 @@ class Simulation(SimBaseModel):
             raise ValueError("truth must be a DataArray")
         # let the given modality render the as an image (convolved, etc..)
         channel = self.channels[channel_idx]  # TODO
+        # TODO: Multi-fluorophore setup: do stochastic sampling on truth and pass the sampled output to self.modality.render.
         result = self.modality.render(
             truth,
             channel,
@@ -112,6 +115,7 @@ class Simulation(SimBaseModel):
         if optical_image is None:
             optical_image = self.optical_image(channel_idx=channel_idx)
         image = optical_image
+        # TODO: @ashesh: combine information present in all wavelength bins. I would simply sum them?
         if self.output_space is not None:
             image = self.output_space.rescale(image)
         if self.detector is not None and with_detector_noise:
