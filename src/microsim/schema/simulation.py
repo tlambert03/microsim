@@ -93,6 +93,11 @@ class Simulation(SimBaseModel):
         # let the given modality render the as an image (convolved, etc..)
         channel = self.channels[channel_idx]  # TODO
         # TODO: Multi-fluorophore setup: do stochastic sampling on truth and pass the sampled output to self.modality.render.
+        # To achieve this, for every fluorophore, following needs to be done in excitation_emission_model.py:
+            # 1. Divide its excistion spectra into a avelength intervals. (Pre-computed for each fluorophore)
+            # 2. Sample the excitation of fluorophores within each interval on the basis of the incident light spectrum and its excitation spectra.
+                # TODO: figure out the math behind this.
+            # 3. Allocate the emitted light in waavelength intervals. (Pre-computed for each fluorophore)
         result = self.modality.render(
             truth,
             channel,
@@ -115,7 +120,7 @@ class Simulation(SimBaseModel):
         if optical_image is None:
             optical_image = self.optical_image(channel_idx=channel_idx)
         image = optical_image
-        # TODO: @ashesh: combine information present in all wavelength bins. I would simply sum them?
+        # TODO:Multi-fluorophore setup: combine information present in all wavelength intervals. I would simply sum them?
         if self.output_space is not None:
             image = self.output_space.rescale(image)
         if self.detector is not None and with_detector_noise:
