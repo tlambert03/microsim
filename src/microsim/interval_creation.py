@@ -36,36 +36,19 @@ class AreaBasedInterval(BaseInterval):
         self.bins = []
 
         cumsum = np.cumsum(y)
-        step = cumsum[-1]/num_clusters
+        step = cumsum[-1]/self.num_clusters
         start_val = 0
         end_vals = np.arange(step, cumsum[-1], step)
         # Add the last bin if the last value is quite far from the last bin
         end_vals = np.append(end_vals, cumsum[-1])
         
-        for end_val in end_vals:
+        for idx, end_val in enumerate(end_vals):
             mid_val = (start_val + end_val)/2
-            end_idx = bisect_left(cumsum, end_val)
+            # NOTE: minus 1 because we want the disjoint intervals. Also, for the last interval, we want the last index and so there is no minus 1.
+            end_idx = bisect_left(cumsum, end_val) -1*(idx != len(end_vals)-1)
             start_idx = bisect_left(cumsum, start_val)
             # TODO: mid is not the mean.
             mid_idx = bisect_left(cumsum, mid_val)
             self.bins.append(Bin(start=x[start_idx], end=x[end_idx], mean=x[mid_idx]))
             start_val = end_val
 
-    
-
-
-
-if __name__ == "__main__":
-    def get_fluorophore_data(name):
-        from microsim.fpbase import get_fluorophore
-        flp = get_fluorophore(name)
-        spec = flp.states[0].excitation_spectrum.data
-        wavelength, intensity = zip(*spec)
-        return wavelength, intensity
-
-    num_clusters = 5
-    wv, inten = get_fluorophore_data("EGFP")
-    binner = AreaBasedInterval(num_clusters=num_clusters)
-    binner.generate_bins(wv, inten)
-    print([x.mean for x in binner.bins])
-    # print(binner.get_bin_probablities(500))
