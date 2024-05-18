@@ -2,7 +2,6 @@ from typing import Literal
 
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
-import numpy as np
 
 class _Filter(SimBaseModel):
     type: str

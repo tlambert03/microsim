@@ -4,7 +4,7 @@ import numpy as np
 
 
 def test_area_based_interval():
-    x = np.arange(1,64*4)
+    x = np.arange(1,64 + 32 + 16 + 8 + 1)
     y = [2]*64 + [4]*32 + [8]*16 + [16]*8
     interval = AreaBasedInterval(num_clusters=4)
     interval.generate_bins(x, y)
