@@ -20,9 +20,8 @@ class ExcitationModel(SimBaseModel):
 
 
 class EmissionModel(SimBaseModel):
-    """
-    The emission model is essentially selecting the wavelength interval for the emitted photons. In code, this will be equivalent to distributing the pixelwise intensity to the different emmision wavelength intervals. This class will be instantiated for each fluorophore.
-    """
+    """The emission model is essentially selecting the wavelength interval for the emitted photons. In code, this will be equivalent to distributing the pixelwise intensity to the different emmision wavelength intervals. This class will be instantiated for each fluorophore."""
+
     emission_spectrum: Spectrum
 
     def attach_emission_spectra(self, emitted_intensity: DataArray):
@@ -30,9 +29,8 @@ class EmissionModel(SimBaseModel):
 
 
 class ExcitationEmissionModel(SimBaseModel):
-    """
-    The excitation-emission model is a model for the light that excites the fluorophores and the emits light. This class will be instantiated for each fluorophore.
-    """
+    """The excitation-emission model is a model for the light that excites the fluorophores and the emits light. This class will be instantiated for each fluorophore."""
+
     excitation: ExcitationModel
     emission: EmissionModel
 

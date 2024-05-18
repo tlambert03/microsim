@@ -3,6 +3,7 @@ from typing import Literal
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
 
+
 class _Filter(SimBaseModel):
     type: str
     name: str = ""
