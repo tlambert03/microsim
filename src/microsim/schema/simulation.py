@@ -94,10 +94,10 @@ class Simulation(SimBaseModel):
         channel = self.channels[channel_idx]  # TODO
         # TODO: Multi-fluorophore setup: do stochastic sampling on truth and pass the sampled output to self.modality.render.
         # To achieve this, for every fluorophore, following needs to be done in excitation_emission_model.py:
-            # 1. Divide its excistion spectra into a avelength intervals. (Pre-computed for each fluorophore)
-            # 2. Sample the excitation of fluorophores within each interval on the basis of the incident light spectrum and its excitation spectra.
-                # TODO: figure out the math behind this.
-            # 3. Allocate the emitted light in waavelength intervals. (Pre-computed for each fluorophore)
+        # 1. Divide its excistion spectra into a avelength intervals. (Pre-computed for each fluorophore)
+        # 2. Sample the excitation of fluorophores within each interval on the basis of the incident light spectrum and its excitation spectra.
+        # TODO: figure out the math behind this.
+        # 3. Allocate the emitted light in waavelength intervals. (Pre-computed for each fluorophore)
         result = self.modality.render(
             truth,
             channel,
