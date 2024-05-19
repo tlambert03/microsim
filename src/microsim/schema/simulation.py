@@ -2,22 +2,34 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
-    from typing import Self
+    from typing import Self, Unpack
 
     from .backend import NumpyAPI
 
 from pydantic import AfterValidator, Field, model_validator
 
-from microsim._data_array import DataArray
+from microsim._data_array import ArrayProtocol, DataArray
 
 from ._base_model import SimBaseModel
 from .detectors import Detector
 from .lens import ObjectiveLens
 from .modality import Modality, Widefield
 from .optical_config import FITC, OpticalConfig
-from .sample import Sample
+from .sample import FluorophoreDistribution, Sample
 from .settings import Settings
-from .space import Space, _RelativeSpace
+from .space import ShapeScaleSpace, Space, _RelativeSpace
+
+if TYPE_CHECKING:
+    from typing import TypedDict
+
+    class SimluationKwargs(TypedDict, total=False):
+        output_space: Space | dict | None
+        objective_lens: ObjectiveLens
+        channels: list[OpticalConfig]
+        detector: Detector | None
+        modality: Modality
+        settings: Settings
+        output_path: "OutPath" | None
 
 
 def _check_extensions(path: Path) -> Path:
@@ -41,6 +53,25 @@ class Simulation(SimBaseModel):
     modality: Modality = Field(default_factory=Widefield)
     settings: Settings = Field(default_factory=Settings)
     output_path: OutPath | None = None
+
+    @classmethod
+    def from_ground_truth(
+        self,
+        ground_truth: ArrayProtocol,
+        scale: tuple[float, ...],
+        **kwargs: "Unpack[SimluationKwargs]",
+    ) -> "Self":
+        """Shortcut to create a simulation directly from a ground truth array.
+
+        In this case, we bypass derive the `truth_space` and `sample` objects directly
+        from a pre-calculated ground truth array.  `scale` must also be provided as a
+        tuple of floats, one for each dimension of the ground truth array.
+        """
+        return self(
+            truth_space=ShapeScaleSpace(shape=ground_truth.shape, scale=scale),
+            sample=Sample(labels=[FluorophoreDistribution.from_array(ground_truth)]),
+            **kwargs,
+        )
 
     @model_validator(mode="after")
     def _resolve_spaces(self) -> "Self":
