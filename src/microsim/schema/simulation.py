@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
-    from typing import Self
+    from typing_extensions import Self
 
     from .backend import NumpyAPI
 
@@ -81,7 +81,8 @@ class Simulation(SimBaseModel):
             self._ground_truth = truth
         return self._ground_truth
 
-    # TODO: Multi-fluorophore setup: incident light spectrum needs to be passed to the optical system as an additional arguement.
+    # TODO: Multi-fluorophore setup: incident light spectrum needs to be passed to
+    # the optical system as an additional arguement.
     def optical_image(
         self, truth: "DataArray | None" = None, *, channel_idx: int = 0
     ) -> "DataArray":
@@ -91,11 +92,15 @@ class Simulation(SimBaseModel):
             raise ValueError("truth must be a DataArray")
         # let the given modality render the as an image (convolved, etc..)
         channel = self.channels[channel_idx]  # TODO
-        # TODO: Multi-fluorophore setup: do stochastic sampling on truth and pass the sampled output to self.modality.render.
-        # To achieve this, for every fluorophore, following needs to be done in excitation_emission_model.py:
-        # 1. Divide its excitaion spectra into a wavelength intervals. (Pre-computed for each fluorophore)
-        # 2. Sample the excitation of fluorophores within each interval on the basis of the incident light spectrum and its excitation spectra.
-        # 3. Allocate the emitted light in wavelength intervals. (Pre-computed for each fluorophore)
+        # TODO: Multi-fluorophore setup: do stochastic sampling on truth and pass the
+        # sampled output to self.modality.render. To achieve this, for every
+        # fluorophore, following needs to be done in excitation_emission_model.py:
+        # 1. Divide its excitaion spectra into a wavelength intervals. (Pre-computed
+        #       for each fluorophore)
+        # 2. Sample the excitation of fluorophores within each interval on the basis
+        #       of the incident light spectrum and its excitation spectra.
+        # 3. Allocate the emitted light in wavelength intervals. (Pre-computed for
+        #           each fluorophore)
         # For all of this, adapt the code from  examples/emission_events.py.
         result = self.modality.render(
             truth,
@@ -119,7 +124,8 @@ class Simulation(SimBaseModel):
         if optical_image is None:
             optical_image = self.optical_image(channel_idx=channel_idx)
         image = optical_image
-        # TODO:Multi-fluorophore setup: combine information present in all wavelength intervals. I would simply sum them?
+        # TODO:Multi-fluorophore setup: combine information present in all wavelength
+        # intervals.
         if self.output_space is not None:
             image = self.output_space.rescale(image)
         if self.detector is not None and with_detector_noise:

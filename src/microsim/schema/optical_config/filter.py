@@ -12,7 +12,7 @@ class _Filter(SimBaseModel):
     type: str
     name: str = ""
 
-    @computed_field
+    @computed_field  # type: ignore
     @cached_property
     def spectrum(self) -> Spectrum:
         return self._get_spectrum()
