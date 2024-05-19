@@ -1,10 +1,12 @@
 """In this file, a spectrum is divided into intervals. AreaBasedInterval class ensures that the area under the curve is equal for all intervals."""
 
 from bisect import bisect_left
-
 from typing import NamedTuple
+
 import numpy as np
+
 from microsim.schema._base_model import SimBaseModel
+
 
 class Bin(NamedTuple):
     """One interval."""

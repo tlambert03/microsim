@@ -96,7 +96,7 @@ class Simulation(SimBaseModel):
         # 1. Divide its excitaion spectra into a wavelength intervals. (Pre-computed for each fluorophore)
         # 2. Sample the excitation of fluorophores within each interval on the basis of the incident light spectrum and its excitation spectra.
         # 3. Allocate the emitted light in wavelength intervals. (Pre-computed for each fluorophore)
-        # For all of this, adapt the code from  examples/emission_events.py. 
+        # For all of this, adapt the code from  examples/emission_events.py.
         result = self.modality.render(
             truth,
             channel,

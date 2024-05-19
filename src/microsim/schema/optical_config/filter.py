@@ -1,15 +1,17 @@
+from functools import cached_property
 from typing import Literal
+
+import numpy as np
+from pydantic import computed_field
 
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
-import numpy as np
-from pydantic import BaseModel, computed_field
-from functools import cached_property
+
 
 class _Filter(SimBaseModel):
     type: str
     name: str = ""
-    
+
     @computed_field
     @cached_property
     def spectrum(self) -> Spectrum:
@@ -17,6 +19,7 @@ class _Filter(SimBaseModel):
 
     def _get_spectrum(self) -> Spectrum:
         raise NotImplementedError("Needs to be implemented")
+
 
 class Bandpass(_Filter):
     type: Literal["bandpass"] = "bandpass"
@@ -28,7 +31,7 @@ class Bandpass(_Filter):
         start = self.bandcenter - self.bandwidth / 2
         end = self.bandcenter + self.bandwidth / 2
         wavelength = np.arange(start, end + 1, 1)
-        intensity = np.ones_like(wavelength) 
+        intensity = np.ones_like(wavelength)
         return Spectrum(wavelength=wavelength, intensity=intensity)
 
 
