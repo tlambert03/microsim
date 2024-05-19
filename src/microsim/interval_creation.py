@@ -5,6 +5,7 @@ from typing import NamedTuple
 
 import numpy as np
 
+
 class Bin(NamedTuple):
     """One interval."""
 
@@ -13,11 +14,13 @@ class Bin(NamedTuple):
     mean: float | None = None
     mode: float | None = None
 
-def generate_bins(x: np.ndarray, y: np.ndarray, numbins:int) -> list[Bin]:
+
+def generate_bins(x: np.ndarray, y: np.ndarray, numbins: int) -> list[Bin]:
     """Divide the spectrum into intervals."""
     return _generate_bins_equal_area(x, y, numbins)
 
-def _generate_bins_equal_area(x: np.ndarray, y: np.ndarray, numbins:int) -> list[Bin]:
+
+def _generate_bins_equal_area(x: np.ndarray, y: np.ndarray, numbins: int) -> list[Bin]:
     bins = []
 
     cumsum = np.cumsum(y)
@@ -36,5 +39,5 @@ def _generate_bins_equal_area(x: np.ndarray, y: np.ndarray, numbins:int) -> list
         mid_idx = bisect_left(cumsum, mid_val)
         bins.append(Bin(start=x[start_idx], end=x[end_idx], mean=x[mid_idx]))
         start_val = end_val
-    
+
     return bins
