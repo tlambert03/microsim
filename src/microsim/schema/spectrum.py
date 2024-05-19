@@ -19,5 +19,5 @@ class Spectrum(SimBaseModel):
     def peak_wavelength(self) -> float:
         """Wavelength corresponding to maximum intensity."""
         max_intensity = self.intensity.max()
-        max_idx = np.where(self.intensity==max_intensity)[0][0]
+        max_idx = np.where(self.intensity == max_intensity)[0][0]
         return self.wavelength[max_idx]
