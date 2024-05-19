@@ -6,7 +6,7 @@ from microsim.interval_creation import generate_bins
 def test_area_based_interval():
     x = np.arange(1, 64 + 32 + 16 + 8 + 1)
     y = [2] * 64 + [4] * 32 + [8] * 16 + [16] * 8
-    bins = generate_bins(x,y,4)
+    bins = generate_bins(x, y, 4)
     assert bins[0].start == 1
     assert bins[0].end == 64 - 1
 
