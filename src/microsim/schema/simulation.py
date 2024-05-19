@@ -73,7 +73,6 @@ class Simulation(SimBaseModel):
         if not hasattr(self, "_ground_truth"):
             xp = self._xp
             # make empty space into which we'll add fluorescence
-            # TODO: Multi-fluorophore setup: use len(self.sample.labels) to create the space with that many channels.
             truth = self.truth_space.create(array_creator=xp.zeros)
             # add fluorophores to the space
             for label in self.sample.labels:
@@ -94,10 +93,10 @@ class Simulation(SimBaseModel):
         channel = self.channels[channel_idx]  # TODO
         # TODO: Multi-fluorophore setup: do stochastic sampling on truth and pass the sampled output to self.modality.render.
         # To achieve this, for every fluorophore, following needs to be done in excitation_emission_model.py:
-        # 1. Divide its excistion spectra into a avelength intervals. (Pre-computed for each fluorophore)
+        # 1. Divide its excitaion spectra into a wavelength intervals. (Pre-computed for each fluorophore)
         # 2. Sample the excitation of fluorophores within each interval on the basis of the incident light spectrum and its excitation spectra.
-        # TODO: figure out the math behind this.
-        # 3. Allocate the emitted light in waavelength intervals. (Pre-computed for each fluorophore)
+        # 3. Allocate the emitted light in wavelength intervals. (Pre-computed for each fluorophore)
+        # For all of this, adapt the code from  examples/emission_events.py. 
         result = self.modality.render(
             truth,
             channel,

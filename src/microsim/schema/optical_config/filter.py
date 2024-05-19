@@ -2,12 +2,21 @@ from typing import Literal
 
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
-
+import numpy as np
+from pydantic import BaseModel, computed_field
+from functools import cached_property
 
 class _Filter(SimBaseModel):
     type: str
     name: str = ""
+    
+    @computed_field
+    @cached_property
+    def spectrum(self) -> Spectrum:
+        return self._get_spectrum()
 
+    def _get_spectrum(self) -> Spectrum:
+        raise NotImplementedError("Needs to be implemented")
 
 class Bandpass(_Filter):
     type: Literal["bandpass"] = "bandpass"
@@ -15,12 +24,12 @@ class Bandpass(_Filter):
     bandwidth: float
     transmission: float = 1.0
 
-    def get_spectrum(self) -> Spectrum:
+    def _get_spectrum(self) -> Spectrum:
         start = self.bandcenter - self.bandwidth / 2
         end = self.bandcenter + self.bandwidth / 2
-        wavelength = list(range(start, end + 1, 1))
-        intensity = [1.0] * len(wavelength)
-        return Spectrum(wavelength.tolist(), intensity.tolist())
+        wavelength = np.arange(start, end + 1, 1)
+        intensity = np.ones_like(wavelength) 
+        return Spectrum(wavelength=wavelength, intensity=intensity)
 
 
 class Shortpass(_Filter):
@@ -33,7 +42,7 @@ class Shortpass(_Filter):
     def bandcenter(self) -> float:
         return self.cutoff
 
-    def get_spectrum(self) -> Spectrum:
+    def _get_spectrum(self) -> Spectrum:
         raise NotImplementedError("Needs to be implemented")
 
 
@@ -47,7 +56,7 @@ class Longpass(_Filter):
     def bandcenter(self) -> float:
         return self.cutoff
 
-    def get_spectrum(self) -> Spectrum:
+    def _get_spectrum(self) -> Spectrum:
         raise NotImplementedError("Needs to be implemented")
 
 
@@ -59,7 +68,7 @@ class FilterSpectrum(_Filter):
     def bandcenter(self) -> float:
         return self.spectrum.peak_wavelength
 
-    def get_spectrum(self) -> Spectrum:
+    def _get_spectrum(self) -> Spectrum:
         return self.spectrum
 
 

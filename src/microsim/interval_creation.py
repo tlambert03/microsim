@@ -2,12 +2,11 @@
 
 from bisect import bisect_left
 
+from typing import NamedTuple
 import numpy as np
-
 from microsim.schema._base_model import SimBaseModel
 
-
-class Bin(SimBaseModel):
+class Bin(NamedTuple):
     """One interval."""
 
     start: float | None = None
