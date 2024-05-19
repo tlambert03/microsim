@@ -62,14 +62,14 @@ class Longpass(_Filter):
 
 class FilterSpectrum(_Filter):
     type: Literal["spectrum"] = "spectrum"
-    spectrum: Spectrum
+    spectrum_data: Spectrum
 
     @property
     def bandcenter(self) -> float:
         return self.spectrum.peak_wavelength
 
     def _get_spectrum(self) -> Spectrum:
-        return self.spectrum
+        return self.spectrum_data
 
 
 Filter = Bandpass | Shortpass | Longpass | FilterSpectrum
