@@ -30,10 +30,11 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "pydantic>=2.4",
-    "numpy",
-    "annotated_types",
     'pydantic-settings',
+    "annotated_types",
+    "numpy",
+    "pint",
+    "pydantic>=2.4",
     "scipy",
     "tqdm",
     "xarray",
@@ -44,12 +45,13 @@ dependencies = [
 cosem = ["xarray-datatree", "s3fs", "dask", "imageio", "supabase"]
 test = [
     "microsim[cosem]",
-    "pytest",
-    "pytest-cov",
-    "zarr",
-    "tifffile",
     "jax[cpu]",
+    "matplotlib",
+    "pytest-cov",
+    "pytest",
+    "tifffile",
     "torch",
+    "zarr",
 ]
 dev = [
     "microsim[test]",
