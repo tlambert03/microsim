@@ -30,10 +30,11 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    "pydantic>=2.4",
-    "numpy",
-    "annotated_types",
     'pydantic-settings',
+    "annotated_types",
+    "numpy",
+    "pint",
+    "pydantic>=2.4",
     "scipy",
     "tqdm",
     "xarray",

@@ -32,6 +32,7 @@ class State(BaseModel):
     extCoeff: float
     qy: float
     spectra: list[Spectrum]
+    lifetime: float | None = None
 
     @property
     def excitation_spectrum(self) -> Spectrum | None:
@@ -218,6 +219,7 @@ def get_protein_by_id(id: str) -> FPbaseFluorophore:
                 emMax
                 extCoeff
                 qy
+                lifetime
                 spectra {{ subtype data }}
             }}
             defaultState {{

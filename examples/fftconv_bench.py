@@ -2,8 +2,12 @@
 
 import time
 
-import cupy
-import cupyx.scipy.signal as cuf
+try:
+    import cupy
+    import cupyx.scipy.signal as cuf
+except ImportError:
+    cupy = None
+
 import jax.numpy as jnp
 import jax.scipy.signal as jsig
 import numpy as np
@@ -70,10 +74,11 @@ def main() -> None:
     print(f"PyTorch FFT Convolve: {torch_time:.6f} seconds, {mint:.6f} seconds")
 
     # Benchmark CuPy
-    cupy_signal = cupy.asarray(np_signal)
-    cupy_kernel = cupy.asarray(np_kernel)
-    cupy_time, mint = benchmark(cupy_fftconvolve, cupy_signal, cupy_kernel)
-    print(f"CuPy FFT Convolve: {cupy_time:.6f} seconds, {mint:.6f} seconds")
+    if cupy is not None:
+        cupy_signal = cupy.asarray(np_signal)
+        cupy_kernel = cupy.asarray(np_kernel)
+        cupy_time, mint = benchmark(cupy_fftconvolve, cupy_signal, cupy_kernel)
+        print(f"CuPy FFT Convolve: {cupy_time:.6f} seconds, {mint:.6f} seconds")
 
 
 if __name__ == "__main__":
