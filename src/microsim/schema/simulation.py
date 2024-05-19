@@ -1,8 +1,8 @@
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Unpack
+from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
-    from typing import Self
+    from typing import Self, Unpack
 
     from .backend import NumpyAPI
 
@@ -59,7 +59,7 @@ class Simulation(SimBaseModel):
         self,
         ground_truth: ArrayProtocol,
         scale: tuple[float, ...],
-        **kwargs: Unpack["SimluationKwargs"],
+        **kwargs: "Unpack[SimluationKwargs]",
     ) -> "Self":
         """Shortcut to create a simulation directly from a ground truth array.
 
