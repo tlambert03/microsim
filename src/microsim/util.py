@@ -214,7 +214,9 @@ def tiled_convolve(
 
 
 # convenience function we'll use a couple times
-def ortho_plot(img: ArrayProtocol, gamma: float = 0.5, mip: bool = False) -> None:
+def ortho_plot(
+    img: ArrayProtocol, gamma: float = 0.5, mip: bool = False, cmap: str = "gray"
+) -> None:
     import matplotlib.pyplot as plt
     from matplotlib.colors import PowerNorm
 
@@ -223,8 +225,8 @@ def ortho_plot(img: ArrayProtocol, gamma: float = 0.5, mip: bool = False) -> Non
     _, ax = plt.subplots(ncols=2, figsize=(10, 5))
     xy = img.max(axis=0) if mip else img[img.shape[0] // 2]
     xz = img.max(axis=1) if mip else img[:, img.shape[1] // 2]
-    ax[0].imshow(xy, norm=PowerNorm(gamma))
-    ax[1].imshow(xz, norm=PowerNorm(gamma))
+    ax[0].imshow(xy, norm=PowerNorm(gamma), cmap=cmap)
+    ax[1].imshow(xz, norm=PowerNorm(gamma), cmap=cmap)
     ax[0].set_title("XY slice")
     ax[1].set_title("XZ slice")
     plt.show()
