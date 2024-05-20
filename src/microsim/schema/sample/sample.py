@@ -22,7 +22,7 @@ class FluorophoreDistribution(SimBaseModel):
 
     @model_validator(mode="before")
     def _vmodel(cls, value: Any) -> Any:
-        if isinstance(value, (MatsLines | FixedArrayTruth)):
+        if isinstance(value, (MatsLines | FixedArrayTruth)):  # FIXME
             return {"distribution": value}
         if isinstance(value, dict):
             if "distribution" not in value and "type" in value:
