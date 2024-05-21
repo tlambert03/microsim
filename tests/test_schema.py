@@ -14,6 +14,11 @@ CONFOCAL_AU0_2 = ms.Confocal(pinhole_au=0.2)
 WIDEFIELD = ms.Widefield()
 
 
+def test_simulation_json_schema() -> None:
+    """Ensure the Simulation model can be cast to JSON schema."""
+    assert isinstance(ms.Simulation.model_json_schema(), dict)
+
+
 @pytest.fixture
 def sim1() -> ms.Simulation:
     return ms.Simulation(

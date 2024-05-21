@@ -139,6 +139,7 @@ exclude_lines = [
     "if TYPE_CHECKING:",
     "@overload",
     "except ImportError",
+    "raise ValueError",
     "\\.\\.\\.",
     "raise NotImplementedError()",
     "pass",

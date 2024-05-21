@@ -5,7 +5,7 @@ import numpy as np
 from pydantic import model_validator
 
 from ._base_model import SimBaseModel
-from ._types import NumpyNdarray
+from ._field_types import NumpyNdarray
 
 
 class _AryRepr:
