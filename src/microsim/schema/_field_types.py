@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from inspect import signature
-from typing import Annotated, Any, Literal, Protocol
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Protocol
 
 import numpy as np
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, functional_validators
 from pydantic_core import core_schema
 
 from . import _validators
+
+if TYPE_CHECKING:
+    from pydantic.json_schema import JsonSchemaValue
 
 
 class ProvidesCoreSchema(Protocol):
@@ -120,7 +123,7 @@ class _NumpyNdarrayPydanticAnnotation:
     @classmethod
     def __get_pydantic_json_schema__(
         cls, _core_schema: core_schema.CoreSchema, handler: GetJsonSchemaHandler
-    ) -> core_schema.JsonSchemaValue:
+    ) -> JsonSchemaValue:
         # Use the same schema that would be used for arrays
         return handler(core_schema.list_schema(core_schema.any_schema()))
 
