@@ -349,22 +349,19 @@ def make_psf(
     max_au_relative: float | None = None,
     xp: NumpyAPI | None = None,
 ) -> ArrayProtocol:
-    xp = NumpyAPI.create(xp)
     nz, _ny, nx = space.shape
     dz, _dy, dx = space.scale
-    ex_wvl_um = channel.excitation.bandcenter * 1e-3
-    em_wvl_um = channel.emission.bandcenter * 1e-3
     return cached_psf(
         nz=nz,
         nx=nx,
         dx=dx,
         dz=dz,
-        ex_wvl_um=ex_wvl_um,
-        em_wvl_um=em_wvl_um,
+        ex_wvl_um=channel.excitation.bandcenter.to("um").magnitude,
+        em_wvl_um=channel.emission.bandcenter.to("um").magnitude,
         objective=_cast_objective(objective),
         pinhole_au=pinhole_au,
         max_au_relative=max_au_relative,
-        xp=xp,
+        xp=NumpyAPI.create(xp),
     )
 
 

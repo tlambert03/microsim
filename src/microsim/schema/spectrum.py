@@ -2,36 +2,49 @@ from collections.abc import Iterable
 from typing import Any
 
 import numpy as np
-from pydantic import model_validator
+import pint
+from pydantic import field_validator, model_validator
+
+from microsim._field_types import Nanometers, NumpyNdarray
 
 from ._base_model import SimBaseModel
-from ._field_types import NumpyNdarray
 
 
 class _AryRepr:
-    def __init__(self, dtype: Any, shape: Any) -> None:
-        self.dtype = dtype
-        self.shape = shape
+    def __init__(self, obj: np.ndarray | pint.Quantity) -> None:
+        self.dtype = obj.dtype
+        self.shape = obj.shape
+        self.units = getattr(obj, "units", None)
 
     def __repr__(self) -> str:
-        return f"ndarray<shape={self.shape} dtype={self.dtype}>"
+        unit = f" units={self.units}" if self.units else ""
+        return f"ndarray<shape={self.shape} dtype={self.dtype}{unit}>"
 
 
 class Spectrum(SimBaseModel):
-    wavelength: NumpyNdarray  # nm
+    wavelength: Nanometers
     intensity: NumpyNdarray  # normalized to 1
     scalar: float = 1  # scalar to multiply intensity by, such as EC or QY
 
     def __repr_args__(self) -> Iterable[tuple[str | None, Any]]:
         for _fname, _val in super().__repr_args__():
-            if isinstance(_val, np.ndarray):
-                _val = _AryRepr(_val.dtype, _val.shape)
+            if isinstance(_val, pint.Quantity | np.ndarray):
+                _val = _AryRepr(_val)
             yield _fname, _val
 
     @property
-    def peak_wavelength(self) -> float:
+    def peak_wavelength(self) -> Nanometers:
         """Wavelength corresponding to maximum intensity."""
-        return float(self.wavelength[np.argmax(self.intensity)])
+        return self.wavelength[np.argmax(self.intensity)]  # type: ignore
+
+    @field_validator("intensity", mode="after")
+    @classmethod
+    def _validate_intensity(cls, value: np.ndarray) -> np.ndarray:
+        if not np.all(value >= 0):
+            raise ValueError("Intensity must be non-negative")
+        if not 0.9 <= np.max(value) <= 1:
+            raise ValueError("Intensity must be normalized to 1")
+        return value
 
     @model_validator(mode="before")
     def _cast_spectrum(cls, value: Any) -> Any:

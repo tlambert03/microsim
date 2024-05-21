@@ -4,10 +4,11 @@ from inspect import signature
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Protocol
 
 import numpy as np
+from pint.facets.plain import PlainQuantity
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, functional_validators
 from pydantic_core import core_schema
 
-from . import _validators
+from .schema import _validators
 
 if TYPE_CHECKING:
     from pydantic.json_schema import JsonSchemaValue
@@ -130,6 +131,8 @@ class _NumpyNdarrayPydanticAnnotation:
 
 ######################### Custom Field Types #########################
 
+############### numpy stuff ###############
+
 Dtype = Annotated[np.dtype, BeforeValidator(_validators.validate_np_dtype)]
 FloatDtype = Annotated[
     np.dtype[np.floating], BeforeValidator(_validators.validate_np_floating_dtype)
@@ -139,3 +142,14 @@ IntDtype = Annotated[
 ]
 
 NumpyNdarray = Annotated[np.ndarray, _NumpyNdarrayPydanticAnnotation]
+
+############### pint stuff ###############
+
+# these are all ultimately also numeric and/or array[numeric] types too
+
+Meters = Annotated[PlainQuantity, BeforeValidator(_validators.validate_meters)]
+Microns = Annotated[PlainQuantity, BeforeValidator(_validators.validate_microns)]
+Nanometers = Annotated[PlainQuantity, BeforeValidator(_validators.validate_nm)]
+ExtCoeff = Annotated[PlainQuantity, BeforeValidator(_validators.validate_ext_coeff)]
+Nanoseconds = Annotated[PlainQuantity, BeforeValidator(_validators.validate_ns)]
+Seconds = Annotated[PlainQuantity, BeforeValidator(_validators.validate_seconds)]
