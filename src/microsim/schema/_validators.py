@@ -7,7 +7,7 @@ from typing import Any, TypeVar
 import numpy as np
 import pint
 from pint._typing import UnitLike
-from pint.facets.plain import MagnitudeT, PlainQuantity
+from pint.facets.plain.quantity import MagnitudeT, PlainQuantity
 
 T = TypeVar("T", bound=pint.Unit)
 

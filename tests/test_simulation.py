@@ -1,3 +1,4 @@
+import pickle
 from pathlib import Path
 
 import numpy as np
@@ -14,11 +15,6 @@ CONFOCAL_AU0_2 = ms.Confocal(pinhole_au=0.2)
 WIDEFIELD = ms.Widefield()
 
 
-def test_simulation_json_schema() -> None:
-    """Ensure the Simulation model can be cast to JSON schema."""
-    assert isinstance(ms.Simulation.model_json_schema(), dict)
-
-
 @pytest.fixture
 def sim1() -> ms.Simulation:
     return ms.Simulation(
@@ -29,6 +25,17 @@ def sim1() -> ms.Simulation:
         objective_lens=NA1_4,
         channels=[FITC],
     )
+
+
+def test_simulation_json_schema() -> None:
+    """Ensure the Simulation model can be cast to JSON schema."""
+    assert isinstance(ms.Simulation.model_json_schema(), dict)
+
+
+def test_model_dump(sim1: ms.Simulation) -> None:
+    assert isinstance(sim1.model_dump(mode="python"), dict)
+    assert isinstance(sim1.model_dump(mode="json"), dict)
+    assert isinstance(sim1.model_dump_json(), str)
 
 
 @pytest.mark.parametrize("precision", ["f4", "f8"])
@@ -116,3 +123,9 @@ def test_simulation_from_ground_truth() -> None:
     sim = ms.Simulation.from_ground_truth(ground_truth=ground_truth, scale=scale)
     assert sim.truth_space.scale == scale
     np.testing.assert_array_almost_equal(sim.ground_truth(), ground_truth)
+
+
+def test_pickle(sim1: ms.Simulation) -> None:
+    pickled = pickle.dumps(sim1)
+    assert pickle.loads(pickled) == sim1
+    assert sim1.model_copy(deep=True) is not sim1
