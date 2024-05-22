@@ -79,9 +79,14 @@ class FPbaseFluorophore(BaseModel):
         return next(iter(self.states), None)
 
 
+class FilterPlacement(SpectrumOwner):
+    path: Literal["EX", "EM", "BS"]
+    reflects: bool = False
+
+
 class OpticalConfig(BaseModel):
     name: str
-    filters: list[SpectrumOwner]
+    filters: list[FilterPlacement]
     camera: SpectrumOwner | None
     light: SpectrumOwner | None
     laser: int | None
@@ -131,7 +136,12 @@ def get_microscope(id: str) -> FPbaseMicroscope:
             name
             opticalConfigs {{
                 name
-                filters {{ name spectrum {{ subtype data }} }}
+                filters {{
+                    name
+                    path
+                    reflects
+                    spectrum {{ subtype data }}
+                }}
                 camera {{ name spectrum {{ subtype data }} }}
                 light {{ name spectrum {{ subtype data }} }}
                 laser

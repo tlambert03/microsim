@@ -1,5 +1,6 @@
 from collections.abc import Iterable
-from typing import Any
+from typing import TYPE_CHECKING, Any
+import warnings
 
 import numpy as np
 import pint
@@ -8,6 +9,9 @@ from pydantic import field_validator, model_validator
 from microsim._field_types import Nanometers, NumpyNdarray
 
 from ._base_model import SimBaseModel
+
+if TYPE_CHECKING:
+    from microsim.fpbase import Spectrum as FPbaseSpectrum
 
 
 class _AryRepr:
@@ -26,6 +30,11 @@ class Spectrum(SimBaseModel):
     intensity: NumpyNdarray  # normalized to 1
     scalar: float = 1  # scalar to multiply intensity by, such as EC or QY
 
+    @classmethod
+    def from_fpbase(cls, spectrum: "FPbaseSpectrum") -> "Spectrum":
+        data = np.asarray(spectrum.data)
+        return cls(wavelength=data[:, 0], intensity=data[:, 1])
+
     def __repr_args__(self) -> Iterable[tuple[str | None, Any]]:
         for _fname, _val in super().__repr_args__():
             if isinstance(_val, pint.Quantity | np.ndarray):
@@ -41,9 +50,13 @@ class Spectrum(SimBaseModel):
     @classmethod
     def _validate_intensity(cls, value: np.ndarray) -> np.ndarray:
         if not np.all(value >= 0):
-            raise ValueError("Intensity must be non-negative")
+            warnings.warn(
+                "Clipping negative intensity values in spectrum to 0", stacklevel=2
+            )
+            value = np.clip(value, 0, None)
         if not 0.9 <= np.max(value) <= 1:
-            raise ValueError("Intensity must be normalized to 1")
+            warnings.warn("Normalize intensity to 1", stacklevel=2)
+            value = value / np.max(value)
         return value
 
     @model_validator(mode="before")

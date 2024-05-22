@@ -53,3 +53,14 @@ class FilterSpectrum(_Filter):
 
 
 Filter = Bandpass | Shortpass | Longpass | FilterSpectrum
+
+
+class FilterPlacement(SimBaseModel):
+    # where EX = excitation, EM = emission, BS = beam splitter, BSi = inverted BS
+    spectrum: Spectrum
+    path: Literal["EX", "EM", "BS", "BSi"]
+    name: str = ""
+
+    @property
+    def reflects_emission(self) -> bool:
+        return self.path == "BSi"

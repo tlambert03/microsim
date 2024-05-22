@@ -47,10 +47,10 @@ class Simulation(SimBaseModel):
     truth_space: Space
     output_space: Space | None = None
     sample: Sample
+    modality: Modality = Field(default_factory=Widefield)
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC()])
     detector: Detector | None = None
-    modality: Modality = Field(default_factory=Widefield)
     settings: Settings = Field(default_factory=Settings)
     output_path: OutPath | None = None
 
