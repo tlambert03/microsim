@@ -17,6 +17,15 @@ def _validate_filter(cls: type, value: Any) -> Any:
 class OpticalConfig(SimBaseModel):
     name: str = ""
     filters: list[FilterPlacement] = Field(default_factory=list)
+
+    @property
+    def excitation(self) -> Filter | None:
+        return next(f for f in self.filters if f.path == "EX")
+
+    @property
+    def emission(self) -> Filter | None:
+        return next(f for f in self.filters if f.path == "EM")
+
     # excitation: Filter
     # emission: Filter
     # beam_splitter: Filter | None = None
@@ -78,7 +87,17 @@ class OpticalConfig(SimBaseModel):
         return value
 
 
-class FITC(OpticalConfig):
-    name: str = "FITC"
-    excitation: Filter = Bandpass(bandcenter=488, bandwidth=1)
-    emission: Filter = Bandpass(bandcenter=525, bandwidth=50)
+# class FITC(OpticalConfig):
+#     name: str = "FITC"
+#     filters: list[FilterPlacement] = []
+#     excitation: Filter = Bandpass(bandcenter=488, bandwidth=1)
+#     emission: Filter = Bandpass(bandcenter=525, bandwidth=50)
+
+
+FITC = OpticalConfig(
+    name="FITC",
+    filters=[
+        FilterPlacement(path="EX", spectrum=Spectrum(wavelength=[488], intensity=[1])),
+        FilterPlacement(path="EM", spectrum=Spectrum(wavelength=[525], intensity=[1])),
+    ],
+)
