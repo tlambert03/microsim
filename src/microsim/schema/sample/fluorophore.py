@@ -2,6 +2,7 @@ from typing import Any
 
 from pydantic import model_validator
 
+from microsim._field_types import ExtCoeff, Nanoseconds, Seconds
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
 
@@ -10,10 +11,10 @@ class Fluorophore(SimBaseModel):
     name: str
     excitation_spectrum: Spectrum
     emission_spectrum: Spectrum
-    bleaching_half_life_s: float | None = None
-    extinction_coefficient: float | None = None
+    bleaching_half_life: Seconds | None = None
+    extinction_coefficient: ExtCoeff | None = None
     quantum_yield: float | None = None
-    lifetime_ns: float | None = None
+    lifetime: Nanoseconds | None = None
 
     @classmethod
     def from_fpbase(cls, name: str) -> "Fluorophore":

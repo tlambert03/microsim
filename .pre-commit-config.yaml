@@ -27,3 +27,4 @@ repos:
           - pydantic-settings
           - xarray
           - types-tqdm
+          - pint

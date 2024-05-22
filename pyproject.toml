@@ -33,7 +33,7 @@ dependencies = [
     'pydantic-settings',
     "annotated_types",
     "numpy",
-    "pint",
+    "pint>=0.23",
     "pydantic>=2.4",
     "scipy",
     "tqdm",

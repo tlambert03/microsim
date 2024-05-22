@@ -3,6 +3,8 @@ from typing import Any, TypedDict
 import numpy as np
 from pydantic import Field, model_validator
 
+from microsim._field_types import Microns
+
 from ._base_model import SimBaseModel
 
 
@@ -26,9 +28,12 @@ class ObjectiveLens(SimBaseModel):
     immersion_medium_ri: float = 1.515  # immersion medium RI experimental value (ni)
     immersion_medium_ri_spec: float = 1.515  # immersion medium RI design value (ni0)
     specimen_ri: float = 1.47  # specimen refractive index (ns)
-    working_distance: float = 150.0  # um, working distance, design value (ti0)
-    coverslip_thickness: float = 170.0  # um, coverslip thickness (tg)
-    coverslip_thickness_spec: float = 170.0  # um, coverslip thickness design (tg0)
+    # um, working distance, design value (ti0)
+    working_distance: Microns = 150.0  # type: ignore
+    # um, coverslip thickness (tg)
+    coverslip_thickness: Microns = 170.0  # type: ignore
+    # um, coverslip thickness design (tg0)
+    coverslip_thickness_spec: Microns = 170.0  # type: ignore
 
     magnification: float = Field(1, description="magnification of objective lens.")
 
@@ -78,15 +83,15 @@ class ObjectiveLens(SimBaseModel):
 
     @property
     def tg(self) -> float:
-        return self.coverslip_thickness * 1e-6
+        return float(self.coverslip_thickness.to("meters").magnitude)
 
     @property
     def tg0(self) -> float:
-        return self.coverslip_thickness_spec * 1e-6
+        return float(self.coverslip_thickness_spec.to("meters").magnitude)
 
     @property
     def ti0(self) -> float:
-        return self.working_distance * 1e-6
+        return float(self.working_distance.to("meters").magnitude)
 
     @property
     def ng0(self) -> float:

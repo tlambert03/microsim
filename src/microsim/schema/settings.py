@@ -4,8 +4,9 @@ from typing import ClassVar
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from microsim._field_types import FloatDtype
+
 from ._base_model import SimBaseModel
-from ._field_types import FloatDtype
 from .backend import BackendName, DeviceName, NumpyAPI
 
 
