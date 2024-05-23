@@ -3,9 +3,8 @@ from typing import Any
 from pydantic import Field, model_validator
 
 from microsim.schema._base_model import SimBaseModel
-from microsim.schema.spectrum import Spectrum
 
-from .filter import Bandpass, Filter, FilterPlacement
+from .filter import Filter, FullSpectrumFilter
 
 
 def _validate_filter(cls: type, value: Any) -> Any:
@@ -14,17 +13,21 @@ def _validate_filter(cls: type, value: Any) -> Any:
     return value
 
 
+class LightSource(SimBaseModel): ...
+
+
 class OpticalConfig(SimBaseModel):
     name: str = ""
-    filters: list[FilterPlacement] = Field(default_factory=list)
+    filters: list[Filter] = Field(default_factory=list)
+    lights: list[LightSource] = Field(default_factory=list)
 
-    @property
-    def excitation(self) -> Filter | None:
-        return next(f for f in self.filters if f.path == "EX")
+    # @property
+    # def excitation(self) -> Filter | None:
+    #     return next(f for f in self.filters if f.path == "EX")
 
-    @property
-    def emission(self) -> Filter | None:
-        return next(f for f in self.filters if f.path == "EM")
+    # @property
+    # def emission(self) -> Filter | None:
+    #     return next(f for f in self.filters if f.path == "EM")
 
     # excitation: Filter
     # emission: Filter
@@ -55,16 +58,7 @@ class OpticalConfig(SimBaseModel):
             if cfg.name.lower() == config_name.lower():
                 return cls(
                     name=cfg.name,
-                    filters=[
-                        FilterPlacement(
-                            path=f.path,
-                            reflects=f.reflects,
-                            spectrum=Spectrum.from_fpbase(f.spectrum),
-                            name=f.name,
-                            type=f.spectrum.subtype,
-                        )
-                        for f in cfg.filters
-                    ],
+                    filters=[FullSpectrumFilter.from_fpbase(f) for f in cfg.filters],
                 )
 
         raise ValueError(
@@ -86,6 +80,21 @@ class OpticalConfig(SimBaseModel):
             return cls.from_fpbase(value).model_dump()
         return value
 
+    def plot(self, show: bool = True) -> None:
+        import matplotlib.pyplot as plt
+
+        fig = plt.figure(figsize=(12, 3))
+        ax = fig.add_subplot(111)
+
+        legend = []
+        for filt in self.filters:
+            ax.plot(filt.spectrum.wavelength.magnitude, filt.spectrum.intensity)
+            legend.append(filt.name)
+        if any(legend):
+            ax.legend(legend)
+        if show:
+            plt.show()
+
 
 # class FITC(OpticalConfig):
 #     name: str = "FITC"
@@ -96,8 +105,4 @@ class OpticalConfig(SimBaseModel):
 
 FITC = OpticalConfig(
     name="FITC",
-    filters=[
-        FilterPlacement(path="EX", spectrum=Spectrum(wavelength=[488], intensity=[1])),
-        FilterPlacement(path="EM", spectrum=Spectrum(wavelength=[525], intensity=[1])),
-    ],
 )

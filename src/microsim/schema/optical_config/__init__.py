@@ -1,9 +1,8 @@
 from .config import FITC, OpticalConfig
-from .filter import Bandpass, Filter, FilterSpectrum, Longpass, Shortpass
+from .filter import Bandpass, FullSpectrumFilter, Longpass, Shortpass
 
 __all__ = [
-    "Filter",
-    "FilterSpectrum",
+    "FullSpectrumFilter",
     "Bandpass",
     "Shortpass",
     "Longpass",
