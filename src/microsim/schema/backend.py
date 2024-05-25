@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import numpy as np
 import numpy.typing as npt
+import scipy.stats
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -47,18 +48,19 @@ class NumpyAPI:
 
         return NumpyAPI()
 
+    _random_seed: int | None = None
+    _float_dtype: np.dtype | None = None
+
     def __init__(self) -> None:
         from scipy import signal, special, stats
         from scipy.ndimage import map_coordinates
 
-        self._random_seed: int | None = None
         self.xp = np
         self.signal = signal
         self.stats = stats
         self.j0 = special.j0
         self.j1 = special.j1
         self.map_coordinates = map_coordinates
-        self._float_dtype: np.dtype | None = None
 
     @property
     def float_dtype(self) -> np.dtype | None:
@@ -103,6 +105,11 @@ class NumpyAPI:
     ) -> npt.NDArray:
         return self.stats.poisson.rvs(lam, size=shape)  # type: ignore
 
+    def norm_rvs(
+        self, lam: npt.ArrayLike, shape: Sequence[int] | None = None
+    ) -> npt.NDArray:
+        return self.stats.norm.rvs(lam, shape)  # type: ignore
+
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
     ) -> ArrT:
@@ -140,7 +147,6 @@ class JaxAPI(NumpyAPI):
 
         from ._jax_bessel import j0, j1
 
-        self._random_seed: int | None = None
         self.xp = jax.numpy
         self.signal = signal
         self.stats = stats
@@ -172,6 +178,13 @@ class JaxAPI(NumpyAPI):
         from jax.random import poisson
 
         return poisson(self._key, lam, shape=shape)
+
+    def norm_rvs(
+        self, lam: npt.ArrayLike, shape: Sequence[int] | None = None
+    ) -> npt.NDArray:
+        from jax.random import normal
+
+        return normal(self._key, lam, shape=shape)
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
@@ -210,6 +223,22 @@ class CupyAPI(NumpyAPI):
         self.j0 = special.j0
         self.j1 = special.j1
         self.map_coordinates = map_coordinates
+
+    def poisson_rvs(
+        self, lam: npt.ArrayLike, shape: Sequence[int] | None = None
+    ) -> npt.NDArray:
+        # cupy.stats doesn't have poisson
+        if hasattr(lam, "get"):
+            lam = lam.get()
+        return self.xp.asarray(scipy.stats.poisson.rvs(lam, size=shape))  # type: ignore
+
+    def norm_rvs(
+        self, lam: npt.ArrayLike, shape: Sequence[int] | None = None
+    ) -> npt.NDArray:
+        # cupy.stats doesn't have poisson
+        if hasattr(lam, "get"):
+            lam = lam.get()
+        return self.xp.asarray(scipy.stats.norm.rvs(lam, shape))  # type: ignore
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
