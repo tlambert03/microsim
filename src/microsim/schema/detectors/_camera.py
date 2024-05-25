@@ -81,7 +81,9 @@ class Camera(SimBaseModel):
     def max_intensity(self) -> int:
         return int(2**self.bit_depth - 1)
 
-    def quantize_electrons(self, total_electrons: npt.NDArray, xp: NumpyAPI) -> npt.NDArray:
+    def quantize_electrons(
+        self, total_electrons: npt.NDArray, xp: NumpyAPI
+    ) -> npt.NDArray:
         voltage = xp.norm_rvs(total_electrons, self.read_noise) * self.gain
         return xp.round((voltage / self.adc_gain) + self.offset)  # type: ignore
 
