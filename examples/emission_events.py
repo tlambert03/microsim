@@ -6,7 +6,7 @@ from scipy.constants import Avogadro, c, h
 
 from microsim.fpbase import get_fluorophore, get_microscope
 
-ureg = pint.UnitRegistry()
+ureg = pint.application_registry.get()
 AVOGADRO = Avogadro / ureg.mol
 PLANCK = h * ureg.joule * ureg.second
 C = c * ureg.meter / ureg.second
@@ -36,7 +36,10 @@ def get_overlapping_spectra(
 
 def _ensure_quantity(value: Any, units: str) -> pint.Quantity:
     """Helper function to ensure that a value is a pint Quantity with `units`."""
-    quant = ureg.Quantity(value)
+    if isinstance(value, pint.Quantity):
+        quant = value
+    else:
+        quant = ureg.Quantity(value)
     if quant.dimensionless:
         quant *= ureg.Quantity(units)
     _u = ureg.Quantity(units).units
@@ -129,8 +132,9 @@ def get_emission_events(
     wavelengths = filter_spectrum[:, 0] * ureg.nm
     # power in units of W x cm-2 (irradiance), we're making up constant 100 for now...
     irradiance = filter_spectrum[:, 1] * _ensure_quantity(light_power, "W/cm^2")
-    # convert ex_spectrum to extinction coefficient in units of M^-1 x cm^-1
-    ext_coeff = ex_spectrum[:, 1] * fluor.extCoeff / ureg.molar / ureg.cm
+    # scale ex_spectrum by extinction coefficient
+    # note, fluor.extCoeff is already a pint Quantity of units 1/M/cm
+    ext_coeff = ex_spectrum[:, 1] * fluor.extCoeff
 
     # calculate the number of photons hitting a fluorophore per second
     exc_rate = fluorophore_photon_flux(wavelengths, irradiance, ext_coeff)

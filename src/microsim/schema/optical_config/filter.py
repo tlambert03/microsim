@@ -1,11 +1,15 @@
 from functools import cached_property
-from typing import Literal
+from typing import Annotated, Literal
 
 import numpy as np
+from annotated_types import Interval
 from pydantic import computed_field
 
+from microsim._field_types import Nanometers
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
+
+Transmission = Annotated[float, Interval(ge=0, le=1.0)]
 
 
 class _Filter(SimBaseModel):
@@ -23,9 +27,9 @@ class _Filter(SimBaseModel):
 
 class Bandpass(_Filter):
     type: Literal["bandpass"] = "bandpass"
-    bandcenter: float
-    bandwidth: float
-    transmission: float = 1.0
+    bandcenter: Nanometers
+    bandwidth: Nanometers
+    transmission: Transmission = 1.0
 
     def _get_spectrum(self) -> Spectrum:
         start = self.bandcenter - self.bandwidth / 2
@@ -37,12 +41,12 @@ class Bandpass(_Filter):
 
 class Shortpass(_Filter):
     type: Literal["shortpass"] = "shortpass"
-    cutoff: float
+    cutoff: Nanometers
     slope: float = 1.0
-    transmission: float = 1.0
+    transmission: Transmission = 1.0
 
     @property
-    def bandcenter(self) -> float:
+    def bandcenter(self) -> Nanometers:
         return self.cutoff
 
     def _get_spectrum(self) -> Spectrum:
@@ -51,12 +55,12 @@ class Shortpass(_Filter):
 
 class Longpass(_Filter):
     type: Literal["longpass"] = "longpass"
-    cutoff: float
+    cutoff: Nanometers
     slope: float = 1.0
-    transmission: float = 1.0
+    transmission: Transmission = 1.0
 
     @property
-    def bandcenter(self) -> float:
+    def bandcenter(self) -> Nanometers:
         return self.cutoff
 
     def _get_spectrum(self) -> Spectrum:
@@ -68,7 +72,7 @@ class FilterSpectrum(_Filter):
     spectrum_data: Spectrum
 
     @property
-    def bandcenter(self) -> float:
+    def bandcenter(self) -> Nanometers:
         return self.spectrum.peak_wavelength
 
     def _get_spectrum(self) -> Spectrum:

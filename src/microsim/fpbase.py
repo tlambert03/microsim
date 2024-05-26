@@ -5,14 +5,16 @@ from urllib.request import Request, urlopen
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from microsim._field_types import ExtCoeff, Nanometers, Nanoseconds
+
 __all__ = ["get_fluorophore", "get_microscope", "FPbaseFluorophore", "FPbaseMicroscope"]
 
-FPBASE_URL = "https://www.fpbase.org/graphql/"
+
+### Models ###
+
 SpectrumType = Literal[
     "A_2P", "BM", "BP", "BS", "BX", "EM", "EX", "LP", "PD", "QE", "AB"
 ]
-
-### Models ###
 
 
 class Spectrum(BaseModel):
@@ -27,12 +29,12 @@ class SpectrumOwner(BaseModel):
 
 class State(BaseModel):
     id: int
-    exMax: float
-    emMax: float
-    extCoeff: float
+    exMax: Nanometers
+    emMax: Nanometers
+    extCoeff: ExtCoeff
     qy: float
     spectra: list[Spectrum]
-    lifetime: float | None = None
+    lifetime: Nanoseconds | None = None
 
     @property
     def excitation_spectrum(self) -> Spectrum | None:
@@ -115,7 +117,9 @@ class DyeResponse(BaseModel):
     data: DyePayload
 
 
-### Getter Functions ###
+### Graphql Queries ###
+
+FPBASE_URL = "https://www.fpbase.org/graphql/"
 
 
 @cache
