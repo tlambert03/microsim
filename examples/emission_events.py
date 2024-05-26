@@ -13,7 +13,7 @@ C = c * ureg.meter / ureg.second
 
 
 def get_overlapping_spectra(
-    spectra: np.ndarray, spectrum2: np.ndarray
+    spectrum1: np.ndarray, spectrum2: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return overlapping subset of spectra.
 
@@ -22,16 +22,16 @@ def get_overlapping_spectra(
     sorted by wavelength. (This is the format of the data returned by FPbase.)
     """
     # Find the indices of the start and end of the overlapping subset
-    start = max(spectra[0, 0], spectrum2[0, 0])
-    end = min(spectra[-1, 0], spectrum2[-1, 0])
+    start = max(spectrum1[0, 0], spectrum2[0, 0])
+    end = min(spectrum1[-1, 0], spectrum2[-1, 0])
 
     # Find the indices of the start and end of the overlapping subset
-    start_idx = np.searchsorted(spectra[:, 0], start)
-    end_idx = np.searchsorted(spectra[:, 0], end, side="right")
+    start_idx = np.searchsorted(spectrum1[:, 0], start)
+    end_idx = np.searchsorted(spectrum1[:, 0], end, side="right")
 
     start_idx2 = np.searchsorted(spectrum2[:, 0], start)
     end_idx2 = np.searchsorted(spectrum2[:, 0], end, side="right")
-    return spectra[start_idx:end_idx], spectrum2[start_idx2:end_idx2]
+    return spectrum1[start_idx:end_idx], spectrum2[start_idx2:end_idx2]
 
 
 def _ensure_quantity(value: Any, units: str) -> pint.Quantity:
@@ -49,14 +49,25 @@ def _ensure_quantity(value: Any, units: str) -> pint.Quantity:
 
 
 def ec_to_cross_section(ec: Any) -> pint.Quantity:
-    """Gives cross section in cm^2 from extinction coefficient in M^-1 * cm^-1."""
+    """Gives cross section in cm^2 from extinction coefficient in M^-1 * cm^-1.
+
+    Ref: https://en.wikipedia.org/wiki/Absorption_cross_section,
+        "https://chem.libretexts.org/Bookshelves/Physical_and_Theoretical_Chemistry" \
+        "_Textbook_Maps/Time_Dependent_Quantum_Mechanics_and_Spectroscopy_%28To" \
+         "kmakoff%29/07:_Interaction_of_Light_and_Matter/7.05:_Absorption_Cross-Sections"
+
+    A = ec * C * L , where A is abosorbance cross section, C is sample concentration in
+      mol/L, L is path length in cm.
+    C[mol/L] = N/AVOGADRO * 1000, where N is number of molecules in sample per cm3.
+    (For 1000, note that 1L = 1000cm3)
+
+    So, A = ec * C * L = ec * 1000 * L / AVOGADRO
+    Base 10 is used commonly instead of the natural base and assuming that, we have
+    ln(10) factor.
+    We return cross section in natural base.
+    """
     ec = _ensure_quantity(ec, "cm^2/mol")
-    # x1000?
-    # this came from calculations elsewhere, and looking at wikipedia
-    # and looking at Nathan Shaner's code
-    # need to double check whether it's still correct with our units
-    ec = ec * 1000
-    return (ec * np.log(10) / AVOGADRO).to("cm^2")
+    return (ec * 1000 * np.log(10) / AVOGADRO).to("cm^2")
 
 
 def energy_per_photon(wavelength: Any) -> pint.Quantity:
@@ -136,7 +147,7 @@ def get_emission_events(
     # note, fluor.extCoeff is already a pint Quantity of units 1/M/cm
     ext_coeff = ex_spectrum[:, 1] * fluor.extCoeff
 
-    # calculate the number of photons hitting a fluorophore per second
+    # calculate the number of photons getting aborbed by a fluorophore per second
     exc_rate = fluorophore_photon_flux(wavelengths, irradiance, ext_coeff)
 
     # if the fluorophore has a lifetime, calculate the effective excitation rate
@@ -144,8 +155,11 @@ def get_emission_events(
     # (i.e. at some point, we'll hit ground state depletion and saturation effects)
     if (lifetime := getattr(fluor, "lifetime", None)) is not None:
         lifetime = _ensure_quantity(lifetime, "ns")
+        # NOTE: assuming 1 fluorophore absorbs 1 photon, exc_rate is also the number of
+        # fluorophores which are in excited state per second.
         # Calculate the fraction of time in the excited state
         f_excited = exc_rate * lifetime
+        # NOTE: is this correct? How can we say f_excited will not be greater than 1?
         # Calculate the fraction of time in the ground state
         f_ground = 1 - f_excited
         # Calculate the effective excitation rate
