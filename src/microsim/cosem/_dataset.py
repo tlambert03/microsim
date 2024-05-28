@@ -4,7 +4,7 @@ import urllib.request
 from functools import cache
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
 
 if TYPE_CHECKING:
     import numpy as np
@@ -158,6 +158,41 @@ class CosemDataset(BaseModel):
     sample: CosemSample
     image_acquisition: CosemImageAcquisition
     images: list[CosemImage]
+
+    @computed_field  # type: ignore [misc]
+    @property
+    def views(self) -> list["CosemView"]:
+        return [v for v in fetch_views() if v.dataset_name == self.name]
+
+    @property
+    def em_layers(self) -> list[CosemImage]:
+        return [i for i in self.images if i.content_type == "em"]
+
+    @property
+    def segmentation_layers(self) -> list[CosemImage]:
+        """Return list of all segmentation layers in the dataset.
+
+        These are predictions that have undergone refinements such as thresholding,
+        smoothing, size filtering, and connected component analysis.
+        """
+        return [i for i in self.images if i.content_type == "segmentation"]
+
+    @property
+    def prediction_layers(self) -> list[CosemImage]:
+        """Return list of all prediction layers in the dataset.
+
+        Raw distance transform inferences scaled from 0 to 255.
+        A voxel value of 127 represent a predicted distance of 0 nm.
+        """
+        return [i for i in self.images if i.content_type == "prediction"]
+
+    @property
+    def analysis_layers(self) -> list[CosemImage]:
+        """Return list of all analysis layers in the dataset.
+
+        These are images that have undergone post-processing and analysis.
+        """
+        return [i for i in self.images if i.content_type == "analysis"]
 
     @property
     def thumbnail(self) -> "np.ndarray":
