@@ -1,8 +1,8 @@
 from .config import OpticalConfig
-from .filter import Bandpass, FullSpectrumFilter, Longpass, Shortpass
+from .filter import Bandpass, Longpass, Shortpass, SpectrumFilter
 
 __all__ = [
-    "FullSpectrumFilter",
+    "SpectrumFilter",
     "Bandpass",
     "Shortpass",
     "Longpass",

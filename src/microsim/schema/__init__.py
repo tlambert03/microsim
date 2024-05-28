@@ -4,10 +4,10 @@ from .lens import ObjectiveLens
 from .modality import Confocal, Modality, Widefield
 from .optical_config import (
     Bandpass,
-    FullSpectrumFilter,
     Longpass,
     OpticalConfig,
     Shortpass,
+    SpectrumFilter,
 )
 from .sample import Fluorophore, FluorophoreDistribution, MatsLines, Sample
 from .settings import Settings
@@ -28,7 +28,7 @@ __all__ = [
     "ExtentScaleSpace",
     "Fluorophore",
     "FluorophoreDistribution",
-    "FullSpectrumFilter",
+    "SpectrumFilter",
     "Longpass",
     "MatsLines",
     "Modality",

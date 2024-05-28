@@ -3,9 +3,6 @@ from enum import Enum
 from functools import cached_property
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
-if TYPE_CHECKING:
-    from typing import Self
-
 import numpy as np
 from annotated_types import Interval
 from pydantic import Field, computed_field
@@ -14,6 +11,9 @@ from microsim import fpbase
 from microsim._field_types import Nanometers
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
+
+if TYPE_CHECKING:
+    from typing import Self
 
 Transmission = Annotated[float, Interval(ge=0, le=1.0)]
 
@@ -53,11 +53,11 @@ class _FilterBase(SimBaseModel):
         cls,
         filter: str | fpbase.FilterPlacement | fpbase.FilterSpectrum,
         placement: Placement = Placement.ALL,
-    ) -> "FullSpectrumFilter":
+    ) -> "SpectrumFilter":
         if isinstance(filter, str):
             filter = fpbase.get_filter(filter)  # noqa
         elif isinstance(filter, fpbase.FilterPlacement):
-            return FullSpectrumFilter(
+            return SpectrumFilter(
                 name=filter.name,
                 placement=filter.path,
                 transmission=Spectrum.from_fpbase(filter.spectrum),
@@ -68,7 +68,7 @@ class _FilterBase(SimBaseModel):
                 f"not {type(filter)}"
             )
 
-        return FullSpectrumFilter(
+        return SpectrumFilter(
             name=filter.ownerFilter.name,
             placemen=placement,
             transmission=Spectrum.from_fpbase(filter),
@@ -110,9 +110,7 @@ class Shortpass(_FilterBase):
     placement: Placement = Placement.EX_PATH
 
     def center_wave(self) -> Nanometers:
-        raise NotImplementedError(
-            "Mean wavelength is not defined for shortpass filters"
-        )
+        raise NotImplementedError("center wave is not defined for shortpass filters")
 
     def _get_spectrum(self) -> Spectrum:
         min_wave = min(300, self.cutoff.magnitude - 50)
@@ -138,7 +136,7 @@ class Longpass(_FilterBase):
     placement: Placement = Placement.EM_PATH
 
     def center_wave(self) -> Nanometers:
-        raise NotImplementedError("Mean wavelength is not defined for longpass filters")
+        raise NotImplementedError("center wave is not defined for longpass filters")
 
     def _get_spectrum(self) -> Spectrum:
         min_wave = min(300, self.cuton.magnitude - 50)
@@ -156,7 +154,7 @@ class Longpass(_FilterBase):
         )
 
 
-class FullSpectrumFilter(_FilterBase):
+class SpectrumFilter(_FilterBase):
     type: Literal["spectrum"] = "spectrum"
     transmission: Spectrum = Field(..., repr=False)  # because of spectrum on super()
 
@@ -164,7 +162,7 @@ class FullSpectrumFilter(_FilterBase):
         return self.transmission
 
 
-Filter = Bandpass | Shortpass | Longpass | FullSpectrumFilter
+Filter = Bandpass | Shortpass | Longpass | SpectrumFilter
 
 
 def sigmoid(

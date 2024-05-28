@@ -5,7 +5,7 @@ from pydantic import Field, model_validator
 
 from microsim.schema._base_model import SimBaseModel
 
-from .filter import Filter, FullSpectrumFilter, Placement
+from .filter import Filter, Placement, SpectrumFilter
 
 
 class LightSource(SimBaseModel): ...
@@ -48,7 +48,7 @@ class OpticalConfig(SimBaseModel):
         effective_spectrum = filters[0].spectrum
         for filt in filters[1:]:
             effective_spectrum = effective_spectrum * filt.spectrum
-        return FullSpectrumFilter(
+        return SpectrumFilter(
             name=f"Effective {spectrum} for {self.name}",
             transmission=effective_spectrum,
         )
@@ -72,7 +72,7 @@ class OpticalConfig(SimBaseModel):
             if cfg.name.lower() == config_name.lower():
                 return cls(
                     name=cfg.name,
-                    filters=[FullSpectrumFilter.from_fpbase(f) for f in cfg.filters],
+                    filters=[SpectrumFilter.from_fpbase(f) for f in cfg.filters],
                 )
 
         raise ValueError(
