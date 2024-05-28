@@ -48,10 +48,6 @@ class _FilterBase(SimBaseModel):
             self.spectrum.wavelength, weights=self.spectrum.intensity
         )
 
-    # @property
-    # def reflects_emission(self) -> bool:
-    #     return self.placement == Placement.BS_REFLECTS_EM
-
     @classmethod
     def from_fpbase(
         cls,
