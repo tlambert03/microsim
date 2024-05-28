@@ -42,7 +42,7 @@ class _FilterBase(SimBaseModel):
     def inverted(self) -> "Self":
         return self.model_copy(update={"spectrum": self.spectrum.inverted()})
 
-    def mean(self) -> Nanometers:
+    def center_wave(self) -> Nanometers:
         """Return the weighted mean wavelength of the filter."""
         return np.average(  # type: ignore
             self.spectrum.wavelength, weights=self.spectrum.intensity
@@ -84,7 +84,7 @@ class Bandpass(_FilterBase):
     bandwidth: Nanometers
     transmission: Transmission = 1.0
 
-    def mean(self) -> Nanometers:
+    def center_wave(self) -> Nanometers:
         return self.bandcenter
 
     def _get_spectrum(self) -> Spectrum:
@@ -109,7 +109,7 @@ class Shortpass(_FilterBase):
     transmission: Transmission = 1.0
     placement: Placement = Placement.EX_PATH
 
-    def mean(self) -> Nanometers:
+    def center_wave(self) -> Nanometers:
         raise NotImplementedError(
             "Mean wavelength is not defined for shortpass filters"
         )
@@ -137,7 +137,7 @@ class Longpass(_FilterBase):
     transmission: Transmission = 1.0
     placement: Placement = Placement.EM_PATH
 
-    def mean(self) -> Nanometers:
+    def center_wave(self) -> Nanometers:
         raise NotImplementedError("Mean wavelength is not defined for longpass filters")
 
     def _get_spectrum(self) -> Spectrum:
