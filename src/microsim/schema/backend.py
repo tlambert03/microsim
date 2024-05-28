@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
     import jax
 
+    from microsim._data_array import ArrayProtocol
+
     _Shape: TypeAlias = tuple[int, ...]
 
     # Anything that can be coerced to a shape tuple
@@ -105,8 +107,8 @@ class NumpyAPI:
         return self.stats.poisson.rvs(lam, size=shape)  # type: ignore
 
     def norm_rvs(
-        self, loc: npt.ArrayLike, scale: Sequence[int] | int | None = None
-    ) -> npt.NDArray:
+        self, loc: ArrayProtocol, scale: npt.ArrayLike | None = None
+    ) -> ArrayProtocol:
         return self.stats.norm.rvs(loc, scale)  # type: ignore
 
     def fftconvolve(
@@ -179,13 +181,13 @@ class JaxAPI(NumpyAPI):
         return poisson(self._key, lam, shape=shape)
 
     def norm_rvs(
-        self, loc: npt.ArrayLike, scale: Sequence[int] | int | None = None
-    ) -> npt.NDArray:
+        self, loc: ArrayProtocol, scale: npt.ArrayLike | None = None
+    ) -> ArrayProtocol:
         from jax.random import normal
 
         std_samples = normal(self._key, shape=loc.shape)
         # scale and shift
-        return std_samples * scale + loc
+        return std_samples * scale + loc  # type: ignore
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
@@ -228,12 +230,12 @@ class CupyAPI(NumpyAPI):
     def poisson_rvs(
         self, lam: npt.ArrayLike, shape: Sequence[int] | None = None
     ) -> npt.NDArray:
-        return self.xp.random.poisson(lam, shape)
+        return self.xp.random.poisson(lam, shape)  # type: ignore
 
     def norm_rvs(
-        self, loc: npt.ArrayLike, scale: Sequence[int] | int | None = None
-    ) -> npt.NDArray:
-        return self.xp.random.normal(loc, scale)
+        self, loc: ArrayProtocol, scale: npt.ArrayLike | None = None
+    ) -> ArrayProtocol:
+        return self.xp.random.normal(loc, scale)  # type: ignore
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
