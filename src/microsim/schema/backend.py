@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import numpy as np
 import numpy.typing as npt
-import scipy.stats
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
