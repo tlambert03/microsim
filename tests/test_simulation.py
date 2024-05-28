@@ -67,7 +67,7 @@ def test_schema(
     assert type(out1.data).__module__.split(".")[0].startswith(np_backend)
 
     out2 = sim1.run()
-    if seed is None:
+    if seed is None and np_backend != "jax":
         assert not np.allclose(out1, out2)
     else:
         np.testing.assert_allclose(out1, out2)

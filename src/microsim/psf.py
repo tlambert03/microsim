@@ -157,8 +157,9 @@ def rz_to_xyz(
     xp = NumpyAPI.create(xp)
 
     # Create XY grid of radius values.
-    rmap = radius_map(xyshape, off) * sf
+    rmap = radius_map(xyshape, off, xp=xp) * sf
     nz = rz.shape[0]
+
     out = xp.asarray(
         [
             xp.map_coordinates(
@@ -201,7 +202,7 @@ def vectorial_psf(
     ).astype(xp.float_dtype)
 
     offsets = xp.asarray(pos[:2]) / (dxy * 1e-6)
-    _psf = rz_to_xyz(rz, (ny, nx), sf, off=offsets)  # type: ignore [arg-type]
+    _psf = rz_to_xyz(rz, (ny, nx), sf, off=offsets, xp=xp)  # type: ignore [arg-type]
     if normalize:
         _psf /= xp.max(_psf)
     return _psf
