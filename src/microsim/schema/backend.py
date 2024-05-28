@@ -227,18 +227,12 @@ class CupyAPI(NumpyAPI):
     def poisson_rvs(
         self, lam: npt.ArrayLike, shape: Sequence[int] | None = None
     ) -> npt.NDArray:
-        # cupy.stats doesn't have poisson
-        if hasattr(lam, "get"):
-            lam = lam.get()
-        return self.xp.asarray(scipy.stats.poisson.rvs(lam, size=shape))  # type: ignore
+        return self.xp.random.poisson(lam, shape)
 
     def norm_rvs(
         self, lam: npt.ArrayLike, shape: Sequence[int] | None = None
     ) -> npt.NDArray:
-        # cupy.stats doesn't have poisson
-        if hasattr(lam, "get"):
-            lam = lam.get()
-        return self.xp.asarray(scipy.stats.norm.rvs(lam, shape))  # type: ignore
+        return self.xp.random.normal(lam, shape)
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
