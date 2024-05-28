@@ -44,3 +44,22 @@ class Fluorophore(SimBaseModel):
             # but otherwise doesn't work with 'before' validator.  look into it.
             return cls.from_fpbase(value).model_dump()
         return value
+
+    def plot(self, show: bool = True) -> None:
+        import matplotlib.pyplot as plt
+
+        fig, ax = plt.subplots(figsize=(12, 3))
+        ax.plot(
+            self.excitation_spectrum.wavelength.magnitude,
+            self.excitation_spectrum.intensity,
+        )
+        ax.plot(
+            self.emission_spectrum.wavelength.magnitude,
+            self.emission_spectrum.intensity,
+        )
+        ax.set_xlabel("Wavelength (nm)")
+        ax.set_ylabel("Intensity")
+        ax.set_title(self.name)
+        ax.legend(["Excitation", "Emission"])
+        if show:
+            plt.show()

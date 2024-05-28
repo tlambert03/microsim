@@ -39,6 +39,9 @@ class Spectrum(SimBaseModel):
             and self.scalar == other.scalar
         )
 
+    def __array__(self) -> np.ndarray:
+        return np.column_stack((self.wavelength.magnitude, self.intensity))
+
     def __index__(self) -> int:
         return id(self)
 
