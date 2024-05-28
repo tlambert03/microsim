@@ -19,8 +19,8 @@ class Placement(Enum):
     EX_PATH = "EX"
     EM_PATH = "EM"
     BS = "BS"
-    BS_REFLECTS_EM = "BSi"
-    ALL = "ALL"  # implies that the filter will be used reg
+    BS_INV = "BSi"  # inverted beam splitter that reflects emission & transmits ex
+    ALL = "ALL"  # implies that the filter should be used regardless of placement
 
 
 class _FilterBase(SimBaseModel):
@@ -35,6 +35,15 @@ class _FilterBase(SimBaseModel):
 
     def _get_spectrum(self) -> Spectrum:
         raise NotImplementedError()
+
+    def inverted(self) -> Self:
+        return self.model_copy(update={"spectrum": self.spectrum.inverted()})
+
+    def mean(self) -> Nanometers:
+        """Return the weighted mean wavelength of the filter."""
+        return np.average(  # type: ignore
+            self.spectrum.wavelength, weights=self.spectrum.intensity
+        )
 
     # @property
     # def reflects_emission(self) -> bool:
@@ -65,6 +74,9 @@ class _FilterBase(SimBaseModel):
             transmission=Spectrum.from_fpbase(filter),
         )
 
+    def plot(self) -> None:
+        self.spectrum.plot()
+
 
 class Bandpass(_FilterBase):
     type: Literal["bandpass"] = "bandpass"
@@ -72,9 +84,12 @@ class Bandpass(_FilterBase):
     bandwidth: Nanometers
     transmission: Transmission = 1.0
 
+    def mean(self) -> Nanometers:
+        return self.bandcenter
+
     def _get_spectrum(self) -> Spectrum:
-        min_wave = min(300, self.bandcenter - self.bandwidth)
-        max_wave = max(800, self.bandcenter + self.bandwidth)
+        min_wave = min(300, (self.bandcenter - self.bandwidth).magnitude)
+        max_wave = max(800, (self.bandcenter + self.bandwidth).magnitude)
         wavelength = np.arange(min_wave, max_wave, 1)
         return Spectrum(
             wavelength=wavelength,
@@ -94,9 +109,14 @@ class Shortpass(_FilterBase):
     transmission: Transmission = 1.0
     placement: Placement = Placement.EX_PATH
 
+    def mean(self) -> Nanometers:
+        raise NotImplementedError(
+            "Mean wavelength is not defined for shortpass filters"
+        )
+
     def _get_spectrum(self) -> Spectrum:
-        min_wave = min(300, self.cutoff - 50)
-        max_wave = max(800, self.cutoff + 50)
+        min_wave = min(300, self.cutoff.magnitude - 50)
+        max_wave = max(800, self.cutoff.magnitude + 50)
         wavelength = np.arange(min_wave, max_wave, 1)
         return Spectrum(
             wavelength=wavelength,
@@ -117,9 +137,12 @@ class Longpass(_FilterBase):
     transmission: Transmission = 1.0
     placement: Placement = Placement.EM_PATH
 
+    def mean(self) -> Nanometers:
+        raise NotImplementedError("Mean wavelength is not defined for longpass filters")
+
     def _get_spectrum(self) -> Spectrum:
-        min_wave = min(300, self.cuton - 50)
-        max_wave = max(800, self.cuton + 50)
+        min_wave = min(300, self.cuton.magnitude - 50)
+        max_wave = max(800, self.cuton.magnitude + 50)
         wavelength = np.arange(min_wave, max_wave, 1)
         return Spectrum(
             wavelength=wavelength,
@@ -147,9 +170,10 @@ Filter = Bandpass | Shortpass | Longpass | FullSpectrumFilter
 def sigmoid(
     x: Any, cutoff: float, slope: float = 1, max: float = 1, up: bool = True
 ) -> Any:
-    if not up:
+    if up:
         slope = -slope
-    return max / (1 + np.exp(slope * (x - cutoff)))
+    with np.errstate(over="ignore"):
+        return max / (1 + np.exp(slope * (x - cutoff)))
 
 
 def bandpass(

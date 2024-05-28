@@ -1,16 +1,11 @@
+from collections.abc import Sequence
 from typing import Any
 
 from pydantic import Field, model_validator
 
 from microsim.schema._base_model import SimBaseModel
 
-from .filter import Filter, FullSpectrumFilter
-
-
-def _validate_filter(cls: type, value: Any) -> Any:
-    if isinstance(value, float | int):
-        value = {"bandcenter": value, "bandwidth": 1}
-    return value
+from .filter import Filter, FullSpectrumFilter, Placement
 
 
 class LightSource(SimBaseModel): ...
@@ -21,23 +16,42 @@ class OpticalConfig(SimBaseModel):
     filters: list[Filter] = Field(default_factory=list)
     lights: list[LightSource] = Field(default_factory=list)
 
-    # @property
-    # def excitation(self) -> Filter | None:
-    #     return next(f for f in self.filters if f.path == "EX")
+    @property
+    def excitation(self) -> Filter | None:
+        """Combine all excitation filters into a single spectrum."""
+        filters = []
+        for f in self.filters:
+            if f.placement in {Placement.EX_PATH, Placement.BS_INV, Placement.ALL}:
+                filters.append(f)
+            if f.placement == Placement.BS:
+                filters.append(f.inverted())
+        return self._merge(filters, spectrum="excitation")
 
-    # @property
-    # def emission(self) -> Filter | None:
-    #     return next(f for f in self.filters if f.path == "EM")
+    @property
+    def emission(self) -> Filter | None:
+        """Combine all emission filters into a single spectrum."""
+        filters = []
+        for f in self.filters:
+            if f.placement in {Placement.EM_PATH, Placement.BS, Placement.ALL}:
+                filters.append(f)
+            if f.placement == Placement.BS_INV:
+                filters.append(f.inverted())
+        return self._merge(filters, spectrum="emission")
 
-    # excitation: Filter
-    # emission: Filter
-    # beam_splitter: Filter | None = None
-
-    # cast integers to bandpass filters with bandwidth=1
-    # TODO: could move to a base class
-    # _v_ex = field_validator("excitation", mode="before")(_validate_filter)
-    # _v_em = field_validator("emission", mode="before")(_validate_filter)
-    # _v_bs = field_validator("beam_splitter", mode="before")(_validate_filter)
+    def _merge(
+        self, filters: Sequence[Filter], spectrum: str = "spectrum"
+    ) -> Filter | None:
+        if not filters:
+            return None
+        if len(filters) == 1:
+            return filters[0]
+        effective_spectrum = filters[0].spectrum
+        for filt in filters[1:]:
+            effective_spectrum = effective_spectrum * filt.spectrum
+        return FullSpectrumFilter(
+            name=f"Effective {spectrum} for {self.name}",
+            transmission=effective_spectrum,
+        )
 
     @classmethod
     def from_fpbase(
@@ -94,15 +108,3 @@ class OpticalConfig(SimBaseModel):
             ax.legend(legend)
         if show:
             plt.show()
-
-
-# class FITC(OpticalConfig):
-#     name: str = "FITC"
-#     filters: list[FilterPlacement] = []
-#     excitation: Filter = Bandpass(bandcenter=488, bandwidth=1)
-#     emission: Filter = Bandpass(bandcenter=525, bandwidth=50)
-
-
-FITC = OpticalConfig(
-    name="FITC",
-)

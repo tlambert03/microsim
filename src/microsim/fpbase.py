@@ -283,7 +283,7 @@ def get_filter(name: str) -> FilterSpectrum:
 @cache
 def filter_spectrum_ids() -> Mapping[str, int]:
     resp = _fpbase_query('{ spectra(category:"F") { id owner { name } } }')
-    data: dict[str, list[dict[str, str]]] = json.loads(resp)["data"]["spectra"]
+    data: dict = json.loads(resp)["data"]["spectra"]
     return {_norm_name(item["owner"]["name"]): int(item["id"]) for item in data}
 
 
