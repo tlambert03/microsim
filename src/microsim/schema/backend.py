@@ -106,9 +106,9 @@ class NumpyAPI:
         return self.stats.poisson.rvs(lam, size=shape)  # type: ignore
 
     def norm_rvs(
-        self, lam: npt.ArrayLike, shape: Sequence[int] | None = None
+        self, loc: npt.ArrayLike, scale: Sequence[int] | int | None = None
     ) -> npt.NDArray:
-        return self.stats.norm.rvs(lam, shape)  # type: ignore
+        return self.stats.norm.rvs(loc, scale)  # type: ignore
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
@@ -180,11 +180,13 @@ class JaxAPI(NumpyAPI):
         return poisson(self._key, lam, shape=shape)
 
     def norm_rvs(
-        self, lam: npt.ArrayLike, shape: Sequence[int] | None = None
+        self, loc: npt.ArrayLike, scale: Sequence[int] | int | None = None
     ) -> npt.NDArray:
         from jax.random import normal
 
-        return normal(self._key, lam, shape=shape)
+        std_samples = normal(self._key, shape=loc.shape)
+        # scale and shift
+        return std_samples * scale + loc
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
@@ -230,9 +232,9 @@ class CupyAPI(NumpyAPI):
         return self.xp.random.poisson(lam, shape)
 
     def norm_rvs(
-        self, lam: npt.ArrayLike, shape: Sequence[int] | None = None
+        self, loc: npt.ArrayLike, scale: Sequence[int] | int | None = None
     ) -> npt.NDArray:
-        return self.xp.random.normal(lam, shape)
+        return self.xp.random.normal(loc, scale)
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
