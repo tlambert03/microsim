@@ -60,7 +60,7 @@ class OpticalConfig(SimBaseModel):
         from microsim.fpbase import get_microscope
 
         if config_name is None:
-            if "::" not in microscope_id:
+            if "::" not in microscope_id:  # pragma: no cover
                 raise ValueError(
                     "If config_name is not provided, microscope_id must be "
                     "in the form 'scope::config'"
@@ -84,7 +84,7 @@ class OpticalConfig(SimBaseModel):
     @model_validator(mode="before")
     def _vmodel(cls, value: Any) -> Any:
         if isinstance(value, str):
-            if "::" not in value:
+            if "::" not in value:  # pragma: no cover
                 raise ValueError(
                     "If OpticalConfig is provided as a string, it must be "
                     "in the form 'fpbase_scope_id::config_name'"

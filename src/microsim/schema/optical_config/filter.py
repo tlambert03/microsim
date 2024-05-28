@@ -52,6 +52,7 @@ class _FilterBase(SimBaseModel):
     def from_fpbase(
         cls,
         filter: str | fpbase.FilterPlacement | fpbase.FilterSpectrum,
+        placement: Placement = Placement.ALL,
     ) -> "FullSpectrumFilter":
         if isinstance(filter, str):
             filter = fpbase.get_filter(filter)  # noqa
@@ -69,12 +70,12 @@ class _FilterBase(SimBaseModel):
 
         return FullSpectrumFilter(
             name=filter.ownerFilter.name,
-            placement=filter.subtype,
+            placemen=placement,
             transmission=Spectrum.from_fpbase(filter),
         )
 
-    def plot(self) -> None:
-        self.spectrum.plot()
+    def plot(self, show: bool = True) -> None:
+        self.spectrum.plot(show=show)
 
 
 class Bandpass(_FilterBase):
