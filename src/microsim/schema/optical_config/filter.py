@@ -1,7 +1,10 @@
 from collections.abc import Sequence
 from enum import Enum
 from functools import cached_property
-from typing import Annotated, Any, Literal, Self
+from typing import TYPE_CHECKING, Annotated, Any, Literal
+
+if TYPE_CHECKING:
+    from typing import Self
 
 import numpy as np
 from annotated_types import Interval
@@ -36,7 +39,7 @@ class _FilterBase(SimBaseModel):
     def _get_spectrum(self) -> Spectrum:
         raise NotImplementedError()
 
-    def inverted(self) -> Self:
+    def inverted(self) -> "Self":
         return self.model_copy(update={"spectrum": self.spectrum.inverted()})
 
     def mean(self) -> Nanometers:
