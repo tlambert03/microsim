@@ -36,7 +36,6 @@ def access_zarr(
             store += "n5"
             store = zarr.N5FSStore(store, anon=True)
         else:
-            breakpoint()
             raise NotImplementedError(f"Can only read n5 sources, not {store!r}")
 
     # set default dimension separator to /

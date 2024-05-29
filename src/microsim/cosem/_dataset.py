@@ -2,10 +2,11 @@ import datetime
 import logging
 import urllib.request
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from functools import cache
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
+import tensorstore as ts
 
 from pydantic import BaseModel, computed_field
 
@@ -157,33 +158,72 @@ class CosemImage(BaseModel):
     sample_type: str
     content_type: str
 
-    def read(self, level: int = 0) -> "DataTree":
-        from microsim.cosem._xarray import read_xarray
+    def read(
+        self, level: int | str = -1, transpose: Sequence[str] | None = None
+    ) -> "DataTree":
+        from microsim.cosem._tstore import read_tensorstore
 
-        return read_xarray(self.url)  # type: ignore
+        if isinstance(level, int):
+            try:
+                level = self.scales[level]
+            except IndexError as e:
+                raise IndexError(
+                    f"Level {level!r} not found in {self.name!r}. "
+                    f"Available levels are: {self.scales}"
+                ) from e
 
-    # move these ... i think we should probably only use ts for precomputed
-    def ts_spec(self, **kwargs: Any) -> dict:
-        driver = {
-            "precomputed": "neuroglancer_precomputed",
-            "n5": "n5",
-            "zarr": "zarr",
-        }[self.format]
-        return {
-            "driver": driver,
-            "kvstore": self._kv_store(),
-            **kwargs,
-        }
+        data = read_tensorstore(self, level=level)
+        if transpose:
+            data = data[ts.d[tuple(transpose)].transpose[:]]
+        return data
+        # from microsim.cosem._xarray import read_xarray
+        # return read_xarray(self.url)  # type: ignore
 
-    def _kv_store(self) -> dict:
-        proto, bucket, path = self.url.partition("janelia-cosem-datasets")
-        if not proto.startswith("s3"):
-            raise ValueError(f"Unsupported protocol {proto!r}")
-        return {
-            "driver": "s3",
-            "bucket": bucket,
-            "path": path.lstrip("/"),
-        }
+    @property
+    def attrs(self) -> dict[str, Any]:
+        if not getattr(self, "_attrs", None):
+            if self.format == "n5":
+                attr = "/attributes.json"
+            elif self.format == "zarr":
+                attr = "/.zattrs"
+            elif self.format == "precomputed":
+                attr = "/info"
+            self._attrs = fetch_s3_json(self.url + attr)
+        return self._attrs
+
+    @property
+    def scales(self) -> list[str]:
+        if not getattr(self, "_scales", None):
+            scales = []
+            # n5 multiscale
+            if multi := self.attrs.get("multiscales"):
+                for scale in multi:
+                    if dsets := scale.get("datasets"):
+                        for dset in dsets:
+                            if path := dset.get("path"):
+                                scales.append(path)
+            # precomputed multiscale
+            elif multi := self.attrs.get("scales"):
+                for scale in multi:
+                    if key := scale.get("key"):
+                        scales.append(key)
+            self._scales = scales
+        return self._scales
+
+    def show(self, **read_kwargs: Any) -> None:
+        from pymmcore_widgets._stack_viewer_v2 import StackViewer
+        from qtpy.QtWidgets import QApplication
+
+        app = QApplication.instance()
+        if not (hadapp := app is not None):
+            app = QApplication([])
+
+        data = self.read(**read_kwargs)
+        s = StackViewer(data)
+        s.show()
+
+        if not hadapp:
+            app.exec()
 
 
 class CosemDataset(BaseModel):
@@ -194,13 +234,18 @@ class CosemDataset(BaseModel):
     image_acquisition: CosemImageAcquisition
     images: list[CosemImage]
 
-    @computed_field  # type: ignore [misc]
+    @computed_field(repr=False)  # type: ignore [misc]
     @property
     def views(self) -> list["CosemView"]:
         return [v for v in fetch_views() if v.dataset_name == self.name]
 
     def view(self, name: str) -> "CosemView":
         return next(v for v in self.views if v.name == name)
+
+    def image(self, **kwargs: Any) -> "CosemImage":
+        return next(
+            i for i in self.images if all(getattr(i, k) == v for k, v in kwargs.items())
+        )
 
     @property
     def em_layers(self) -> list[CosemImage]:
@@ -248,13 +293,48 @@ class CosemDataset(BaseModel):
         """Fetch dataset with a specific name."""
         return fetch_datasets()[name]
 
-    def read_image(self, image_key: str, level: int = 0) -> "DataTree":
+    def read(self, image_keys: str | Sequence[str], **read_kwargs: Any) -> "DataTree":
         """Return DataTree for `image_key`."""
-        try:
-            image = next(i for i in self.images if i.name == image_key)
-        except StopIteration as e:
-            raise KeyError(f"Image {image_key!r} not found in {self.name!r}") from e
-        return image.read()
+        if not image_keys:
+            raise ValueError("No image keys provided")
+        if isinstance(image_keys, str):
+            image = self.image(name=image_keys)
+            return image.read()
+        if isinstance(image_keys, Sequence):
+            images = [self.image(name=k) for k in image_keys]
+            layers = [i.read(**read_kwargs).astype(ts.uint16) for i in images]
+            return ts.stack(layers)
+        raise ValueError(f"image_keys must be a str or list of str, not {image_keys!r}")
+
+    def show(self, image_keys: str | Sequence[str], **read_kwargs: Any) -> None:
+        from pymmcore_widgets._stack_viewer_v2 import StackViewer
+        from qtpy.QtWidgets import QApplication
+
+        app = QApplication.instance()
+        if not (hadapp := app is not None):
+            app = QApplication([])
+
+        data = self.read(image_keys, **read_kwargs)
+        s = StackViewer(data)
+        s.show()
+
+        if not hadapp:
+            app.exec()
+
+
+def fetch_s3_json(url: str) -> dict:
+    import json
+
+    import boto3
+    from botocore import UNSIGNED, client
+
+    proto, _, bucket, key = url.split("/", 3)
+    if not proto.startswith("s3"):
+        raise ValueError(f"Unsupported protocol {proto!r}")
+
+    s3 = boto3.client("s3", config=client.Config(signature_version=UNSIGNED))
+    obj = s3.get_object(Bucket=bucket, Key=key)
+    return json.load(obj["Body"])  # type: ignore
 
 
 class CosemTaxon(BaseModel):
