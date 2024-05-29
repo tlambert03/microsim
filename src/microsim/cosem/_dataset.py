@@ -5,7 +5,7 @@ from collections import defaultdict
 from collections.abc import Mapping
 from functools import cache
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, computed_field
 
@@ -161,6 +161,29 @@ class CosemImage(BaseModel):
         from microsim.cosem._xarray import read_xarray
 
         return read_xarray(self.url)  # type: ignore
+
+    # move these ... i think we should probably only use ts for precomputed
+    def ts_spec(self, **kwargs: Any) -> dict:
+        driver = {
+            "precomputed": "neuroglancer_precomputed",
+            "n5": "n5",
+            "zarr": "zarr",
+        }[self.format]
+        return {
+            "driver": driver,
+            "kvstore": self._kv_store(),
+            **kwargs,
+        }
+
+    def _kv_store(self) -> dict:
+        proto, bucket, path = self.url.partition("janelia-cosem-datasets")
+        if not proto.startswith("s3"):
+            raise ValueError(f"Unsupported protocol {proto!r}")
+        return {
+            "driver": "s3",
+            "bucket": bucket,
+            "path": path.lstrip("/"),
+        }
 
 
 class CosemDataset(BaseModel):
