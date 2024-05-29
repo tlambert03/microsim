@@ -6,8 +6,8 @@ from collections.abc import Mapping, Sequence
 from functools import cache
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
-import tensorstore as ts
 
+import tensorstore as ts
 from pydantic import BaseModel, computed_field
 
 if TYPE_CHECKING:
