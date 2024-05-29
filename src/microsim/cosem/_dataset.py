@@ -1,7 +1,10 @@
 import datetime
 import logging
 import urllib.request
+from collections import defaultdict
+from collections.abc import Mapping
 from functools import cache
+from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, computed_field
@@ -94,14 +97,14 @@ images:image(
 
 
 @cache
-def fetch_datasets() -> dict[str, "CosemDataset"]:
+def fetch_datasets() -> Mapping[str, "CosemDataset"]:
     """Fetch all dataset metadata from the COSEM database."""
     response = _client().from_("dataset").select(DATASETS_QUERY).execute()
     datasets: dict[str, CosemDataset] = {}
     for x in response.data:
         ds = CosemDataset.model_validate(x)
         datasets[ds.name] = ds
-    return datasets
+    return MappingProxyType(datasets)
 
 
 @cache
@@ -109,6 +112,15 @@ def fetch_views() -> list["CosemView"]:
     """Fetch all view metadata from the COSEM database."""
     response = _client().from_("view").select(VIEWS_QUERY).execute()
     return [CosemView.model_validate(x) for x in response.data]
+
+
+@cache
+def organelles() -> Mapping[str, str]:
+    orgs: defaultdict[str, list[CosemView]] = defaultdict(list)
+    for view in fetch_views():
+        for taxon in view.taxa:
+            orgs[taxon.name].append(view)
+    return MappingProxyType(orgs)
 
 
 # ------------------------ MODELS ------------------------
@@ -163,6 +175,9 @@ class CosemDataset(BaseModel):
     @property
     def views(self) -> list["CosemView"]:
         return [v for v in fetch_views() if v.dataset_name == self.name]
+
+    def view(self, name: str) -> "CosemView":
+        return next(v for v in self.views if v.name == name)
 
     @property
     def em_layers(self) -> list[CosemImage]:
@@ -219,7 +234,9 @@ class CosemDataset(BaseModel):
         return image.read()
 
 
-class CosemTaxon(BaseModel): ...
+class CosemTaxon(BaseModel):
+    name: str
+    short_name: str
 
 
 class CosemView(BaseModel):
@@ -234,9 +251,11 @@ class CosemView(BaseModel):
     taxa: list[CosemTaxon]
     images: list[CosemImage]
 
+    def load(self) -> "xr.DataArray": ...
+
 
 if __name__ == "__main__":
     from rich import print
 
     # print(CosemDataset.fetch("jrc_hela-2").thumbnail)
-    print(fetch_views())
+    print(organelles())

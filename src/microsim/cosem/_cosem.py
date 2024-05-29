@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 from urllib.request import urlopen
 
-from fibsem_tools import read_xarray
+# from fibsem_tools import read_xarray
 from typing_extensions import TypedDict
 
 try:
@@ -82,9 +82,6 @@ class DatasetManifest(TypedDict):
 class CosemDataset:
     def __init__(self, id: str) -> None:
         self.id = id
-
-    def read_xarray(self):
-        read_xarray()
 
     @property
     def name(self) -> str:
