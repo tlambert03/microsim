@@ -2,16 +2,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.detectors import Camera, CameraCMOS, CameraEMCCD
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-    import numpy.typing as npt
-
     from microsim._data_array import ArrayProtocol
 
 
