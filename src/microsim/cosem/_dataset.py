@@ -1,29 +1,38 @@
 import datetime
+import json
 import logging
+import re
 import urllib.request
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from functools import cache
+from os import PathLike
+from pathlib import Path
 from types import MappingProxyType
 from typing import TYPE_CHECKING, Any
 
+import botocore.response
 import tensorstore as ts
+import tqdm
 from pydantic import BaseModel, computed_field
 
 if TYPE_CHECKING:
+    import botocore.client
+    import botocore.response
     import numpy as np
+    import supabase
+    from boto3.resources.base import ServiceResource
     from datatree import DataTree
-    from supabase import Client
 
 
 @cache
-def _client() -> "Client":
+def _supabase() -> "supabase.Client":
     logging.getLogger("httpx").setLevel(logging.WARNING)
     try:
         from supabase import Client
     except ImportError as e:
         raise ImportError(
-            "To download cosem data, please first `pip install supabase`"
+            "To use cosem data, please `pip install microsim[cosem]`"
         ) from e
 
     with urllib.request.urlopen(
@@ -35,6 +44,39 @@ def _client() -> "Client":
     key = text.split("SUPABASE_KEY:")[1].split(",")[0].strip("\"'")
     url = text.split("SUPABASE_URL:")[1].split(",")[0].strip("\"'")
     return Client(url, key)
+
+
+@cache
+def _s3_client() -> "botocore.client.BaseClient":
+    logging.getLogger("botocore").setLevel(logging.WARNING)
+    import boto3
+    from botocore import UNSIGNED, client
+
+    return boto3.client("s3", config=client.Config(signature_version=UNSIGNED))
+
+
+@cache
+def _bucket(name="janelia-cosem-datasets") -> "ServiceResource":
+    logging.getLogger("botocore").setLevel(logging.WARNING)
+    import boto3
+
+    return boto3.resource("s3").Bucket(name)
+
+
+def fetch_s3(url: str) -> "botocore.response.StreamingBody":
+    proto, _, bucket, key = url.split("/", 3)
+    if not proto.startswith("s3"):
+        raise ValueError(f"Unsupported protocol {proto!r}")
+
+    obj = _s3_client().get_object(Bucket=bucket, Key=key)
+    response_meta = obj["ResponseMetadata"]
+    if not (status := response_meta.get("HTTPStatusCode")) == 200:
+        raise ValueError(f"Failed to fetch {url!r} with status {status}")
+    return obj["Body"]
+
+
+def fetch_s3_json(url: str) -> Any:
+    return json.load(fetch_s3(url))
 
 
 DATASETS_QUERY = """
@@ -100,7 +142,7 @@ images:image(
 @cache
 def fetch_datasets() -> Mapping[str, "CosemDataset"]:
     """Fetch all dataset metadata from the COSEM database."""
-    response = _client().from_("dataset").select(DATASETS_QUERY).execute()
+    response = _supabase().from_("dataset").select(DATASETS_QUERY).execute()
     datasets: dict[str, CosemDataset] = {}
     for x in response.data:
         ds = CosemDataset.model_validate(x)
@@ -111,7 +153,7 @@ def fetch_datasets() -> Mapping[str, "CosemDataset"]:
 @cache
 def fetch_views() -> list["CosemView"]:
     """Fetch all view metadata from the COSEM database."""
-    response = _client().from_("view").select(VIEWS_QUERY).execute()
+    response = _supabase().from_("view").select(VIEWS_QUERY).execute()
     return [CosemView.model_validate(x) for x in response.data]
 
 
@@ -146,6 +188,18 @@ class CosemImageAcquisition(BaseModel):
     grid_dimensions_unit: str
 
 
+import hashlib
+
+
+def calculate_etag(file_path: str | Path) -> str:
+    """Calculate the ETag for a local file."""
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return '"' + hash_md5.hexdigest() + '"'
+
+
 class CosemImage(BaseModel):
     name: str
     description: str
@@ -157,6 +211,32 @@ class CosemImage(BaseModel):
     grid_units: list[str]
     sample_type: str
     content_type: str
+
+    @property
+    def bucket_key(self) -> str:
+        return self.url.split("janelia-cosem-datasets/", 1)[1]
+
+    def download(self, path: str | PathLike, max_level: int | None = None) -> None:
+        bucket = _bucket()
+        dest = Path(path).expanduser().resolve()
+        key = self.bucket_key
+        with tqdm.tqdm(total=None) as pbar:
+            for obj in bucket.objects.filter(Prefix=key):
+                _dest = dest / str(obj.key)
+                if _dest.exists() and calculate_etag(_dest) == obj.e_tag:
+                    pbar.set_description(f"Already downloaded {obj.key}")
+                    continue  # Skip this file because it's the same as the local file
+
+                if max_level is not None:
+                    # find the `/s{level}` in the key
+                    match = re.search(r"\/s(\d+)\/", obj.key)
+                    if match and int(match.group(1)) > max_level:
+                        pbar.set_description(f"Skipping {obj.key}")
+                        continue
+
+                pbar.set_description(f"Downloading {obj.key}")
+                _dest.parent.mkdir(parents=True, exist_ok=True)
+                bucket.download_file(obj.key, str(_dest))
 
     def read(
         self, level: int | str = -1, transpose: Sequence[str] | None = None
@@ -320,21 +400,6 @@ class CosemDataset(BaseModel):
 
         if not hadapp:
             app.exec()
-
-
-def fetch_s3_json(url: str) -> dict:
-    import json
-
-    import boto3
-    from botocore import UNSIGNED, client
-
-    proto, _, bucket, key = url.split("/", 3)
-    if not proto.startswith("s3"):
-        raise ValueError(f"Unsupported protocol {proto!r}")
-
-    s3 = boto3.client("s3", config=client.Config(signature_version=UNSIGNED))
-    obj = s3.get_object(Bucket=bucket, Key=key)
-    return json.load(obj["Body"])  # type: ignore
 
 
 class CosemTaxon(BaseModel):
