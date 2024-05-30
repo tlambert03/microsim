@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import itertools
+import shutil
 import warnings
-from typing import TYPE_CHECKING, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
+import platformdirs
 import tqdm
 from scipy import signal
 
@@ -18,6 +20,14 @@ if TYPE_CHECKING:
     from numpy.typing import DTypeLike, NDArray
 
     ShapeLike = Sequence[int]
+
+
+MICROSIM_CACHE = platformdirs.user_cache_path("microsim")
+
+
+def clear_cache() -> None:
+    """Clear the microsim cache."""
+    shutil.rmtree(MICROSIM_CACHE, ignore_errors=True)
 
 
 def uniformly_spaced_coords(
@@ -230,6 +240,27 @@ def ortho_plot(img: ArrayProtocol, gamma: float = 0.5, mip: bool = False) -> Non
     plt.show()
 
 
+def view_nd(ary: Any) -> None:
+    try:
+        from pymmcore_widgets._stack_viewer_v2 import StackViewer
+    except ImportError:
+        raise ImportError(
+            "This feature uses a not-yet published widget from pymmcore-widgets."
+            "It will eventually be made available outside of pymmcore-widgets..."
+        ) from None
+    from qtpy.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    if not (hadapp := app is not None):
+        app = QApplication([])
+
+    s = StackViewer(ary)
+    s.show()
+
+    if not hadapp:
+        app.exec()
+
+
 ArrayType = TypeVar("ArrayType", bound=ArrayProtocol)
 
 
@@ -248,4 +279,26 @@ def downsample(
     reshaped = cast("ArrayType", np.reshape(array, new_shape))
     for d in range(array.ndim):
         reshaped = method(reshaped, -1 * (d + 1), dtype)
+    return reshaped
+
+
+def bin(  # noqa: A001
+    array: npt.NDArray,
+    window: int | Sequence[int],
+    method: str | Callable = "sum",
+    dtype: npt.DTypeLike | None = None,
+) -> npt.NDArray:
+    """Bin an nd-array by applying `method` over `window`."""
+    # TODO: deal with xarray
+
+    binwindow = (window,) * array.ndim if isinstance(window, int) else window
+    new_shape = []
+    for s, b in zip(array.shape, binwindow, strict=False):
+        new_shape.extend([s // b, b])
+    reshaped = np.reshape(array, new_shape)
+
+    f = method if callable(method) else getattr(np, method)
+    for d in range(array.ndim):
+        reshaped = f(reshaped, axis=-1 * (d + 1), dtype=dtype)
+
     return reshaped

@@ -90,21 +90,3 @@ def simulate_camera(
         output = gray_values.astype("uint8")
 
     return output
-
-
-def bin(  # noqa: A001
-    array: npt.NDArray,
-    factor: int | Sequence[int],
-    method: str = "sum",
-    dtype: npt.DTypeLike | None = None,
-) -> npt.NDArray:
-    # TODO: deal with xarray
-    f = getattr(np, method)
-    binfactor = (factor,) * array.ndim if isinstance(factor, int) else factor
-    new_shape = []
-    for s, b in zip(array.shape, binfactor, strict=False):
-        new_shape.extend([s // b, b])
-    reshaped = np.reshape(array, new_shape)
-    for d in range(array.ndim):
-        reshaped = f(reshaped, axis=-1 * (d + 1), dtype=dtype)
-    return reshaped

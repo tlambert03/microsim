@@ -60,6 +60,7 @@ dev = [
     "pre-commit",
     "rich",
     "ruff",
+    "boto3-stubs[s3]",
 ]
 docs = [
     "mkdocs >=1.5.3",
