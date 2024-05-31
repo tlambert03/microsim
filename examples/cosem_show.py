@@ -9,7 +9,6 @@ hela3 = CosemDataset.fetch("jrc_hela-3")
 
 img = hela3.image(name="mito-mem_seg")
 data = img.read(level=1, transpose=("y", "x", "z"))
-print(.shape)
 view_nd(img)
 
 

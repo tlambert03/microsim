@@ -240,7 +240,7 @@ def ortho_plot(img: ArrayProtocol, gamma: float = 0.5, mip: bool = False) -> Non
     plt.show()
 
 
-def view_nd(ary: Any) -> None:
+def view_nd(ary: Any, figsize: tuple[int, int] = (1280, 1000)) -> None:
     try:
         from pymmcore_widgets._stack_viewer_v2 import StackViewer
     except ImportError:
@@ -255,6 +255,7 @@ def view_nd(ary: Any) -> None:
         app = QApplication([])
 
     s = StackViewer(ary)
+    s.resize(*figsize)
     s.show()
 
     if not hadapp:
@@ -316,3 +317,11 @@ def bin(  # noqa: A001
     if dtype is not None:
         result = result.astype(dtype)
     return result
+
+
+def norm_name(name: str) -> str:
+    """Normalize a name to something easily searchable."""
+    name = str(name).lower()
+    for char in " -/\\()[],;:!?@#$%^&*+=|<>'\"":
+        name = name.replace(char, "_")
+    return name

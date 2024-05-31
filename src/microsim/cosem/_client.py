@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import cache
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, get_args
+from typing import TYPE_CHECKING, Any, TypeVar, get_args
 
 import tqdm
 from pydantic import BaseModel
@@ -117,18 +117,22 @@ def _collect_fields(model: type[BaseModel]) -> Iterator[str | tuple]:
             yield field
 
 
+T = TypeVar("T", bound=BaseModel)
+
+
+def fetch_all(type_: type[T]) -> tuple[T, ...]:
+    table_name = type_.__name__.lower().replace("cosem", "")
+    query = model_query(type_)
+    response = _supabase().from_(table_name).select(query).execute()
+    return tuple(type_.model_validate(x) for x in response.data)
+
+
 @cache
 def fetch_datasets() -> Mapping[str, CosemDataset]:
     """Fetch all dataset metadata from the COSEM database."""
     from .models import CosemDataset
 
-    query = model_query(CosemDataset)
-    response = _supabase().from_("dataset").select(query).execute()
-    datasets: dict[str, CosemDataset] = {}
-    for x in response.data:
-        ds = CosemDataset.model_validate(x)
-        datasets[ds.name] = ds
-    return MappingProxyType(datasets)
+    return MappingProxyType({d.name: d for d in fetch_all(CosemDataset)})
 
 
 @cache
@@ -136,9 +140,7 @@ def fetch_views() -> tuple[CosemView, ...]:
     """Fetch all view metadata from the COSEM database."""
     from .models import CosemView
 
-    query = model_query(CosemView)
-    response = _supabase().from_("view").select(query).execute()
-    return tuple(CosemView.model_validate(x) for x in response.data)
+    return fetch_all(CosemView)
 
 
 @cache
@@ -151,20 +153,21 @@ def organelles() -> Mapping[str, list[CosemView]]:
     return MappingProxyType(orgs)
 
 
+# pattern to look for scale levels in the bucket keys as /s{level}/
 SCALE_RE = re.compile(r"\/s(\d+)\/")
 
 
-def keys_tags(
+def _keys_tags(
     prefix: str, max_level: int | None = 0, bucket_name: str = COSEM_BUCKET
 ) -> Iterator[tuple[str, str]]:
     paginator = _s3_client().get_paginator("list_objects_v2")
     for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
         for obj in page.get("Contents", []):
+            # exclude keys with a scale level greater than max_level
             if max_level is not None:
-                # exclude keys with a scale level greater than max_level
-                match = SCALE_RE.search(obj["Key"])
-                if match and int(match.group(1)) > max_level:
-                    continue
+                if match := SCALE_RE.search(obj["Key"]):
+                    if int(match.group(1)) > max_level:
+                        continue
             yield obj["Key"], obj["ETag"]
 
 
@@ -195,7 +198,7 @@ def download_bucket_path(
     # Prepare the items for the _download_file function
     items = [
         (key, etag, dest, COSEM_BUCKET)
-        for key, etag in keys_tags(bucket_key, max_level=max_level)
+        for key, etag in _keys_tags(bucket_key, max_level=max_level)
     ]
 
     # download the files concurrently

@@ -2,14 +2,42 @@
 
 import argparse
 
-from microsim.cosem import CosemDataset, clear_cache
+from rich import print
+
+from microsim.cosem import CosemDataset, bucket_cache, clear_cache
 
 
-def download_dataset(args: argparse.Namespace) -> None:
+def _clear_cache(args: argparse.Namespace) -> None:
+    if not bucket_cache().exists():
+        print("Cache is empty.")
+        return
+
+    numfiles = len(list(bucket_cache().rglob("*")))
+    clear_cache()
+    print(f"Deleted {numfiles} files from the cache.")
+
+
+def _show(args: argparse.Namespace) -> None:
+    dset = CosemDataset.fetch(args.name)
+    dset.show(image_keys=args.image_keys, level=args.level)
+
+
+def _download_dataset(args: argparse.Namespace) -> None:
     dset = CosemDataset.fetch(args.name)
     for key in args.image_keys:
-        img = dset.image(name=key)
-        img.download(dest=getattr(args, "dest", None))
+        try:
+            img = dset.image(name=key)
+        except ValueError as e:
+            print(f"Error: {e}")
+            continue
+        dest = getattr(args, "dest", None)
+        max_level = getattr(args, "max_level", None)
+        img.download(dest=dest, max_level=max_level)
+
+
+def _show_dataset(args: argparse.Namespace) -> None:
+    dset = CosemDataset.fetch(args.name)
+    print(dset)
 
 
 def parse_args() -> argparse.Namespace:
@@ -17,8 +45,9 @@ def parse_args() -> argparse.Namespace:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # Fetch datasets
-    fetch_datasets = subparsers.add_parser("fetch_datasets", help="Fetch datasets.")
-    fetch_datasets.set_defaults(func=fetch_datasets)
+    info = subparsers.add_parser("info", help="Fetch datasets.")
+    info.add_argument("name", help="The name of the dataset.")
+    info.set_defaults(func=_show_dataset)
 
     # Fetch views
     fetch_views = subparsers.add_parser("fetch_views", help="Fetch views.")
@@ -36,16 +65,29 @@ def parse_args() -> argparse.Namespace:
     download.add_argument(
         "image_keys", nargs="+", help="The name of the image to download."
     )
-    download.set_defaults(func=download_dataset)
+    download.add_argument(
+        "--dest", help="The destination directory to download the image to."
+    )
+    download.add_argument(
+        "--max-level",
+        type=int,
+        default=0,
+        help="The maximum level of the image to download.",
+    )
+    download.set_defaults(func=_download_dataset)
 
     # clear cache
     cache = subparsers.add_parser("clear_cache", help="Clear the cache.")
-    cache.set_defaults(func=lambda _: clear_cache())
+    cache.set_defaults(func=_clear_cache)
 
     # Show image
     show = subparsers.add_parser("show", help="Show an image.")
     show.add_argument("name", help="The name of the image.")
-    show.set_defaults(func=show)
+    show.add_argument("image_keys", nargs="+", help="The name of the image to show.")
+    show.add_argument(
+        "--level", type=int, help="The level of the image to show.", default=1
+    )
+    show.set_defaults(func=_show)
 
     return parser.parse_args()
 

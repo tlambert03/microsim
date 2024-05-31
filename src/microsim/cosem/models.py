@@ -69,11 +69,16 @@ jrc_sum159-1
 
 import datetime
 import json
-from collections.abc import Mapping, Sequence
+import logging
+import urllib.parse
+from collections import defaultdict
+from collections.abc import Iterable, Mapping, Sequence
 from os import PathLike
 from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, computed_field
+
+from microsim.util import norm_name
 
 from ._client import (
     COSEM_BUCKET,
@@ -92,6 +97,20 @@ if TYPE_CHECKING:
 # ------------------------ MODELS ------------------------
 
 
+SampleType = Literal["scalar", "label", "geometry"]
+ContentType = Literal[
+    "lm", "em", "segmentation", "prediction", "analysis", "annotation", "mesh"
+]
+ImageFormat = Literal[
+    "n5",
+    "zarr",
+    "precomputed",
+    "neuroglancer_precomputed",
+    "neuroglancer_multilod_draco",
+    "neuroglancer_legacy_mesh",
+]
+
+
 class CosemSample(BaseModel):
     name: str
     description: str
@@ -105,23 +124,56 @@ class CosemImageAcquisition(BaseModel):
     name: str
     start_date: datetime.datetime
     grid_axes: list[str]
-    grid_spacing: list[float]
     grid_dimensions: list[float]
-    grid_spacing_unit: str
     grid_dimensions_unit: str
+    grid_spacing: list[float]
+    grid_spacing_unit: str
 
 
 class CosemImage(BaseModel):
     name: str
     description: str
     url: str
-    format: str
+    format: ImageFormat
     grid_scale: list[float]
     grid_translation: list[float]
     grid_dims: list[str]
     grid_units: list[str]
-    sample_type: str
-    content_type: str
+    sample_type: SampleType
+    content_type: ContentType
+    created_at: datetime.datetime
+    # dataset_name: str
+    # display_settings: dict
+    # grid_index_order: str  # C-order or Fortran-order
+    # id: int
+    # institution: str
+    # source: dict | None
+    # stage: Literal["prod", "dev"]
+
+    @property
+    def bucket_path(self) -> str:
+        return urllib.parse.urlparse(self.url).path
+
+    @computed_field
+    @property
+    def scales(self) -> list[str]:
+        """Fetch all available scales for the image from s3."""
+        if not getattr(self, "_scales", None):
+            scales = []
+            # n5 multiscale
+            if multi := self.attrs.get("multiscales"):
+                for scale in multi:
+                    if dsets := scale.get("datasets"):
+                        for dset in dsets:
+                            if path := dset.get("path"):
+                                scales.append(path)
+            # precomputed multiscale
+            elif multi := self.attrs.get("scales"):
+                for scale in multi:
+                    if key := scale.get("key"):
+                        scales.append(key)
+            self._scales = scales
+        return self._scales
 
     @property
     def bucket_key(self) -> str:
@@ -135,14 +187,12 @@ class CosemImage(BaseModel):
     def read(
         self,
         level: int = -1,
-        transpose: Sequence[str] | None = None,
-        bin_mode: Literal["mode", "sum"] = "mode",
+        transpose: Sequence[str] | None = ("y", "x", "z"),
+        # bin_mode: Literal["mode", "sum"] = "mode",
     ) -> "TensorStore":
         from microsim.cosem._tstore import read_tensorstore
 
-        return read_tensorstore(
-            self, level=level, transpose=transpose, bin_mode=bin_mode
-        )
+        return read_tensorstore(self, level=level, transpose=transpose)
 
     def read_xarray(self) -> "xr.DataArray | DataTree":
         from microsim.cosem._xarray import read_xarray
@@ -161,26 +211,6 @@ class CosemImage(BaseModel):
             self._attrs = json.load(fetch_s3(self.url + attr))
         return self._attrs  # type: ignore [no-any-return]
 
-    @property
-    def scales(self) -> list[str]:
-        # TODO: it would be nice if we didn't need to hit the network for this.
-        if not getattr(self, "_scales", None):
-            scales = []
-            # n5 multiscale
-            if multi := self.attrs.get("multiscales"):
-                for scale in multi:
-                    if dsets := scale.get("datasets"):
-                        for dset in dsets:
-                            if path := dset.get("path"):
-                                scales.append(path)
-            # precomputed multiscale
-            elif multi := self.attrs.get("scales"):
-                for scale in multi:
-                    if key := scale.get("key"):
-                        scales.append(key)
-            self._scales = scales
-        return self._scales
-
     def show(self, **read_kwargs: Any) -> None:
         from microsim.util import view_nd
 
@@ -194,6 +224,7 @@ class CosemDataset(BaseModel):
     sample: CosemSample
     image_acquisition: CosemImageAcquisition
     images: list[CosemImage]
+    created_at: datetime.datetime
 
     @computed_field(repr=False)  # type: ignore [misc]
     @property
@@ -203,7 +234,18 @@ class CosemDataset(BaseModel):
     @classmethod
     def fetch(cls, name: str) -> "CosemDataset":
         """Fetch dataset with a specific name."""
-        return cls.all()[name]
+        datasets = fetch_datasets()
+        if name not in datasets:
+            if key := _get_similar(name, datasets):
+                logging.warn(
+                    f"Dataset {name!r} not found. Using similar {key!r} instead."
+                )
+                name = key
+            else:
+                raise ValueError(
+                    f"Dataset {name!r} not found. Available datasets: {cls.names()}`"
+                )
+        return datasets[name]
 
     @classmethod
     def all(cls) -> Mapping[str, "CosemDataset"]:
@@ -211,17 +253,23 @@ class CosemDataset(BaseModel):
         return fetch_datasets()
 
     @classmethod
-    def names(cls) -> set[str]:
+    def names(cls) -> list[str]:
         """Return list of all available dataset names."""
-        return set(cls.all())
+        return sorted(cls.all())
 
     def view(self, name: str) -> "CosemView":
         return next(v for v in self.views if v.name == name)
 
     def image(self, **kwargs: Any) -> "CosemImage":
-        return next(
-            i for i in self.images if all(getattr(i, k) == v for k, v in kwargs.items())
-        )
+        avail: defaultdict[str, set[str]] = defaultdict(set)
+        for img in self.images:
+            if all(getattr(img, k) == v for k, v in kwargs.items()):
+                return img
+            for key in kwargs:
+                avail[key].add(getattr(img, key))
+
+        _avail = {k: sorted(v) for k, v in avail.items()}
+        raise ValueError(f"Image not found with {kwargs!r}.  Available keys: {_avail}")
 
     @property
     def em_layers(self) -> list[CosemImage]:
@@ -300,7 +348,7 @@ class CosemView(BaseModel):
     thumbnail_url: str
     position: list[float] | None
     scale: float | None
-    orientation: str | list[int] | None
+    orientation: list[int] | None
     created_at: datetime.datetime
     taxa: list[CosemTaxon]
     images: list[CosemImage]
@@ -318,3 +366,32 @@ class CosemView(BaseModel):
     def all(cls) -> tuple["CosemView", ...]:
         """Fetch dataset with a specific name."""
         return fetch_views()
+
+
+class CosemImagery(BaseModel):
+    content_type: str
+    coordinate_space: str
+    created_at: str
+    dataset_name: str
+    description: str
+    display_settings: dict
+    format: str
+    grid_dims: list[str]
+    grid_index_order: str
+    grid_scale: list[int]
+    grid_translation: list[int]
+    grid_units: list[str]
+    id: int
+    institution: str
+    name: str
+    sample_type: str
+    source: dict
+    stage: str
+    url: str
+
+
+def _get_similar(search_term: str, available: Iterable[str]) -> str | None:
+    for avail in available:
+        if norm_name(search_term) == norm_name(avail):
+            return avail
+    return None
