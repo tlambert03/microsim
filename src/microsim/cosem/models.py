@@ -192,7 +192,7 @@ class CosemImage(BaseModel):
     ) -> "TensorStore":
         from microsim.cosem._tstore import read_tensorstore
 
-        return read_tensorstore(self, level=level, transpose=transpose)
+        return read_tensorstore(self, level=level, transpose=transpose, summed=True)
 
     def read_xarray(self) -> "xr.DataArray | DataTree":
         from microsim.cosem._xarray import read_xarray

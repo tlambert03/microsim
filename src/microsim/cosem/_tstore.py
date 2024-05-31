@@ -23,12 +23,19 @@ DRIVERS = {
 }
 
 
-def _kv_store(img: "CosemImage", level: int | None = None) -> dict:
+def _kv_store(img: "CosemImage", level: int | None = None, summed: bool = True) -> dict:
+    if not level:
+        summed = False
     path = img.bucket_path.lstrip("/")
+    prefix = "sum" if summed else "s"
     if level is not None and img.format != "precomputed":
-        path += f"/s{level}"
+        path += f"/{prefix}{level}"
 
     if (cached := COSEM_CACHE / path).exists():
+        return {"driver": "file", "path": str(cached)}
+    elif summed:
+        # we've never cached this image before, so we have to download and rebin it
+        rebin(img, max_level=level + 1)
         return {"driver": "file", "path": str(cached)}
 
     return {
@@ -42,6 +49,7 @@ def ts_spec(
     img: "CosemImage",
     level: int | None = None,
     cache_limit: float | None = None,
+    summed: bool = True,
     **kwargs: Any,
 ) -> dict:
     if level is not None:
@@ -54,7 +62,7 @@ def ts_spec(
                 f"Available levels are: {img.scales}"
             ) from e
 
-    kvstore = _kv_store(img, level=level)
+    kvstore = _kv_store(img, level=level, summed=summed)
     if level is not None and img.format == "precomputed":
         if isinstance(level, str):
             level = level.lstrip("s")
@@ -75,7 +83,7 @@ def read_tensorstore(
     level: int | None = None,
     *,
     transpose: Sequence[str] | None = None,
-    # bin_mode: Literal["mode", "sum"] = "mode",
+    summed: bool = False,
     cache_limit: float | None = 4e9,
 ) -> ts.TensorStore:
     """Read a COSEM image as a tensorstore.
@@ -88,10 +96,16 @@ def read_tensorstore(
         The scale level to read. If None, the highest resolution level is read.
     transpose : Sequence[str] | None
         The dimension order to transpose the data. If None, the default order is used.
+    summed : bool
+        Whether to retrieve sum-binned data (True) or mode-binned data (False).
+        Cosem data is binned using a mode-window, but sum-binned data is more useful
+        to us in microsim.
     cache_limit : float | None
         The cache limit in bytes. If None, the default limit is used (4 GB).
     """
-    data = ts.open(ts_spec(img, level=level, cache_limit=cache_limit)).result()
+    data = ts.open(
+        ts_spec(img, level=level, cache_limit=cache_limit, summed=summed)
+    ).result()
 
     # "squeeze" the data (haven't found a tensorstore-native way to do this)
     # usually this is because of a single "channels" dim in precomputed formats.
@@ -191,7 +205,7 @@ def rebin(
         dtype = ts.uint8 if lvl < 3 else ts.uint16
         # to make our binned array as similar as possible to the one on S3, we create
         # a new array with (almost) the same spec as the original
-        target = read_tensorstore(img, level=lvl)
+        target = read_tensorstore(img, level=lvl, summed=False)
         arr_out = new_like(target, kvstore=kvstore, dtype=dtype)
 
         # determine all of the input/output index pairs and process them concurrently
