@@ -1,5 +1,6 @@
 import numpy as np
 import numpy.typing as npt
+
 from microsim.cosem import CosemDataset
 from microsim.util import view_nd
 
@@ -16,7 +17,8 @@ def convert(data: npt.NDArray, target: str = ".") -> None:
     from microsim.util import bin
 
     bdata = data.astype(bool)
-    binned = bin(bdata, 2, dtype=np.uint8)
+    bin(bdata, 2, dtype=np.uint8)
+
 
 #     print("converted")
 #     binned = bin(_vol, 2, dtype=np.uint8)
