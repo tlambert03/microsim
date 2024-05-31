@@ -1,8 +1,77 @@
+"""Models for COSEM data.
+
+Dataset names as of May 31, 2024:
+aic_desmosome-1
+aic_desmosome-2
+aic_desmosome-3
+jrc_ccl81-covid-1
+jrc_choroid-plexus-2
+jrc_cos7-11
+jrc_cos7-1a
+jrc_cos7-1b
+jrc_ctl-id8-1
+jrc_ctl-id8-2
+jrc_ctl-id8-3
+jrc_ctl-id8-4
+jrc_ctl-id8-5
+jrc_dauer-larva
+jrc_fly-acc-calyx-1
+jrc_fly-ellipsoid-body
+jrc_fly-fsb-1
+jrc_fly-fsb-2
+jrc_fly-larva-1
+jrc_fly-mb-z0419-20
+jrc_fly-protocerebral-bridge
+jrc_fly-vnc-1
+jrc_hela-1
+jrc_hela-2
+jrc_hela-21
+jrc_hela-22
+jrc_hela-3
+jrc_hela-4
+jrc_hela-bfa
+jrc_hela-h89-1
+jrc_hela-h89-2
+jrc_hela-nz-1
+jrc_jurkat-1
+jrc_macrophage-2
+jrc_mus-dorsal-striatum
+jrc_mus-epididymis-1
+jrc_mus-epididymis-2
+jrc_mus-granule-neurons-1
+jrc_mus-granule-neurons-2
+jrc_mus-granule-neurons-3
+jrc_mus-guard-hair-follicle
+jrc_mus-heart-1
+jrc_mus-hippocampus-1
+jrc_mus-kidney
+jrc_mus-kidney-2
+jrc_mus-kidney-3
+jrc_mus-liver
+jrc_mus-liver-2
+jrc_mus-liver-3
+jrc_mus-meissner-corpuscle-1
+jrc_mus-meissner-corpuscle-2
+jrc_mus-nacc-2
+jrc_mus-nacc-3
+jrc_mus-nacc-4
+jrc_mus-pacinian-corpuscle
+jrc_mus-pancreas-1
+jrc_mus-pancreas-2
+jrc_mus-pancreas-3
+jrc_mus-pancreas-4
+jrc_mus-sc-zp104a
+jrc_mus-sc-zp105a
+jrc_mus-skin-1
+jrc_mus-thymus-1
+jrc_sum159-1
+"""
+
 import datetime
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from os import PathLike
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, computed_field
 
@@ -17,6 +86,7 @@ from ._client import (
 if TYPE_CHECKING:
     import numpy as np
     import xarray as xr
+    from datatree import DataTree
     from tensorstore import TensorStore
 
 # ------------------------ MODELS ------------------------
@@ -63,13 +133,18 @@ class CosemImage(BaseModel):
         return download_bucket_path(self.bucket_key, dest=dest, max_level=max_level)
 
     def read(
-        self, level: int = -1, transpose: Sequence[str] | None = None
+        self,
+        level: int = -1,
+        transpose: Sequence[str] | None = None,
+        bin_mode: Literal["mode", "sum"] = "mode",
     ) -> "TensorStore":
         from microsim.cosem._tstore import read_tensorstore
 
-        return read_tensorstore(self, level=level, transpose=transpose)
+        return read_tensorstore(
+            self, level=level, transpose=transpose, bin_mode=bin_mode
+        )
 
-    def read_xarray(self) -> "xr.DataArray":
+    def read_xarray(self) -> "xr.DataArray | DataTree":
         from microsim.cosem._xarray import read_xarray
 
         return read_xarray(self.url)
@@ -84,7 +159,7 @@ class CosemImage(BaseModel):
             elif self.format == "precomputed":
                 attr = "/info"
             self._attrs = json.load(fetch_s3(self.url + attr))
-        return self._attrs
+        return self._attrs  # type: ignore [no-any-return]
 
     @property
     def scales(self) -> list[str]:
@@ -124,6 +199,21 @@ class CosemDataset(BaseModel):
     @property
     def views(self) -> list["CosemView"]:
         return [v for v in fetch_views() if v.dataset_name == self.name]
+
+    @classmethod
+    def fetch(cls, name: str) -> "CosemDataset":
+        """Fetch dataset with a specific name."""
+        return cls.all()[name]
+
+    @classmethod
+    def all(cls) -> Mapping[str, "CosemDataset"]:
+        """Fetch dataset with a specific name."""
+        return fetch_datasets()
+
+    @classmethod
+    def names(cls) -> set[str]:
+        """Return list of all available dataset names."""
+        return set(cls.all())
 
     def view(self, name: str) -> "CosemView":
         return next(v for v in self.views if v.name == name)
@@ -169,20 +259,13 @@ class CosemDataset(BaseModel):
 
         return imread(self.thumbnail_url)
 
-    @classmethod
-    def names(cls) -> list[str]:
-        """Return list of all available dataset names."""
-        return list(fetch_datasets())
-
-    @classmethod
-    def fetch(cls, name: str) -> "CosemDataset":
-        """Fetch dataset with a specific name."""
-        return fetch_datasets()[name]
-
     def read(
         self, image_keys: str | Sequence[str], **read_kwargs: Any
     ) -> "TensorStore":
-        """Return DataTree for `image_key`."""
+        """Return TensorStore for `image_keys`.
+
+        This reads all images in `image_keys` and stacks them along the first axis.
+        """
         if not image_keys:
             raise ValueError("No image keys provided")
         if isinstance(image_keys, str):
@@ -202,7 +285,6 @@ class CosemDataset(BaseModel):
         from microsim.util import view_nd
 
         data = self.read(image_keys, **read_kwargs)
-        print(data)
         view_nd(data)
 
 
@@ -222,3 +304,17 @@ class CosemView(BaseModel):
     created_at: datetime.datetime
     taxa: list[CosemTaxon]
     images: list[CosemImage]
+
+    @classmethod
+    def filter(cls, **kwargs: Any) -> list["CosemView"]:
+        """Fetch dataset with a specific name."""
+        matches = []
+        for view in fetch_views():
+            if all(getattr(view, k) == v for k, v in kwargs.items()):
+                matches.append(view)
+        return matches
+
+    @classmethod
+    def all(cls) -> tuple["CosemView", ...]:
+        """Fetch dataset with a specific name."""
+        return fetch_views()

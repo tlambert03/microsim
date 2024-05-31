@@ -6,31 +6,45 @@ import re
 import shutil
 import urllib.request
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from functools import cache
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, get_args
 
-import botocore.response
 import tqdm
+from pydantic import BaseModel
+
+try:
+    import boto3
+    from botocore import UNSIGNED, client
+    from supabase import Client
+except ImportError as e:
+    raise ImportError("To use cosem data, please `pip install microsim[cosem]`") from e
+else:
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("botocore").setLevel(logging.WARNING)
+
+from rich import print
 
 from microsim.util import MICROSIM_CACHE
 
 if TYPE_CHECKING:
-    from collections.abc import Mapping
+    from collections.abc import Iterator, Mapping
     from os import PathLike
 
     import botocore.client
     import botocore.response
     import supabase
     from mypy_boto3_s3 import S3Client
-    from mypy_boto3_s3.service_resource import Bucket
 
     from .models import CosemDataset, CosemView
 
 
 COSEM_BUCKET = "janelia-cosem-datasets"
 COSEM_CACHE = MICROSIM_CACHE / COSEM_BUCKET
+MAX_CONNECTIONS = 50
+CFG = client.Config(signature_version=UNSIGNED, max_pool_connections=MAX_CONNECTIONS)
 
 
 def bucket_cache() -> Path:
@@ -42,43 +56,22 @@ def clear_cache() -> None:
 
 
 @cache
-def _supabase() -> supabase.Client:
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    try:
-        from supabase import Client
-    except ImportError as e:
-        raise ImportError(
-            "To use cosem data, please `pip install microsim[cosem]`"
-        ) from e
-
-    with urllib.request.urlopen(
-        "https://openorganelle.janelia.org/static/js/4743.a9f85e14.chunk.js"
-    ) as response:
-        if response.status != 200:
-            raise ValueError("Failed to fetch Supabase URL and key")
-        text = response.read().decode("utf-8")
-    key = text.split("SUPABASE_KEY:")[1].split(",")[0].strip("\"'")
-    url = text.split("SUPABASE_URL:")[1].split(",")[0].strip("\"'")
-    return Client(url, key)
+def _supabase(url: str | None = None, key: str | None = None) -> supabase.Client:
+    if not (url and key):
+        with urllib.request.urlopen(
+            "https://openorganelle.janelia.org/static/js/4743.a9f85e14.chunk.js"
+        ) as response:
+            if response.status != 200:
+                raise ValueError("Failed to fetch Supabase URL and key")
+            text = response.read().decode("utf-8")
+        key = text.split("SUPABASE_KEY:")[1].split(",")[0].strip("\"'")
+        url = text.split("SUPABASE_URL:")[1].split(",")[0].strip("\"'")
+    return Client(url, key)  # type: ignore
 
 
 @cache
 def _s3_client() -> S3Client:
-    logging.getLogger("botocore").setLevel(logging.WARNING)
-    import boto3
-    from botocore import UNSIGNED, client
-
-    return boto3.client("s3", config=client.Config(signature_version=UNSIGNED))
-
-
-@cache
-def _bucket(name: str = COSEM_BUCKET) -> Bucket:
-    import boto3
-    from botocore import UNSIGNED, client
-
-    session = boto3.Session()
-    resource = session.resource("s3", config=client.Config(signature_version=UNSIGNED))
-    return resource.Bucket(name)
+    return boto3.client("s3", config=CFG)
 
 
 def fetch_s3(url: str) -> botocore.response.StreamingBody:
@@ -93,64 +86,35 @@ def fetch_s3(url: str) -> botocore.response.StreamingBody:
     return obj["Body"]
 
 
-DATASETS_QUERY = """
-name,
-description,
-thumbnail_url,
-sample:sample(
-    name,
-    description,
-    protocol,
-    type,
-    subtype,
-    organism
-),
-image_acquisition:image_acquisition(
-    name,
-    start_date,
-    grid_axes,
-    grid_spacing,
-    grid_dimensions,
-    grid_spacing_unit,
-    grid_dimensions_unit
-),
-images:image(
-    name,
-    description,
-    url,
-    format,
-    grid_scale,
-    grid_translation,
-    grid_dims,
-    grid_units,
-    sample_type,
-    content_type
-)
-""".strip().replace("\n", "")
+def model_query(model: type[BaseModel]) -> str:
+    """Create a query string for fetching a model from Supabase."""
+    result = []
+    for item in _collect_fields(model):
+        if isinstance(item, str):
+            result.append(item)
+        else:
+            section_name, fields = item
+            section_str = f"{section_name}({','.join(fields)})"
+            result.append(section_str)
+    return ",".join(result)
 
-VIEWS_QUERY = """
-name,
-dataset_name,
-description,
-thumbnail_url,
-position,
-scale,
-orientation,
-taxa:taxon(name, short_name),
-created_at,
-images:image(
-    name,
-    description,
-    url,
-    format,
-    grid_scale,
-    grid_translation,
-    grid_dims,
-    grid_units,
-    sample_type,
-    content_type
-)
-""".strip().replace("\n", "")
+
+def _collect_fields(model: type[BaseModel]) -> Iterator[str | tuple]:
+    """Used in model_query to recursively collect fields from a model."""
+    for field, info in model.model_fields.items():
+        args = get_args(info.annotation)
+        if args and isinstance(args[0], type) and issubclass(args[0], BaseModel):
+            anno: Any = args[0]
+        else:
+            anno = info.annotation
+        if isinstance(anno, type) and issubclass(anno, BaseModel):
+            name = anno.__name__
+            if name.startswith("Cosem"):
+                name = name[5:]
+            name = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+            yield (f"{field}:{name}", _collect_fields(anno))
+        else:
+            yield field
 
 
 @cache
@@ -158,7 +122,8 @@ def fetch_datasets() -> Mapping[str, CosemDataset]:
     """Fetch all dataset metadata from the COSEM database."""
     from .models import CosemDataset
 
-    response = _supabase().from_("dataset").select(DATASETS_QUERY).execute()
+    query = model_query(CosemDataset)
+    response = _supabase().from_("dataset").select(query).execute()
     datasets: dict[str, CosemDataset] = {}
     for x in response.data:
         ds = CosemDataset.model_validate(x)
@@ -167,16 +132,18 @@ def fetch_datasets() -> Mapping[str, CosemDataset]:
 
 
 @cache
-def fetch_views() -> list[CosemView]:
+def fetch_views() -> tuple[CosemView, ...]:
     """Fetch all view metadata from the COSEM database."""
     from .models import CosemView
 
-    response = _supabase().from_("view").select(VIEWS_QUERY).execute()
-    return [CosemView.model_validate(x) for x in response.data]
+    query = model_query(CosemView)
+    response = _supabase().from_("view").select(query).execute()
+    return tuple(CosemView.model_validate(x) for x in response.data)
 
 
 @cache
-def organelles() -> Mapping[str, str]:
+def organelles() -> Mapping[str, list[CosemView]]:
+    """Return a mapping of organelle names to their descriptions."""
     orgs: defaultdict[str, list[CosemView]] = defaultdict(list)
     for view in fetch_views():
         for taxon in view.taxa:
@@ -184,13 +151,21 @@ def organelles() -> Mapping[str, str]:
     return MappingProxyType(orgs)
 
 
-def calculate_etag(file_path: str | Path) -> str:
-    """Calculate the ETag for a local file."""
-    hash_md5 = hashlib.md5()
-    with open(file_path, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-    return '"' + hash_md5.hexdigest() + '"'
+SCALE_RE = re.compile(r"\/s(\d+)\/")
+
+
+def keys_tags(
+    prefix: str, max_level: int | None = 0, bucket_name: str = COSEM_BUCKET
+) -> Iterator[tuple[str, str]]:
+    paginator = _s3_client().get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket_name, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            if max_level is not None:
+                # exclude keys with a scale level greater than max_level
+                match = SCALE_RE.search(obj["Key"])
+                if match and int(match.group(1)) > max_level:
+                    continue
+            yield obj["Key"], obj["ETag"]
 
 
 def download_bucket_path(
@@ -215,30 +190,36 @@ def download_bucket_path(
     if dest is None:
         dest = COSEM_CACHE
 
-    bucket = _bucket()
     dest = Path(dest).expanduser().resolve()
-    with tqdm.tqdm(total=None) as pbar:
-        for obj in bucket.objects.filter(Prefix=bucket_key):
-            _dest = dest / str(obj.key)
-            if _dest.exists() and calculate_etag(_dest) == obj.e_tag:
-                pbar.set_description(f"Already downloaded {obj.key}")
-                continue  # Skip this file because it's the same as the local file
 
-            if max_level is not None:
-                # find the `/s{level}` in the key
-                match = re.search(r"\/s(\d+)\/", obj.key)
-                if match and int(match.group(1)) > max_level:
-                    pbar.set_description(f"Skipping {obj.key}")
-                    continue
+    # Prepare the items for the _download_file function
+    items = [
+        (key, etag, dest, COSEM_BUCKET)
+        for key, etag in keys_tags(bucket_key, max_level=max_level)
+    ]
 
-            pbar.set_description(f"Downloading {obj.key}")
-            _dest.parent.mkdir(parents=True, exist_ok=True)
-            bucket.download_file(obj.key, str(_dest))
-        pbar.set_description(f"Downloaded {bucket_key} to {dest}")
+    # download the files concurrently
+    print(f"Downloading {bucket_key} to {dest}")
+    with ThreadPoolExecutor(max_workers=MAX_CONNECTIONS) as executor:
+        list(tqdm.tqdm(executor.map(_download_file, items), total=len(items)))
 
 
-if __name__ == "__main__":
-    from rich import print
+def _download_file(item: tuple[str, str, Path, str]) -> None:
+    key, etag, dest, bucket_name = item
+    _dest = dest / str(key)
+    if _dest.exists() and _calculate_etag(_dest) == etag:
+        return
+    _dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        _s3_client().download_file(bucket_name, key, str(_dest))
+    except Exception as e:
+        logging.error(f"Failed to download {key!r}: {e}")
 
-    # print(CosemDataset.fetch("jrc_hela-2").thumbnail)
-    print(organelles())
+
+def _calculate_etag(file_path: str | Path) -> str:
+    """Calculate the ETag for a local file."""
+    hash_md5 = hashlib.md5()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return '"' + hash_md5.hexdigest() + '"'

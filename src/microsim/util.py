@@ -304,7 +304,11 @@ def bin(  # noqa: A001
     if callable(method):
         f = method
     elif method == "mode":
-        f = _mode
+        # round and cast to int before calling bincount
+        reshaped = np.round(reshaped).astype(np.int32, casting="unsafe")
+
+        def f(a: npt.NDArray, axis: int) -> npt.NDArray:
+            return np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis, a)
     else:
         f = getattr(np, method)
     axes = tuple(range(1, reshaped.ndim, 2))
@@ -312,9 +316,3 @@ def bin(  # noqa: A001
     if dtype is not None:
         result = result.astype(dtype)
     return result
-
-
-def _mode(a: npt.NDArray, axis: int) -> npt.NDArray:
-    # round and cast to int before calling bincount
-    a = np.round(a).astype(np.int64, casting="unsafe")
-    return np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis, a)

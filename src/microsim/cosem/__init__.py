@@ -5,10 +5,12 @@ from ._client import (
     fetch_views,
     organelles,
 )
-from .models import CosemDataset
+from .models import CosemDataset, CosemImage, CosemView
 
 __all__ = [
     "CosemDataset",
+    "CosemView",
+    "CosemImage",
     "fetch_datasets",
     "fetch_views",
     "organelles",

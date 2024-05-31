@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import tensorstore as ts
 
@@ -23,7 +23,6 @@ def _kv_store(img: "CosemImage", level: int | None = None) -> dict:
         path += f"/s{level}"
 
     if (cached := COSEM_CACHE / path).exists():
-        print("Using cached data")
         return {"driver": "file", "path": str(cached)}
 
     if not proto.startswith("s3"):
@@ -70,10 +69,14 @@ def ts_spec(
 def read_tensorstore(
     img: "CosemImage",
     level: int | None = None,
+    *,
     transpose: Sequence[str] | None = None,
+    bin_mode: Literal["mode", "sum"] = "mode",
     cache_limit: float | None = 4e9,
 ) -> ts.TensorStore:
-    data = ts.open(ts_spec(img, level=level, cache_limit=cache_limit)).result()
+    data = ts.open(
+        ts_spec(img, level=level, bin_mode=bin_mode, cache_limit=cache_limit)
+    ).result()
 
     # "squeeze" the data (haven't found a tensorstore-native way to do this)
     # usually this is because of a single "channels" dim in precomputed formats.
