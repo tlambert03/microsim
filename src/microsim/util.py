@@ -285,8 +285,8 @@ def downsample(
 def bin(  # noqa: A001
     array: npt.NDArray,
     window: int | Sequence[int],
-    method: str | Callable = "sum",
     dtype: npt.DTypeLike | None = None,
+    method: str | Callable = "sum",
 ) -> npt.NDArray:
     """Bin an nd-array by applying `method` over `window`."""
     # TODO: deal with xarray
@@ -295,10 +295,26 @@ def bin(  # noqa: A001
     new_shape = []
     for s, b in zip(array.shape, binwindow, strict=False):
         new_shape.extend([s // b, b])
-    reshaped = np.reshape(array, new_shape)
 
-    f = method if callable(method) else getattr(np, method)
-    for d in range(array.ndim):
-        reshaped = f(reshaped, axis=-1 * (d + 1), dtype=dtype)
+    sliced = array[
+        tuple(slice(0, s * b) for s, b in zip(new_shape[::2], binwindow, strict=True))
+    ]
+    reshaped = np.reshape(sliced, new_shape)
 
-    return reshaped
+    if callable(method):
+        f = method
+    elif method == "mode":
+        f = _mode
+    else:
+        f = getattr(np, method)
+    axes = tuple(range(1, reshaped.ndim, 2))
+    result = np.apply_over_axes(f, reshaped, axes).squeeze()
+    if dtype is not None:
+        result = result.astype(dtype)
+    return result
+
+
+def _mode(a: npt.NDArray, axis: int) -> npt.NDArray:
+    # round and cast to int before calling bincount
+    a = np.round(a).astype(np.int64, casting="unsafe")
+    return np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis, a)

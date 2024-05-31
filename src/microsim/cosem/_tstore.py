@@ -35,7 +35,12 @@ def _kv_store(img: "CosemImage", level: int | None = None) -> dict:
     }
 
 
-def ts_spec(img: "CosemImage", level: int | None = None, **kwargs: Any) -> dict:
+def ts_spec(
+    img: "CosemImage",
+    level: int | None = None,
+    cache_limit: float | None = None,
+    **kwargs: Any,
+) -> dict:
     if level is not None:
         try:
             lvl = img.scales[level]
@@ -52,10 +57,12 @@ def ts_spec(img: "CosemImage", level: int | None = None, **kwargs: Any) -> dict:
             level = level.lstrip("s")
         kwargs["scale_index"] = int(level)
 
+    if cache_limit:
+        kwargs["context"] = {"cache_pool": {"total_bytes_limit": cache_limit}}
+
     return {
         "driver": DRIVERS[img.format],
         "kvstore": kvstore,
-        "context": {"cache_pool": {"total_bytes_limit": 2**32}},  # 4GB
         **kwargs,
     }
 
@@ -64,8 +71,9 @@ def read_tensorstore(
     img: "CosemImage",
     level: int | None = None,
     transpose: Sequence[str] | None = None,
+    cache_limit: float | None = 4e9,
 ) -> ts.TensorStore:
-    data = ts.open(ts_spec(img, level=level)).result()
+    data = ts.open(ts_spec(img, level=level, cache_limit=cache_limit)).result()
 
     # "squeeze" the data (haven't found a tensorstore-native way to do this)
     # usually this is because of a single "channels" dim in precomputed formats.
