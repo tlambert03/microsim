@@ -240,7 +240,7 @@ def ortho_plot(img: ArrayProtocol, gamma: float = 0.5, mip: bool = False) -> Non
     plt.show()
 
 
-def view_nd(ary: Any, figsize: tuple[int, int] = (1280, 1000)) -> None:
+def view_nd(ary: Any, figsize: tuple[int, int] = (1280, 1000), **view_kwargs) -> None:
     try:
         from pymmcore_widgets._stack_viewer_v2 import StackViewer
     except ImportError:
@@ -254,7 +254,7 @@ def view_nd(ary: Any, figsize: tuple[int, int] = (1280, 1000)) -> None:
     if not (hadapp := app is not None):
         app = QApplication([])
 
-    s = StackViewer(ary)
+    s = StackViewer(ary, **view_kwargs)
     s.resize(*figsize)
     s.show()
 

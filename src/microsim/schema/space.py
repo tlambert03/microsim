@@ -1,4 +1,4 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, Protocol, TypeVar
 
 import numpy as np
@@ -172,12 +172,18 @@ class _RelativeSpace(_Space):
 
 
 class DownscaledSpace(_RelativeSpace):
-    downscale: tuple[int, ...] | int
+    downscale: tuple[int, ...] | int | Mapping[str, int]
 
     def rescale(self, img: DataArray) -> DataArray:
         from microsim.util import downsample
 
-        new_img = downsample(img.data, self.downscale)
+        factor = self.downscale
+        if isinstance(factor, int):
+            factor = {k: factor for k in "ZYX"}
+        if isinstance(factor, Mapping):
+            factor = tuple(factor.get(d, 1) for d in img.dims)
+
+        new_img = downsample(img.data, factor)
         return DataArray(new_img, coords=self.coords)
 
     @computed_field  # type: ignore

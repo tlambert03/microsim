@@ -123,7 +123,12 @@ T = TypeVar("T", bound=BaseModel)
 def fetch_all(type_: type[T]) -> tuple[T, ...]:
     table_name = type_.__name__.lower().replace("cosem", "")
     query = model_query(type_)
-    response = _supabase().from_(table_name).select(query).execute()
+    try:
+        response = _supabase().from_(table_name).select(query).execute()
+    except Exception as e:
+        raise ValueError(
+            f"Failed to fetch {table_name!r} from Supabase. See above for details."
+        ) from e
     return tuple(type_.model_validate(x) for x in response.data)
 
 

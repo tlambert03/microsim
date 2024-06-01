@@ -1,71 +1,4 @@
-"""Models for COSEM data.
-
-Dataset names as of May 31, 2024:
-aic_desmosome-1
-aic_desmosome-2
-aic_desmosome-3
-jrc_ccl81-covid-1
-jrc_choroid-plexus-2
-jrc_cos7-11
-jrc_cos7-1a
-jrc_cos7-1b
-jrc_ctl-id8-1
-jrc_ctl-id8-2
-jrc_ctl-id8-3
-jrc_ctl-id8-4
-jrc_ctl-id8-5
-jrc_dauer-larva
-jrc_fly-acc-calyx-1
-jrc_fly-ellipsoid-body
-jrc_fly-fsb-1
-jrc_fly-fsb-2
-jrc_fly-larva-1
-jrc_fly-mb-z0419-20
-jrc_fly-protocerebral-bridge
-jrc_fly-vnc-1
-jrc_hela-1
-jrc_hela-2
-jrc_hela-21
-jrc_hela-22
-jrc_hela-3
-jrc_hela-4
-jrc_hela-bfa
-jrc_hela-h89-1
-jrc_hela-h89-2
-jrc_hela-nz-1
-jrc_jurkat-1
-jrc_macrophage-2
-jrc_mus-dorsal-striatum
-jrc_mus-epididymis-1
-jrc_mus-epididymis-2
-jrc_mus-granule-neurons-1
-jrc_mus-granule-neurons-2
-jrc_mus-granule-neurons-3
-jrc_mus-guard-hair-follicle
-jrc_mus-heart-1
-jrc_mus-hippocampus-1
-jrc_mus-kidney
-jrc_mus-kidney-2
-jrc_mus-kidney-3
-jrc_mus-liver
-jrc_mus-liver-2
-jrc_mus-liver-3
-jrc_mus-meissner-corpuscle-1
-jrc_mus-meissner-corpuscle-2
-jrc_mus-nacc-2
-jrc_mus-nacc-3
-jrc_mus-nacc-4
-jrc_mus-pacinian-corpuscle
-jrc_mus-pancreas-1
-jrc_mus-pancreas-2
-jrc_mus-pancreas-3
-jrc_mus-pancreas-4
-jrc_mus-sc-zp104a
-jrc_mus-sc-zp105a
-jrc_mus-skin-1
-jrc_mus-thymus-1
-jrc_sum159-1
-"""
+"""Models for COSEM data."""
 
 import datetime
 import json
@@ -142,13 +75,13 @@ class CosemImage(BaseModel):
     sample_type: SampleType
     content_type: ContentType
     created_at: datetime.datetime
-    # dataset_name: str
+    dataset_name: str
     # display_settings: dict
     # grid_index_order: str  # C-order or Fortran-order
     # id: int
     # institution: str
     # source: dict | None
-    # stage: Literal["prod", "dev"]
+    stage: Literal["prod", "dev"]
 
     @property
     def bucket_path(self) -> str:
@@ -188,11 +121,15 @@ class CosemImage(BaseModel):
         self,
         level: int = -1,
         transpose: Sequence[str] | None = ("y", "x", "z"),
-        # bin_mode: Literal["mode", "sum"] = "mode",
+        bin_mode: Literal["mode", "sum", "auto"] = "auto",
     ) -> "TensorStore":
         from microsim.cosem._tstore import read_tensorstore
 
-        return read_tensorstore(self, level=level, transpose=transpose, summed=True)
+        if bin_mode == "auto":
+            bin_mode = "sum" if self.content_type == "segmentation" else "mode"
+        return read_tensorstore(
+            self, level=level, transpose=transpose, bin_mode=bin_mode
+        )
 
     def read_xarray(self) -> "xr.DataArray | DataTree":
         from microsim.cosem._xarray import read_xarray
@@ -208,7 +145,10 @@ class CosemImage(BaseModel):
                 attr = "/.zattrs"
             elif self.format == "precomputed":
                 attr = "/info"
-            self._attrs = json.load(fetch_s3(self.url + attr))
+            try:
+                self._attrs = json.load(fetch_s3(self.url + attr))
+            except Exception:
+                self._attrs = {}
         return self._attrs  # type: ignore [no-any-return]
 
     def show(self, **read_kwargs: Any) -> None:

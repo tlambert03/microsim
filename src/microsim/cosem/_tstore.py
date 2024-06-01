@@ -4,7 +4,7 @@ import shutil
 from collections.abc import Callable, Sequence
 from itertools import product
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
 import tensorstore as ts
@@ -15,6 +15,7 @@ from ._client import COSEM_BUCKET, COSEM_CACHE
 if TYPE_CHECKING:
     from .models import CosemImage
 
+BinMode = Literal["sum", "mode"]
 
 DRIVERS = {
     "precomputed": "neuroglancer_precomputed",
@@ -23,57 +24,60 @@ DRIVERS = {
 }
 
 
-def _kv_store(img: "CosemImage", level: int | None = None, summed: bool = True) -> dict:
-    if not level:
-        summed = False
+def _kv_store(img: "CosemImage", level: int, bin_mode: BinMode = "mode") -> dict:
+    """Return the appropriate kvstore for the given image and level.
+
+    This is responsible for determining the correct path to the image data.
+    At first, everything will be on S3, and mode-binned data is always accessible
+    remotely since it's the cosem default.  As sum-binned data is requested, it will
+    be generated on-demand and cached locally.
+
+    Cosem's default windowing scheme is "mode" (sub-scales are the mode-binned data)
+    because it maintains instance segmentation identity across scales.
+    "sum" mode is added in microsim. it's more useful as a representation of
+    label density.
+    """
     path = img.bucket_path.lstrip("/")
-    prefix = "sum" if summed else "s"
-    if level is not None and img.format != "precomputed":
+    prefix = "sum" if bin_mode == "sum" else "s"
+
+    # TODO: check if this condition is necessary
+    if img.format != "precomputed":
         path += f"/{prefix}{level}"
 
-    if (cached := COSEM_CACHE / path).exists():
-        return {"driver": "file", "path": str(cached)}
-    elif summed:
-        # we've never cached this image before, so we have to download and rebin it
-        rebin(img, max_level=level + 1)
-        return {"driver": "file", "path": str(cached)}
+    # if the image is already cached, return the path to the cached image
+    cached_path = COSEM_CACHE / path
+    if cached_path.exists():
+        return {"driver": "file", "path": str(cached_path)}
+    elif bin_mode == "sum":
+        sum_bin(img, max_level=level + 1)
+        return {"driver": "file", "path": str(cached_path)}
 
-    return {
-        "driver": "s3",
-        "bucket": COSEM_BUCKET,
-        "path": path,
-    }
+    # if we get here, use the remote bucket to load data
+    return {"driver": "s3", "bucket": COSEM_BUCKET, "path": path}
 
 
 def ts_spec(
     img: "CosemImage",
-    level: int | None = None,
-    cache_limit: float | None = None,
-    summed: bool = True,
+    level: int = 0,
+    bin_mode: BinMode = "mode",
     **kwargs: Any,
 ) -> dict:
-    if level is not None:
-        try:
-            lvl = img.scales[level]
-            level = int(lvl.lstrip("bs"))
-        except IndexError as e:
-            raise IndexError(
-                f"Level {level!r} not found in {img.name!r}. "
-                f"Available levels are: {img.scales}"
-            ) from e
+    """Return the tensorstore spec for the given image and level."""
+    try:
+        lvl = img.scales[level]
+        # needed in case the level is a negative index
+        level = int(lvl.lstrip("s"))
+    except IndexError as e:
+        raise IndexError(
+            f"Level {level!r} not found in {img.name!r}. Available levels: {img.scales}"
+        ) from e
 
-    kvstore = _kv_store(img, level=level, summed=summed)
-    if level is not None and img.format == "precomputed":
-        if isinstance(level, str):
-            level = level.lstrip("s")
-        kwargs["scale_index"] = int(level)
-
-    if cache_limit:
-        kwargs["context"] = {"cache_pool": {"total_bytes_limit": cache_limit}}
+    if img.format == "precomputed":
+        kwargs["scale_index"] = level
 
     return {
         "driver": DRIVERS[img.format],
-        "kvstore": kvstore,
+        "kvstore": _kv_store(img, level=level, bin_mode=bin_mode),
         **kwargs,
     }
 
@@ -83,10 +87,10 @@ def read_tensorstore(
     level: int | None = None,
     *,
     transpose: Sequence[str] | None = None,
-    summed: bool = False,
+    bin_mode: BinMode = "mode",
     cache_limit: float | None = 4e9,
 ) -> ts.TensorStore:
-    """Read a COSEM image as a tensorstore.
+    """Read a COSEM image and level as a tensorstore.TensorStore.
 
     Parameters
     ----------
@@ -96,16 +100,18 @@ def read_tensorstore(
         The scale level to read. If None, the highest resolution level is read.
     transpose : Sequence[str] | None
         The dimension order to transpose the data. If None, the default order is used.
-    summed : bool
+    bin_mode : Literal["sum", "mode"]
         Whether to retrieve sum-binned data (True) or mode-binned data (False).
         Cosem data is binned using a mode-window, but sum-binned data is more useful
         to us in microsim.
     cache_limit : float | None
         The cache limit in bytes. If None, the default limit is used (4 GB).
     """
-    data = ts.open(
-        ts_spec(img, level=level, cache_limit=cache_limit, summed=summed)
-    ).result()
+    level = level or 0
+    spec = ts_spec(img, level=level, bin_mode=bin_mode)
+    if cache_limit:
+        spec["context"] = {"cache_pool": {"total_bytes_limit": cache_limit}}
+    data = ts.open(spec).result()
 
     # "squeeze" the data (haven't found a tensorstore-native way to do this)
     # usually this is because of a single "channels" dim in precomputed formats.
@@ -131,7 +137,8 @@ def new_like(
     if not kvstore:
         kvstore = {"driver": "memory"}
     spec = {**store.spec().to_json(), "kvstore": kvstore, "dtype": dtype}
-    spec["metadata"].pop("dataType", None)
+    if "metadata" in spec:
+        spec["metadata"].pop("dataType", None)
     return ts.open(spec, create=True, delete_existing=delete_existing).result()
 
 
@@ -177,7 +184,7 @@ def _chunk_idx_pairs(
     return index_pairs
 
 
-def rebin(
+def sum_bin(
     img: "CosemImage",
     *,
     max_level: int | None = None,
@@ -185,36 +192,52 @@ def rebin(
     skip_existing: bool = True,
     max_workers: int | None = None,
 ) -> None:
+    """Convert mode-binned data to sum-binned data.
+
+    This takes a COSEM image and ensures that sum-binned levels are available.
+    These are directories that look like "/sum0", "/sum1", instead of "/s0", "/s1".
+    They contain data that was downsampled by binarizing level s0, and then summing
+    the values in each (2x2x2) bin at each subsequent level.
+
+    Sum-binned data is a better representation of label density than mode-binned data.
+    """
     dest = Path(dest) if dest else COSEM_CACHE
-    arr_in = read_tensorstore(img, level=0).astype(ts.bool)
+
+    ftm = DRIVERS[img.format]
+    lvl0_path = dest / (img.bucket_path.lstrip("/") + "/sum0")
+    kvstore = {"driver": "file", "path": str(lvl0_path)}
+    if lvl0_path.exists():
+        arr_in = ts.open({"driver": ftm, "kvstore": kvstore}).result()
+    else:
+        arr_in = read_tensorstore(img, level=0, bin_mode="mode", cache_limit=0)
+        arr_in = arr_in.astype(ts.bool)
+
     for lvl in range(1, max_level or len(img.scales)):
         # determine chunk size of incoming array
         inchunk = cast(tuple, arr_in.chunk_layout.read_chunk.shape)
         # path of the destination array
         path = dest / (img.bucket_path.lstrip("/") + f"/sum{lvl}")
         kvstore = {"driver": "file", "path": str(path)}
-
         if path.exists() and skip_existing:
-            arr_in = ts.open({"driver": "n5", "kvstore": kvstore}).result()
+            arr_in = ts.open({"driver": ftm, "kvstore": kvstore}).result()
             logging.info(f"Skipping level {lvl} because it already exists.")
             continue
-
         # assuming all values are 1 or zero at lvl 0, then the maximum possible
         # value at lvl N is (2**ndim)**N.  So at lvl 3 the maximum value is 512 and
         # we jump to uint16.
         dtype = ts.uint8 if lvl < 3 else ts.uint16
         # to make our binned array as similar as possible to the one on S3, we create
         # a new array with (almost) the same spec as the original
-        target = read_tensorstore(img, level=lvl, summed=False)
+        target = read_tensorstore(img, level=lvl, bin_mode="mode")
         arr_out = new_like(target, kvstore=kvstore, dtype=dtype)
-
         # determine all of the input/output index pairs and process them concurrently
         items = [
             (*pair, arr_in, arr_out) for pair in _chunk_idx_pairs(arr_in.shape, inchunk)
         ]
+        print("Processing", path)
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
             try:
-                list(tqdm.tqdm(executor.map(_rebin_chunk, items), total=len(items)))
+                list(tqdm.tqdm(executor.map(_sum_bin_chunk, items), total=len(items)))
             except Exception:
                 # clean up if something goes wrong
                 shutil.rmtree(path)
@@ -222,7 +245,7 @@ def rebin(
         arr_in = arr_out
 
 
-def _rebin_chunk(
+def _sum_bin_chunk(
     args: tuple[Indices, Indices, ts.TensorStore, ts.TensorStore],
 ) -> None:
     """Process a single chunk of data for rebinning.
