@@ -37,8 +37,8 @@ dependencies = [
     "platformdirs",
     "pydantic>=2.4",
     "scipy",
-    "tqdm",
     "tensorstore",
+    "tqdm",
     "xarray",
 ]
 
