@@ -38,6 +38,7 @@ dependencies = [
     "pydantic>=2.4",
     "scipy",
     "tqdm",
+    "tensorstore",
     "xarray",
 ]
 
