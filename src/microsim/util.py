@@ -33,9 +33,16 @@ def microsim_cache() -> Path:
     return _MICROSIM_CACHE
 
 
-def clear_cache() -> None:
+def clear_cache(pattern: str | None = None) -> None:
     """Clear the microsim cache."""
-    shutil.rmtree(microsim_cache(), ignore_errors=True)
+    if pattern:
+        for p in microsim_cache().glob(pattern):
+            if p.is_file():
+                p.unlink()
+            else:
+                shutil.rmtree(p, ignore_errors=True)
+    else:
+        shutil.rmtree(microsim_cache(), ignore_errors=True)
 
 
 def uniformly_spaced_coords(

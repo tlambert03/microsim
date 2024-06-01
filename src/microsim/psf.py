@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 from functools import cache
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -9,6 +11,7 @@ import tqdm
 
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.lens import ObjectiveKwargs, ObjectiveLens
+from microsim.util import microsim_cache
 
 from ._data_array import ArrayProtocol
 
@@ -390,6 +393,17 @@ def cached_psf(
         if nx % 2 == 0:
             nx += 1
 
+    cache_key = [nz, nx, dz, dx, em_wvl_um]
+    if pinhole_au is not None:
+        cache_key.extend([ex_wvl_um, pinhole_au])
+
+    cache_path = Path(microsim_cache(), "psf", objective.cache_key())
+    cache_path = cache_path / "_".join([str(x).replace(".", "-") for x in cache_key])
+    cache_path = cache_path.with_suffix(".npy")
+    if cache_path.exists():
+        logging.info("Using cached PSF: %s", cache_path)
+        return xp.asarray(np.load(cache_path))
+
     if pinhole_au is None:
         psf = vectorial_psf_centered(
             wvl=em_wvl_um,
@@ -413,4 +427,6 @@ def cached_psf(
             xp=xp,
         )
 
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    np.save(cache_path, psf)
     return xp.asarray(psf)
