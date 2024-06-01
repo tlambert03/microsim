@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
     import jax
 
+    from microsim._data_array import ArrayProtocol
+
     _Shape: TypeAlias = tuple[int, ...]
 
     # Anything that can be coerced to a shape tuple
@@ -47,6 +49,9 @@ class NumpyAPI:
 
         return NumpyAPI()
 
+    _random_seed: int | None = None
+    _float_dtype: np.dtype | None = None
+
     def __init__(self) -> None:
         from scipy import signal, special, stats
         from scipy.ndimage import map_coordinates
@@ -57,7 +62,6 @@ class NumpyAPI:
         self.j0 = special.j0
         self.j1 = special.j1
         self.map_coordinates = map_coordinates
-        self._float_dtype: np.dtype | None = None
 
     @property
     def float_dtype(self) -> np.dtype | None:
@@ -72,6 +76,7 @@ class NumpyAPI:
             )
 
     def set_random_seed(self, seed: int) -> None:
+        self._random_seed = seed
         self.xp.random.seed(seed)
 
     def asarray(
@@ -101,6 +106,11 @@ class NumpyAPI:
     ) -> npt.NDArray:
         return self.stats.poisson.rvs(lam, size=shape)  # type: ignore
 
+    def norm_rvs(
+        self, loc: ArrayProtocol, scale: npt.ArrayLike | None = None
+    ) -> ArrayProtocol:
+        return self.stats.norm.rvs(loc, scale)  # type: ignore
+
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
     ) -> ArrT:
@@ -118,6 +128,15 @@ class NumpyAPI:
     ) -> npt.ArrayLike:
         arr[mask] = value  # type: ignore
         return arr
+
+    # WARNING: these hash and eq methods may be problematic later?
+    # the goal is to make any instance of a NumpyAPI hashable and equal to any
+    # other instance, as long as they are of the same type and random seed.
+    def __hash__(self) -> int:
+        return hash(type(self)) + hash(self._random_seed)
+
+    def __eq__(self, other: Any) -> bool:
+        return type(self) == type(other)
 
 
 class JaxAPI(NumpyAPI):
@@ -144,6 +163,7 @@ class JaxAPI(NumpyAPI):
     def set_random_seed(self, seed: int) -> None:
         from jax.random import PRNGKey
 
+        self._random_seed = seed
         self._key = PRNGKey(seed)
         # FIXME
         # tricky... we actually still do use the numpy random seed in addition to
@@ -159,6 +179,15 @@ class JaxAPI(NumpyAPI):
         from jax.random import poisson
 
         return poisson(self._key, lam, shape=shape)
+
+    def norm_rvs(
+        self, loc: ArrayProtocol, scale: npt.ArrayLike | None = None
+    ) -> ArrayProtocol:
+        from jax.random import normal
+
+        std_samples = normal(self._key, shape=loc.shape)
+        # scale and shift
+        return std_samples * scale + loc  # type: ignore
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
@@ -197,6 +226,16 @@ class CupyAPI(NumpyAPI):
         self.j0 = special.j0
         self.j1 = special.j1
         self.map_coordinates = map_coordinates
+
+    def poisson_rvs(
+        self, lam: npt.ArrayLike, shape: Sequence[int] | None = None
+    ) -> npt.NDArray:
+        return self.xp.random.poisson(lam, shape)  # type: ignore
+
+    def norm_rvs(
+        self, loc: ArrayProtocol, scale: npt.ArrayLike | None = None
+    ) -> ArrayProtocol:
+        return self.xp.random.normal(loc, scale)  # type: ignore
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"

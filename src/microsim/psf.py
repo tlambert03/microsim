@@ -157,8 +157,9 @@ def rz_to_xyz(
     xp = NumpyAPI.create(xp)
 
     # Create XY grid of radius values.
-    rmap = radius_map(xyshape, off) * sf
+    rmap = radius_map(xyshape, off, xp=xp) * sf
     nz = rz.shape[0]
+
     out = xp.asarray(
         [
             xp.map_coordinates(
@@ -181,7 +182,6 @@ def rz_to_xyz(
 #     return o.reshape((nx, ny, nz)).T
 
 
-@cache
 def vectorial_psf(
     zv: Sequence[float],
     nx: int = 31,
@@ -202,7 +202,7 @@ def vectorial_psf(
     ).astype(xp.float_dtype)
 
     offsets = xp.asarray(pos[:2]) / (dxy * 1e-6)
-    _psf = rz_to_xyz(rz, (ny, nx), sf, off=offsets)  # type: ignore [arg-type]
+    _psf = rz_to_xyz(rz, (ny, nx), sf, off=offsets, xp=xp)  # type: ignore [arg-type]
     if normalize:
         _psf /= xp.max(_psf)
     return _psf
@@ -350,13 +350,36 @@ def make_psf(
     max_au_relative: float | None = None,
     xp: NumpyAPI | None = None,
 ) -> ArrayProtocol:
-    xp = NumpyAPI.create(xp)
     nz, _ny, nx = space.shape
     dz, _dy, dx = space.scale
-    ex_wvl_um = channel.excitation.bandcenter * 1e-3
-    em_wvl_um = channel.emission.bandcenter * 1e-3
-    objective = _cast_objective(objective)
+    return cached_psf(
+        nz=nz,
+        nx=nx,
+        dx=dx,
+        dz=dz,
+        ex_wvl_um=channel.excitation.bandcenter.to("um").magnitude,
+        em_wvl_um=channel.emission.bandcenter.to("um").magnitude,
+        objective=_cast_objective(objective),
+        pinhole_au=pinhole_au,
+        max_au_relative=max_au_relative,
+        xp=NumpyAPI.create(xp),
+    )
 
+
+# variant of make_psf that only accepts hashable arguments
+@cache
+def cached_psf(
+    nz: int,
+    nx: int,
+    dx: float,
+    dz: float,
+    ex_wvl_um: float,
+    em_wvl_um: float,
+    objective: ObjectiveLens,
+    pinhole_au: float | None,
+    max_au_relative: float | None,
+    xp: NumpyAPI,
+) -> ArrayProtocol:
     # now restrict nx to no more than max_au_relative
     if max_au_relative is not None:
         airy_radius = 0.61 * ex_wvl_um / objective.numerical_aperture

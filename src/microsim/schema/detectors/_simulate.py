@@ -68,7 +68,7 @@ def simulate_camera(
         total_electrons = camera.apply_em_gain(total_electrons)
 
     # model read noise
-    gray_values = camera.quantize_electrons(total_electrons)
+    gray_values = camera.quantize_electrons(total_electrons, xp)
 
     # sCMOS binning
     if binning > 1 and isinstance(camera, CameraCMOS):

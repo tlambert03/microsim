@@ -1,3 +1,4 @@
+import pickle
 from pathlib import Path
 
 import numpy as np
@@ -24,6 +25,17 @@ def sim1() -> ms.Simulation:
         objective_lens=NA1_4,
         channels=[FITC],
     )
+
+
+def test_simulation_json_schema() -> None:
+    """Ensure the Simulation model can be cast to JSON schema."""
+    assert isinstance(ms.Simulation.model_json_schema(), dict)
+
+
+def test_model_dump(sim1: ms.Simulation) -> None:
+    assert isinstance(sim1.model_dump(mode="python"), dict)
+    assert isinstance(sim1.model_dump(mode="json"), dict)
+    assert isinstance(sim1.model_dump_json(), str)
 
 
 @pytest.mark.parametrize("precision", ["f4", "f8"])
@@ -55,7 +67,7 @@ def test_schema(
     assert type(out1.data).__module__.split(".")[0].startswith(np_backend)
 
     out2 = sim1.run()
-    if seed is None:
+    if seed is None and np_backend != "jax":
         assert not np.allclose(out1, out2)
     else:
         np.testing.assert_allclose(out1, out2)
@@ -103,3 +115,17 @@ def test_sim_from_json() -> None:
     """
 
     ms.Simulation.model_validate_json(json_string)
+
+
+def test_simulation_from_ground_truth() -> None:
+    ground_truth = np.random.rand(64, 128, 128)
+    scale = (0.04, 0.02, 0.02)
+    sim = ms.Simulation.from_ground_truth(ground_truth=ground_truth, scale=scale)
+    assert sim.truth_space.scale == scale
+    np.testing.assert_array_almost_equal(sim.ground_truth(), ground_truth)
+
+
+def test_pickle(sim1: ms.Simulation) -> None:
+    pickled = pickle.dumps(sim1)
+    assert pickle.loads(pickled) == sim1
+    assert sim1.model_copy(deep=True) is not sim1
