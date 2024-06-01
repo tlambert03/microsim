@@ -3,6 +3,7 @@ from __future__ import annotations
 import itertools
 import shutil
 import warnings
+from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, TypeVar, cast
 
 import numpy as np
@@ -22,12 +23,19 @@ if TYPE_CHECKING:
     ShapeLike = Sequence[int]
 
 
-MICROSIM_CACHE = platformdirs.user_cache_path("microsim")
+# don't use this directly... it's patched during tests
+# use cache_path() instead
+_MICROSIM_CACHE = cast(Path, platformdirs.user_cache_path("microsim"))
+
+
+def microsim_cache() -> Path:
+    """Return the microsim cache path."""
+    return _MICROSIM_CACHE
 
 
 def clear_cache() -> None:
     """Clear the microsim cache."""
-    shutil.rmtree(MICROSIM_CACHE, ignore_errors=True)
+    shutil.rmtree(microsim_cache(), ignore_errors=True)
 
 
 def uniformly_spaced_coords(

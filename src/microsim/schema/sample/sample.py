@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, get_args
 
 from pydantic import Field, model_validator
 
@@ -11,6 +11,7 @@ from .fluorophore import Fluorophore
 from .matslines import MatsLines
 
 Distribution = MatsLines | FixedArrayTruth
+DistributionTypes = get_args(Distribution)
 
 
 class FluorophoreDistribution(SimBaseModel):
@@ -18,17 +19,16 @@ class FluorophoreDistribution(SimBaseModel):
     fluorophore: Fluorophore | None = None
 
     def cache_path(self) -> tuple[str, ...] | None:
-        if not hasattr(self.distribution, "cache_path"):
-            return None
-        # FIXME: we need a better base class for distributions
-        return self.distribution.cache_path()  # type: ignore
+        if hasattr(self.distribution, "cache_path"):
+            return self.distribution.cache_path()
+        return None
 
     def render(self, space: DataArray, xp: NumpyAPI | None = None) -> DataArray:
         return self.distribution.render(space, xp)
 
     @model_validator(mode="before")
     def _vmodel(cls, value: Any) -> Any:
-        if isinstance(value, (MatsLines | FixedArrayTruth)):  # FIXME
+        if isinstance(value, DistributionTypes):
             return {"distribution": value}
         if isinstance(value, dict):
             if "distribution" not in value and "type" in value:

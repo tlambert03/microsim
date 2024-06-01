@@ -2,17 +2,11 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
-if TYPE_CHECKING:
-    from typing import Self, Unpack
-
-    from microsim.schema.sample.sample import FluorophoreDistribution
-
-    from .backend import NumpyAPI
-
 import numpy as np
 from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import ArrayProtocol, DataArray
+from microsim.util import microsim_cache
 
 from ._base_model import SimBaseModel
 from .detectors import Detector
@@ -24,7 +18,9 @@ from .settings import Settings
 from .space import ShapeScaleSpace, Space, _RelativeSpace
 
 if TYPE_CHECKING:
-    from typing import TypedDict
+    from typing import Self, TypedDict, Unpack
+
+    from .backend import NumpyAPI
 
     class SimluationKwargs(TypedDict, total=False):
         output_space: Space | dict | None
@@ -107,29 +103,26 @@ class Simulation(SimBaseModel):
         """Return the ground truth data."""
         if not hasattr(self, "_ground_truth"):
             xp = self._xp
-            # make empty space into which we'll add fluorescence
-            # FIXME ... this is slower than it needs to be (creating all the zeros)
             truth = self.truth_space.create(array_creator=xp.zeros)
-            truth.attrs["space"] = self.truth_space  # TODO, hack
+            if len(self.sample.labels) != 1:
+                # FIXME: easy to support... but not done yet
+                # we need to expand the dimensions to L,Z,Y,X
+                raise NotImplementedError("Only one label supported for now.")
 
-            # hack... we're going to/from xarray here
-            xt = truth.to_xarray().copy()
-            xt = xt.expand_dims(dim={"L": len(self.sample.labels)}).copy()
+            label = self.sample.labels[0]
+            cache_path = self._truth_cache_path(
+                label, self.truth_space, self.settings.random_seed
+            )
+            if cache_path and cache_path.exists():
+                truth = DataArray.from_cache(cache_path)
+                logging.info(f"Loaded ground truth from cache: {cache_path}")
+            else:
+                truth = label.render(truth, xp=xp)
+                if cache_path:
+                    truth.to_cache(cache_path, dtype=np.uint16)
 
-            # add fluorophores to the space
-            for n, label in enumerate(self.sample.labels):
-                cache_path = self._truth_cache_path(
-                    label, self.truth_space, self.settings.random_seed
-                )
-                if cache_path and cache_path.exists():
-                    lbl_data = DataArray.from_cache(cache_path)
-                    logging.info(f"Loaded ground truth from cache: {cache_path}")
-                else:
-                    lbl_data = label.render(truth, xp=xp)
-                    if cache_path:
-                        lbl_data.to_cache(cache_path, dtype=np.uint16)
-                xt[{"L": n}] = lbl_data
-            self._ground_truth = DataArray.from_xarray(xt)
+            truth.attrs["space"] = self.truth_space
+            self._ground_truth = truth
         return self._ground_truth
 
     def _truth_cache_path(
@@ -138,16 +131,16 @@ class Simulation(SimBaseModel):
         truth_space: "Space",
         seed: int | None,
     ) -> Path | None:
-        from microsim.util import MICROSIM_CACHE
-
         if not (lbl_path := label.cache_path()):
             return None
-        cache_path = Path(MICROSIM_CACHE, "truth_cache", *lbl_path)
 
+        truth_cache = Path(microsim_cache(), "ground_truth", *lbl_path)
         shape = f'shape{"_".join(str(x) for x in truth_space.shape)}'
         scale = f'scale{"_".join(str(x) for x in truth_space.scale)}'
-        cache_path = cache_path / shape / scale
-        return cache_path
+        truth_cache = truth_cache / shape / scale
+        if label.distribution.is_random():
+            truth_cache = truth_cache / "random"
+        return truth_cache
 
     def optical_image(
         self, truth: "DataArray | None" = None, *, channel_idx: int = 0
