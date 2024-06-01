@@ -6,7 +6,14 @@
 [![CI](https://github.com/tlambert03/microsim/actions/workflows/ci.yml/badge.svg)](https://github.com/tlambert03/microsim/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/tlambert03/microsim/branch/main/graph/badge.svg)](https://codecov.io/gh/tlambert03/microsim)
 
-Light microscopy simulation in python
+Light microscopy simulation in python.
+
+The goal of this library is to generate highly realistic simulated data such as the following:
+
+![Montage2](https://github.com/tlambert03/microsim/assets/1609449/4bc9eb85-b275-4315-b60d-2cb3d003b7f1)
+
+*(this data was generated using segmentations from
+[cell jrc_hela-3 at OpenOrganelle](https://openorganelle.janelia.org/datasets/jrc_hela-3) as the ground truth)*
 
 ## Installation
 
