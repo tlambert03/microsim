@@ -1,11 +1,15 @@
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 if TYPE_CHECKING:
     from typing import Self, Unpack
 
+    from microsim.schema.sample.sample import FluorophoreDistribution
+
     from .backend import NumpyAPI
 
+import numpy as np
 from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import ArrayProtocol, DataArray
@@ -104,13 +108,46 @@ class Simulation(SimBaseModel):
         if not hasattr(self, "_ground_truth"):
             xp = self._xp
             # make empty space into which we'll add fluorescence
+            # FIXME ... this is slower than it needs to be (creating all the zeros)
             truth = self.truth_space.create(array_creator=xp.zeros)
+            truth.attrs["space"] = self.truth_space  # TODO, hack
+
+            # hack... we're going to/from xarray here
+            xt = truth.to_xarray().copy()
+            xt = xt.expand_dims(dim={"L": len(self.sample.labels)}).copy()
+
             # add fluorophores to the space
-            for label in self.sample.labels:
-                truth = label.render(truth, xp=xp)
-            truth.attrs["space"] = self.truth_space  # TODO
-            self._ground_truth = truth
+            for n, label in enumerate(self.sample.labels):
+                cache_path = self._truth_cache_path(
+                    label, self.truth_space, self.settings.random_seed
+                )
+                if cache_path and cache_path.exists():
+                    lbl_data = DataArray.from_cache(cache_path)
+                    logging.info(f"Loaded ground truth from cache: {cache_path}")
+                else:
+                    lbl_data = label.render(truth, xp=xp)
+                    if cache_path:
+                        lbl_data.to_cache(cache_path, dtype=np.uint16)
+                xt[{"L": n}] = lbl_data
+            self._ground_truth = DataArray.from_xarray(xt)
         return self._ground_truth
+
+    def _truth_cache_path(
+        self,
+        label: "FluorophoreDistribution",
+        truth_space: "Space",
+        seed: int | None,
+    ) -> Path | None:
+        from microsim.util import MICROSIM_CACHE
+
+        if not (lbl_path := label.cache_path()):
+            return None
+        cache_path = Path(MICROSIM_CACHE, "truth_cache", *lbl_path)
+
+        shape = f'shape{"_".join(str(x) for x in truth_space.shape)}'
+        scale = f'scale{"_".join(str(x) for x in truth_space.scale)}'
+        cache_path = cache_path / shape / scale
+        return cache_path
 
     def optical_image(
         self, truth: "DataArray | None" = None, *, channel_idx: int = 0
@@ -135,7 +172,7 @@ class Simulation(SimBaseModel):
         self,
         optical_image: "DataArray | None" = None,
         *,
-        photons_pp_ps_max: int = 2000,
+        photons_pp_ps_max: int = 10000,
         exposure_ms: float = 100,
         with_detector_noise: bool = True,
         channel_idx: int = 0,

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import itertools
+import shutil
 import warnings
 from typing import TYPE_CHECKING, Protocol, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
+import platformdirs
 import tqdm
 from scipy import signal
 
@@ -18,6 +20,14 @@ if TYPE_CHECKING:
     from numpy.typing import DTypeLike, NDArray
 
     ShapeLike = Sequence[int]
+
+
+MICROSIM_CACHE = platformdirs.user_cache_path("microsim")
+
+
+def clear_cache() -> None:
+    """Clear the microsim cache."""
+    shutil.rmtree(MICROSIM_CACHE, ignore_errors=True)
 
 
 def uniformly_spaced_coords(

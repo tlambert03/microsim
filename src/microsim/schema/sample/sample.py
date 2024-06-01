@@ -17,6 +17,12 @@ class FluorophoreDistribution(SimBaseModel):
     distribution: Distribution = Field(..., discriminator="type")
     fluorophore: Fluorophore | None = None
 
+    def cache_path(self) -> tuple[str, ...] | None:
+        if not hasattr(self.distribution, "cache_path"):
+            return None
+        # FIXME: we need a better base class for distributions
+        return self.distribution.cache_path()  # type: ignore
+
     def render(self, space: DataArray, xp: NumpyAPI | None = None) -> DataArray:
         return self.distribution.render(space, xp)
 
