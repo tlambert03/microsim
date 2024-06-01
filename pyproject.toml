@@ -34,6 +34,7 @@ dependencies = [
     "annotated_types",
     "numpy",
     "pint>=0.23",
+    "platformdirs",
     "pydantic>=2.4",
     "scipy",
     "tqdm",
