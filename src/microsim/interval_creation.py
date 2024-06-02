@@ -9,8 +9,11 @@ from typing import NamedTuple
 
 import numpy as np
 
+from microsim.schema.space import FloatArray
+
 
 class Bin(NamedTuple):
+    # TODO : include units for each of these. Use pint.
     """One interval."""
 
     start: float | None = None
@@ -18,17 +21,40 @@ class Bin(NamedTuple):
     mean: float | None = None
     mode: float | None = None
 
+    def __contains__(self, x: float) -> bool:
+        return self.start <= x <= self.end
 
-def generate_bins(x: np.ndarray, y: np.ndarray, numbins: int) -> list[Bin]:
+    def __str__(self) -> str:
+        if self.start is not None:
+            assert self.end is not None
+            return f"[{self.start:.2f}-{self.end:.2f}]"
+        elif self.mean is not None:
+            return f"Mean:{self.mean:.2f}"
+        else:
+            assert self.mode is not None
+            return f"Mode:{self.mode:.2f}"
+
+
+class WavelengthSpace:
+    def __init__(
+        self, wavelength_bins: list[Bin], data: FloatArray, space, coords
+    ) -> None:
+        self.wavelength_bins = wavelength_bins
+        self.data = data
+        self.attrs = {"space": space}
+        self.coords = coords
+
+
+def generate_bins(x: np.ndarray, y: np.ndarray, num_bins: int) -> list[Bin]:
     """Divide the spectrum into intervals."""
-    return _generate_bins_equal_area(x, y, numbins)
+    return _generate_bins_equal_area(x, y, num_bins)
 
 
-def _generate_bins_equal_area(x: np.ndarray, y: np.ndarray, numbins: int) -> list[Bin]:
+def _generate_bins_equal_area(x: np.ndarray, y: np.ndarray, num_bins: int) -> list[Bin]:
     bins = []
 
-    cumsum = np.cumsum(y)
-    step = cumsum[-1] / numbins
+    cumsum = y.cumsum().magnitude
+    step = cumsum[-1] / num_bins
     start_val = 0
     end_vals = np.arange(step, cumsum[-1], step)
     # Add the last bin if the last value is quite far from the last bin

@@ -9,9 +9,12 @@ if TYPE_CHECKING:
 from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import ArrayProtocol, DataArray
+from microsim.emission_bins import EmissionBins
+from microsim.interval_creation import WavelengthSpace
 
 from ._base_model import SimBaseModel
 from .detectors import Detector
+from .emission import get_emission_events
 from .lens import ObjectiveLens
 from .modality import Modality, Widefield
 from .optical_config import FITC, OpticalConfig
@@ -53,6 +56,7 @@ class Simulation(SimBaseModel):
     modality: Modality = Field(default_factory=Widefield)
     settings: Settings = Field(default_factory=Settings)
     output_path: OutPath | None = None
+    emission_bins: int = 3
 
     @classmethod
     def from_ground_truth(
@@ -123,14 +127,37 @@ class Simulation(SimBaseModel):
             raise ValueError("truth must be a DataArray")
         # let the given modality render the as an image (convolved, etc..)
         channel = self.channels[channel_idx]  # TODO
-        # TODO: Multi-fluorophore setup: do stochastic sampling on truth and pass the
-        # sampled output to self.modality.render. To achieve this, for every
-        # fluorophore, following needs to be done in excitation_emission_model.py:
-        # 1. Divide its excitaion spectra into a wavelength intervals. (Pre-computed
-        #       for each fluorophore)
-        # 2. Sample the excitation of fluorophores within each interval on the basis
-        #       of the incident light spectrum and its excitation spectra.
-        # 3. Allocate the emitted light in wavelength intervals. (Pre-computed for
+
+        # get the emission events for the given fluorophore
+        fluorophore_str = "EGFP"
+        em_wavelengths, em_events = get_emission_events(
+            "wKqWb", "Widefield Green", fluorophore_str
+        )
+        ex_filter_str = f"{channel.excitation.bandcenter.magnitude}-\
+            {channel.excitation.bandwidth.magnitude}"
+        binned_events, wavelength_bins = EmissionBins.bin_events(
+            fluorophore_str,
+            ex_filter_str,
+            self.emission_bins,
+            em_wavelengths,
+            em_events,
+        )
+        # import pdb; pdb.set_trace()
+
+        # TODO: This is not stochastic. every pixel ideally could have a different binned_events.
+        emitted_data = truth.data[None]
+        emitted_data = self._xp.concatenate(
+            [emitted_data * x.magnitude for x in binned_events], axis=0
+        )
+        # create a truth space with the binnded wavelengths
+        truth = WavelengthSpace(
+            wavelength_bins=wavelength_bins,
+            data=emitted_data,
+            space=truth.attrs["space"],
+            coords=truth.coords,
+        )
+        # emitted_data= WavelengthSpace(wavelengths=binned_wavelengths, data=emitted_data)
+        # Allocate the emitted light in wavelength intervals. (Pre-computed for
         #           each fluorophore)
         # For all of this, adapt the code from  examples/emission_events.py.
         result = self.modality.render(

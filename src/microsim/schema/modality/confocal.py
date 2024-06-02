@@ -3,6 +3,7 @@ from typing import Annotated, Literal
 from annotated_types import Ge
 
 from microsim._data_array import DataArray
+from microsim.emission_bins import WavelengthSpace
 from microsim.psf import make_psf
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
@@ -17,7 +18,7 @@ class Confocal(SimBaseModel):
 
     def render(
         self,
-        truth: DataArray,
+        truth: WavelengthSpace,
         channel: OpticalConfig,
         objective_lens: ObjectiveLens,
         settings: Settings,
@@ -25,8 +26,10 @@ class Confocal(SimBaseModel):
     ) -> DataArray:
         xp = NumpyAPI.create(xp)
 
+        bins = truth.wavelength_bins
         psf = make_psf(
             space=truth.attrs["space"],
+            emission_wavelength_bins=bins,
             channel=channel,
             objective=objective_lens,
             pinhole_au=self.pinhole_au,
@@ -34,5 +37,13 @@ class Confocal(SimBaseModel):
             xp=xp,
         )
 
-        img = xp.fftconvolve(truth.data, psf, mode="same")
+        img_list = [
+            xp.fftconvolve(truth.data[wv_idx], psf[wv_idx], mode="same")
+            for wv_idx in range(len(bins))
+        ]
+
+        img = 0
+        for i in range(len(bins)):
+            img += img_list[i]
+
         return DataArray(img, coords=truth.coords, attrs=truth.attrs)

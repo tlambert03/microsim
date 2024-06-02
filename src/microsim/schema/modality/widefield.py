@@ -1,6 +1,8 @@
 from typing import Literal
 
 from microsim._data_array import DataArray
+from microsim.emission_bins import WavelengthSpace
+from microsim.interval_creation import WavelengthSpace
 from microsim.psf import make_psf
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
@@ -14,7 +16,7 @@ class Widefield(SimBaseModel):
 
     def render(
         self,
-        truth: DataArray,
+        truth: WavelengthSpace,
         channel: OpticalConfig,
         objective_lens: ObjectiveLens,
         settings: Settings,

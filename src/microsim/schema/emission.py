@@ -158,11 +158,3 @@ def get_emission_events(
     # TODO: wavelengths is essentially excitation wavelengths, we need to get the emission
     # wavelengths.
     return wavelengths, emission_events
-
-
-# we'll be calculating this page:
-# https://www.fpbase.org/microscope/wKqWb/?c=Widefield%20Green&p=egfp_default
-wavelengths, emission_events_per_fluor = get_emission_events(
-    "wKqWb", "Widefield Green", "EGFP"
-)
-print(emission_events_per_fluor)
