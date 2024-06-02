@@ -220,6 +220,8 @@ def ortho_plot(
     import matplotlib.pyplot as plt
     from matplotlib.colors import PowerNorm
 
+    if hasattr(img, "get"):
+        img = img.get()
     img = np.asarray(img)
     """Plot XY and XZ slices of a 3D array."""
     _, ax = plt.subplots(ncols=2, figsize=(10, 5))
