@@ -77,14 +77,6 @@ class _FilterBase(SimBaseModel):
     def plot(self, show: bool = True) -> None:
         self.spectrum.plot(show=show)
 
-    @computed_field  # type: ignore
-    @cached_property
-    def spectrum(self) -> Spectrum:
-        return self._get_spectrum()
-
-    def _get_spectrum(self) -> Spectrum:
-        raise NotImplementedError("Needs to be implemented")
-
 
 class Bandpass(_FilterBase):
     type: Literal["bandpass"] = "bandpass"
