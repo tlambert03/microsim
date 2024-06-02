@@ -4,7 +4,7 @@ import numpy as np
 import pint
 from scipy.constants import Avogadro, c, h
 
-from microsim.fpbase import get_fluorophore, get_microscope
+from microsim.schema import Fluorophore, OpticalConfig
 
 ureg = pint.application_registry.get()
 AVOGADRO = Avogadro / ureg.mol
@@ -92,36 +92,18 @@ def get_emission_events(
     and the name of a fluorophore, and returns the number of emission events per second
     per fluorophore.
     """
-    # get the microscope and fluorophore
-    microscope = get_microscope(microscope_id)
-
-    # find the excitation filter in the microscope
-    try:
-        WF_Green = next(
-            oc for oc in microscope.opticalConfigs if oc.name == optical_config
-        )
-    except StopIteration as e:
-        raise ValueError(
-            f"Optical config {optical_config} not found in microscope {microscope_id}"
-        ) from e
-
-    try:
-        ex_filter = next(f for f in WF_Green.filters if f.spectrum.subtype == "BP")
-    except StopIteration as e:
-        raise ValueError(
-            f"Bandpass filter not found in optical config {optical_config}"
-        ) from e
+    oc = OpticalConfig.from_fpbase(microscope_id, optical_config)
+    if oc.excitation is None:
+        raise ValueError(f"Optical configuration {optical_config} has no excitation.")
 
     # get the fluorophore
-    fluor = get_fluorophore(fluorophore).default_state
-    if not fluor:
-        raise ValueError(f"Fluorophore {fluorophore} has no default state.")
+    fluor = Fluorophore.from_fpbase(fluorophore)
     if not fluor.excitation_spectrum:
         raise ValueError(f"Fluorophore {fluorophore} has no excitation spectrum.")
 
     # convert the spectra to numpy arrays
-    fluor_ex_spectrum = np.asarray(fluor.excitation_spectrum.data)
-    filter_spectrum = np.asarray(ex_filter.spectrum.data)
+    fluor_ex_spectrum = np.asarray(fluor.excitation_spectrum)
+    filter_spectrum = np.asarray(oc.excitation.spectrum)
 
     # find the subset of the spectra with overlapping wavelengths
     ex_spectrum, filter_spectrum = get_overlapping_spectra(
@@ -134,7 +116,7 @@ def get_emission_events(
     irradiance = filter_spectrum[:, 1] * _ensure_quantity(light_power, "W/cm^2")
     # scale ex_spectrum by extinction coefficient
     # note, fluor.extCoeff is already a pint Quantity of units 1/M/cm
-    ext_coeff = ex_spectrum[:, 1] * fluor.extCoeff
+    ext_coeff = ex_spectrum[:, 1] * fluor.extinction_coefficient
 
     # calculate the number of photons hitting a fluorophore per second
     exc_rate = fluorophore_photon_flux(wavelengths, irradiance, ext_coeff)
@@ -152,7 +134,7 @@ def get_emission_events(
         exc_rate = exc_rate * f_ground
 
     # multiply by the quantum yield to get the number of emission events
-    emission_events = exc_rate * fluor.qy
+    emission_events = exc_rate * fluor.quantum_yield
 
     # recombine with wavelength:
     # TODO: wavelengths is essentially excitation wavelengths, we need to get the emission
