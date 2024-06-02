@@ -135,8 +135,12 @@ class Simulation(SimBaseModel):
         em_wavelengths, em_events = get_emission_events(
             "wKqWb", "Widefield Green", fluorophore_str
         )
-        ex_filter_str = f"{channel.excitation.bandcenter.magnitude}-\
-            {channel.excitation.bandwidth.magnitude}"
+        try:
+            ex_filter_str = f"{channel.excitation.bandcenter.magnitude}-\
+                {channel.excitation.bandwidth.magnitude}"
+        except:
+            ex_filter_str = "spectrum"
+
         binned_events, wavelength_bins = EmissionBins.bin_events(
             fluorophore_str,
             ex_filter_str,

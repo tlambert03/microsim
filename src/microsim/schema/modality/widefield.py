@@ -1,7 +1,6 @@
 from typing import Literal
 
 from microsim._data_array import DataArray
-from microsim.emission_bins import WavelengthSpace
 from microsim.interval_creation import WavelengthSpace
 from microsim.psf import make_psf
 from microsim.schema._base_model import SimBaseModel

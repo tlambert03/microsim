@@ -164,9 +164,6 @@ class Longpass(_FilterBase):
             ),
         )
 
-    def _get_spectrum(self) -> Spectrum:
-        raise NotImplementedError("Needs to be implemented")
-
 
 class SpectrumFilter(_FilterBase):
     type: Literal["spectrum"] = "spectrum"
@@ -176,7 +173,7 @@ class SpectrumFilter(_FilterBase):
         return self.transmission
 
     def _get_spectrum(self) -> Spectrum:
-        return self.spectrum_data
+        return self.transmission
 
 
 Filter = Bandpass | Shortpass | Longpass | SpectrumFilter

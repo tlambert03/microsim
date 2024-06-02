@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from annotated_types import Ge
 
 from microsim._data_array import DataArray
-from microsim.emission_bins import WavelengthSpace
+from microsim.interval_creation import WavelengthSpace
 from microsim.psf import make_psf
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
