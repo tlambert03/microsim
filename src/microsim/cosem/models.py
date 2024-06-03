@@ -258,7 +258,7 @@ class CosemDataset(BaseModel):
             raise ValueError("No image keys provided")
         if isinstance(image_keys, str):
             image = self.image(name=image_keys)
-            return image.read()
+            return image.read(**read_kwargs)
         if isinstance(image_keys, Sequence):
             import tensorstore as ts
 

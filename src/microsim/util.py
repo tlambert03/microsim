@@ -244,14 +244,16 @@ def ortho_plot(
     plt.show()
 
 
-def view_nd(ary: Any, figsize: tuple[int, int] = (1280, 1000), **view_kwargs) -> None:
+def view_nd(
+    ary: Any, figsize: tuple[int, int] = (1280, 1000), **view_kwargs: Any
+) -> None:
     try:
         from pymmcore_widgets._stack_viewer_v2 import StackViewer
-    except ImportError:
+    except ImportError as e:
         raise ImportError(
             "This feature uses a not-yet published widget from pymmcore-widgets."
             "It will eventually be made available outside of pymmcore-widgets..."
-        ) from None
+        ) from e
     from qtpy.QtWidgets import QApplication
 
     app = QApplication.instance()

@@ -9,14 +9,11 @@ sim = ms.Simulation(
         labels=[
             ms.Cosem(dataset="jrc_hela-3", image="chrom_seg"),
             ms.Cosem(dataset="jrc_hela-3", image="mito-mem_seg"),
-            ms.Cosem(dataset="jrc_hela-3", image="mt-out_seg"),
             ms.Cosem(dataset="jrc_hela-3", image="er_seg"),
         ]
     ),
     modality=ms.Confocal(),
-    detector=ms.CameraCCD(
-        qe=0.82, full_well=18000, read_noise=6, bit_depth=12, offset=100
-    ),
+    detector=ms.CameraCCD(qe=0.82, read_noise=6),
     output_path="img.tif",
 )
 

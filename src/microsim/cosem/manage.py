@@ -19,7 +19,7 @@ def _clear_cache(args: argparse.Namespace) -> None:
 
 def _show(args: argparse.Namespace) -> None:
     dset = CosemDataset.fetch(args.name)
-    dset.show(image_keys=args.image_keys, level=args.level)
+    dset.show(image_keys=args.image_keys, level=args.level, bin_mode=args.bin_mode)
 
 
 def _download_dataset(args: argparse.Namespace) -> None:
@@ -35,7 +35,7 @@ def _download_dataset(args: argparse.Namespace) -> None:
         img.download(dest=dest, max_level=max_level)
 
 
-def _show_dataset(args: argparse.Namespace) -> None:
+def _print_info(args: argparse.Namespace) -> None:
     dset = CosemDataset.fetch(args.name)
     print(dset)
 
@@ -47,7 +47,7 @@ def parse_args() -> argparse.Namespace:
     # Fetch datasets
     info = subparsers.add_parser("info", help="Fetch datasets.")
     info.add_argument("name", help="The name of the dataset.")
-    info.set_defaults(func=_show_dataset)
+    info.set_defaults(func=_print_info)
 
     # Fetch views
     fetch_views = subparsers.add_parser("fetch_views", help="Fetch views.")
@@ -86,6 +86,12 @@ def parse_args() -> argparse.Namespace:
     show.add_argument("image_keys", nargs="+", help="The name of the image to show.")
     show.add_argument(
         "--level", type=int, help="The level of the image to show.", default=1
+    )
+    show.add_argument(
+        "--bin-mode",
+        choices=["mode", "sum", "auto"],
+        default="auto",
+        help="The binning mode to use.",
     )
     show.set_defaults(func=_show)
 
