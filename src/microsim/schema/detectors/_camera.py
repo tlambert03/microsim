@@ -6,7 +6,7 @@ from annotated_types import Ge, Interval
 from pydantic import Field
 from scipy import stats
 
-from microsim._data_array import xrDataArray, DataArray
+from microsim._data_array import DataArray, xrDataArray
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 

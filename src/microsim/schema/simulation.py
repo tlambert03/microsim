@@ -13,17 +13,17 @@ if TYPE_CHECKING:
 import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 
-from microsim._data_array import ArrayProtocol, DataArray
+from microsim._data_array import ArrayProtocol
 
 from ._base_model import SimBaseModel
 from .detectors import Detector
+from .dimensions import Axis
 from .lens import ObjectiveLens
 from .modality import Modality, Widefield
 from .optical_config import OpticalConfig
 from .sample import FluorophoreDistribution, Sample
 from .settings import Settings
 from .space import ShapeScaleSpace, Space, _RelativeSpace
-from .dimensions import Axis
 
 if TYPE_CHECKING:
     from typing import TypedDict

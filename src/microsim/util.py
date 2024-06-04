@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 import warnings
-from typing import TYPE_CHECKING, Mapping, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Protocol, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -12,7 +12,7 @@ from scipy import signal
 from ._data_array import ArrayProtocol, DataArray, xrDataArray
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Sequence
+    from collections.abc import Callable, Iterator, Mapping, Sequence
     from typing import Literal
 
     from numpy.typing import DTypeLike, NDArray
