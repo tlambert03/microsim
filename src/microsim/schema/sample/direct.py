@@ -6,14 +6,14 @@ from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 
 if TYPE_CHECKING:
-    from microsim._data_array import DataArray
+    from microsim._data_array import xrDataArray
 
 
 class FixedArrayTruth(SimBaseModel):
     type: Literal["fixed-array"] = "fixed-array"
     array: Any
 
-    def render(self, space: DataArray, xp: NumpyAPI | None = None) -> DataArray:
+    def render(self, space: xrDataArray, xp: NumpyAPI | None = None) -> xrDataArray:
         if space.shape != self.array.shape:
             raise ValueError(
                 "This GroundTruth may only be used with simulation space of shape: "

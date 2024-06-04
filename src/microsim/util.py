@@ -9,7 +9,7 @@ import numpy.typing as npt
 import tqdm
 from scipy import signal
 
-from ._data_array import ArrayProtocol, DataArray
+from ._data_array import ArrayProtocol, DataArray, xrDataArray
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
@@ -70,7 +70,7 @@ def uniformly_spaced_xarray(
     extent: tuple[float, ...] = (),
     axes: str | Sequence[str] = "ZYX",
     array_creator: Callable[[ShapeLike], ArrayProtocol] = np.zeros,
-) -> DataArray:
+) -> xrDataArray:
     coords = uniformly_spaced_coords(shape, scale, extent, axes)
     shape = tuple(len(c) for c in coords.values())
     return DataArray(array_creator(shape), coords=coords, attrs={"units": "um"})

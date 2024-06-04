@@ -2,7 +2,7 @@ from typing import Any
 
 from pydantic import Field, model_validator
 
-from microsim._data_array import ArrayProtocol, DataArray
+from microsim._data_array import ArrayProtocol, xrDataArray
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 
@@ -17,7 +17,7 @@ class FluorophoreDistribution(SimBaseModel):
     distribution: Distribution = Field(..., discriminator="type")
     fluorophore: Fluorophore | None = None
 
-    def render(self, space: DataArray, xp: NumpyAPI | None = None) -> DataArray:
+    def render(self, space: xrDataArray, xp: NumpyAPI | None = None) -> xrDataArray:
         return self.distribution.render(space, xp)
 
     @model_validator(mode="before")

@@ -1,4 +1,4 @@
-from typing import Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Literal
 
 from annotated_types import Ge
 
@@ -10,6 +10,9 @@ from microsim.schema.lens import ObjectiveLens
 from microsim.schema.optical_config import OpticalConfig
 from microsim.schema.settings import Settings
 
+if TYPE_CHECKING:
+    import xarray as xr
+
 
 class Confocal(SimBaseModel):
     type: Literal["confocal"] = "confocal"
@@ -17,12 +20,12 @@ class Confocal(SimBaseModel):
 
     def render(
         self,
-        truth: DataArray,
+        truth: "xr.DataArray",
         channel: OpticalConfig,
         objective_lens: ObjectiveLens,
         settings: Settings,
         xp: NumpyAPI | None = None,
-    ) -> DataArray:
+    ) -> "xr.DataArray":
         xp = NumpyAPI.create(xp)
 
         psf = make_psf(

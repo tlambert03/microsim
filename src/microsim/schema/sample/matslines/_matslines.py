@@ -10,7 +10,7 @@ from microsim.schema.backend import NumpyAPI
 if TYPE_CHECKING:
     import numpy.typing as npt
 
-    from microsim._data_array import DataArray
+    from microsim._data_array import xrDataArray
 
 
 class MatsLines(SimBaseModel):
@@ -53,7 +53,7 @@ class MatsLines(SimBaseModel):
             return xp.stack([z1, y1, x1]).T, xp.stack([z2, y2, x2]).T
         return xp.stack([y1, x1]).T, xp.stack([y2, x2]).T
 
-    def render(self, space: DataArray, xp: NumpyAPI | None = None) -> DataArray:
+    def render(self, space: xrDataArray, xp: NumpyAPI | None = None) -> xrDataArray:
         xp = xp or NumpyAPI()
 
         start, end = self._gen_vertices(xp, space.shape)

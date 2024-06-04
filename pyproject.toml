@@ -32,6 +32,7 @@ classifiers = [
 dependencies = [
     'pydantic-settings',
     "annotated_types",
+    "dm-tree",  # only needed for jax support.  could use an extra instead.
     "numpy",
     "pint>=0.23",
     "pydantic>=2.4",
@@ -102,7 +103,7 @@ ignore = [
     "D10",  # Missing docstring in public ...
     "D401", # First line should be in imperative mood
 ]
-
+exclude = ["*xarray_jax*"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["D", "S"]
@@ -122,6 +123,10 @@ plugins = "pydantic.mypy"
 # [[tool.mypy.overrides]]
 # module = ["numpy.*",]
 # ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["microsim.xarray_jax.*"]
+ignore_errors = true
 
 # https://docs.pytest.org/en/6.2.x/customize.html
 [tool.pytest.ini_options]
@@ -147,6 +152,7 @@ exclude_lines = [
 
 [tool.coverage.run]
 source = ["microsim"]
+omit = ["*xarray_jax*"]
 
 # https://github.com/mgedmin/check-manifest#configuration
 # add files that you want check-manifest to explicitly ignore here
