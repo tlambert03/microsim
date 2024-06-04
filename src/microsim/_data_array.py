@@ -1,7 +1,11 @@
-from typing import Any, Protocol, Self, runtime_checkable
+from __future__ import annotations
 
-import numpy as np
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
+
 import xarray
+
+if TYPE_CHECKING:
+    import numpy as np
 
 try:
     from .xarray_jax import DataArray
@@ -38,4 +42,4 @@ class ArrayProtocol(Protocol):
     # def __getitem__(self, key: Any) -> Any: ...
     # def __setitem__(self, key: Any, value: Any) -> None: ...
     def __array__(self) -> np.ndarray: ...
-    def __mul__(self, other: Any) -> Self: ...
+    def __mul__(self, other: Any) -> ArrayProtocol: ...
