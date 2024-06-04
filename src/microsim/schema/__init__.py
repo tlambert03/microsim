@@ -2,7 +2,13 @@ from .backend import BackendName, DeviceName, NumpyAPI
 from .detectors import Camera, CameraCCD, CameraCMOS, CameraEMCCD
 from .lens import ObjectiveLens
 from .modality import Confocal, Modality, Widefield
-from .optical_config import Bandpass, OpticalConfig
+from .optical_config import (
+    Bandpass,
+    Longpass,
+    OpticalConfig,
+    Shortpass,
+    SpectrumFilter,
+)
 from .sample import Fluorophore, FluorophoreDistribution, MatsLines, Sample
 from .settings import Settings
 from .simulation import Simulation
@@ -22,6 +28,8 @@ __all__ = [
     "ExtentScaleSpace",
     "Fluorophore",
     "FluorophoreDistribution",
+    "SpectrumFilter",
+    "Longpass",
     "MatsLines",
     "Modality",
     "NumpyAPI",
@@ -31,6 +39,7 @@ __all__ = [
     "Settings",
     "ShapeExtentSpace",
     "ShapeScaleSpace",
+    "Shortpass",
     "Simulation",
     "Spectrum",
     "Widefield",

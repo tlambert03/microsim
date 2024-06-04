@@ -5,12 +5,12 @@ import numpy as np
 import pytest
 
 import microsim.schema as ms
+from microsim.schema.optical_config.lib import FITC
 
 TRUTH_SPACE = ms.ShapeScaleSpace(shape=(64, 128, 128), scale=(0.04, 0.02, 0.02))
 MATSLINES = ms.MatsLines(density=0.4, length=30, azimuth=5, max_r=1)
 GREEN_MATSLINES = ms.FluorophoreDistribution(distribution=MATSLINES)
 NA1_4 = ms.ObjectiveLens(numerical_aperture=1.4)
-FITC = ms.OpticalConfig(name="FITC", excitation=488, emission=525)
 CONFOCAL_AU0_2 = ms.Confocal(pinhole_au=0.2)
 WIDEFIELD = ms.Widefield()
 

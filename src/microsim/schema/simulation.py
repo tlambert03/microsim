@@ -12,7 +12,8 @@ from ._base_model import SimBaseModel
 from .detectors import Detector
 from .lens import ObjectiveLens
 from .modality import Modality, Widefield
-from .optical_config import FITC, OpticalConfig
+from .optical_config import OpticalConfig
+from .optical_config.lib import FITC
 from .sample import FluorophoreDistribution, Sample
 from .settings import Settings
 from .space import ShapeScaleSpace, Space, _RelativeSpace
@@ -47,10 +48,10 @@ class Simulation(SimBaseModel):
     truth_space: Space
     output_space: Space | None = None
     sample: Sample
-    objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
-    channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC()])
-    detector: Detector | None = None
     modality: Modality = Field(default_factory=Widefield)
+    objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
+    channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC])
+    detector: Detector | None = None
     settings: Settings = Field(default_factory=Settings)
     output_path: OutPath | None = None
 
