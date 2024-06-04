@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
+import numpy as np
+
 from .optical_config.lib import FITC
 
 if TYPE_CHECKING:
@@ -8,6 +10,7 @@ if TYPE_CHECKING:
 
     from .backend import NumpyAPI
 
+import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import ArrayProtocol, DataArray
@@ -90,7 +93,7 @@ class Simulation(SimBaseModel):
     def _xp(self) -> "NumpyAPI":
         return self.settings.backend_module()
 
-    def run(self, channel_idx: int = 0) -> "DataArray":
+    def run(self, channel_idx: int = 0) -> xr.DataArray:
         """Run the simulation and return the result.
 
         This will also write a file to disk if `output` is set.
@@ -101,7 +104,7 @@ class Simulation(SimBaseModel):
         self._write(image)
         return image
 
-    def ground_truth(self) -> "DataArray":
+    def ground_truth(self) -> xr.DataArray:
         """Return the ground truth data."""
         if not hasattr(self, "_ground_truth"):
             xp = self._xp
@@ -115,11 +118,11 @@ class Simulation(SimBaseModel):
         return self._ground_truth
 
     def optical_image(
-        self, truth: "DataArray | None" = None, *, channel_idx: int = 0
-    ) -> "DataArray":
+        self, truth: "xr.DataArray | None" = None, *, channel_idx: int = 0
+    ) -> xr.DataArray:
         if truth is None:
             truth = self.ground_truth()
-        elif not isinstance(truth, DataArray):
+        elif not isinstance(truth, xr.DataArray):
             raise ValueError("truth must be a DataArray")
         # let the given modality render the as an image (convolved, etc..)
         channel = self.channels[channel_idx]  # TODO
@@ -135,13 +138,13 @@ class Simulation(SimBaseModel):
 
     def digital_image(
         self,
-        optical_image: "DataArray | None" = None,
+        optical_image: "xr.DataArray | None" = None,
         *,
         photons_pp_ps_max: int = 2000,
         exposure_ms: float = 100,
         with_detector_noise: bool = True,
         channel_idx: int = 0,
-    ) -> "DataArray":
+    ) -> xr.DataArray:
         if optical_image is None:
             optical_image = self.optical_image(channel_idx=channel_idx)
         image = optical_image
@@ -155,13 +158,15 @@ class Simulation(SimBaseModel):
             image = DataArray(gray_values, coords=image.coords, attrs=image.attrs)
         return image
 
-    def _write(self, result: "DataArray") -> None:
+    def _write(self, result: xr.DataArray) -> None:
         if not self.output_path:
             return
-        self_json = self.model_dump_json()
+        result.attrs["microsim.Simulation"] = self.model_dump_json()
         if self.output_path.suffix == ".zarr":
-            result.to_zarr(self.output_path, mode="w", attrs={"microsim": self_json})
-        if self.output_path.suffix in (".tif", ".tiff"):
-            result.to_tiff(self.output_path, description=self_json)
-        if self.output_path.suffix in (".nc",):
-            result.to_netcdf(self.output_path, attrs={"microsim": self_json})
+            result.to_zarr(self.output_path, mode="w")
+        elif self.output_path.suffix in (".nc",):
+            result.to_netcdf(self.output_path)
+        elif self.output_path.suffix in (".tif", ".tiff"):
+            import tifffile as tf
+
+            tf.imwrite(self.output_path, np.asanyarray(result))

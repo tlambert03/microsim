@@ -61,10 +61,11 @@ def test_schema(
     assert sim1.ground_truth().dtype == np.dtype(precision)
 
     # ensure we have the right datatype
-    # this is tough with xarray proper... so we use our own DataArray wrapper.
-    # https://github.com/google/jax/issues/17107
-    # https://github.com/pydata/xarray/issues/7848
-    assert type(out1.data).__module__.split(".")[0].startswith(np_backend)
+    if np_backend == "jax":
+        # for jax, we will end up with the xarray_jax.JaxArrayWrapper
+        assert "xarray_jax" in type(out1.data).__module__
+    else:
+        assert type(out1.data).__module__.split(".")[0].startswith(np_backend)
 
     out2 = sim1.run()
     if seed is None and np_backend != "jax":

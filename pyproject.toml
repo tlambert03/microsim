@@ -38,6 +38,7 @@ dependencies = [
     "scipy",
     "tqdm",
     "xarray",
+    "dm-tree",
 ]
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
@@ -102,7 +103,7 @@ ignore = [
     "D10",  # Missing docstring in public ...
     "D401", # First line should be in imperative mood
 ]
-
+exclude = ["*xarray_jax*"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["D", "S"]
@@ -122,6 +123,10 @@ plugins = "pydantic.mypy"
 # [[tool.mypy.overrides]]
 # module = ["numpy.*",]
 # ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["microsim.xarray_jax.*"]
+ignore_errors = true
 
 # https://docs.pytest.org/en/6.2.x/customize.html
 [tool.pytest.ini_options]

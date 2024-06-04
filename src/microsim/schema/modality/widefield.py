@@ -1,6 +1,6 @@
 from typing import Literal
 
-from microsim._data_array import DataArray
+from microsim._data_array import DataArray, xrDataArray
 from microsim.psf import make_psf
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
@@ -14,12 +14,12 @@ class Widefield(SimBaseModel):
 
     def render(
         self,
-        truth: DataArray,
+        truth: xrDataArray,
         channel: OpticalConfig,
         objective_lens: ObjectiveLens,
         settings: Settings,
         xp: NumpyAPI | None = None,
-    ) -> DataArray:
+    ) -> xrDataArray:
         xp = NumpyAPI.create(xp)
 
         em_psf = make_psf(
