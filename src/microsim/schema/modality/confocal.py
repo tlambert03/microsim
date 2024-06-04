@@ -2,13 +2,13 @@ from typing import TYPE_CHECKING, Annotated, Literal
 
 from annotated_types import Ge
 
+from microsim._data_array import DataArray
 from microsim.psf import make_psf
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.lens import ObjectiveLens
 from microsim.schema.optical_config import OpticalConfig
 from microsim.schema.settings import Settings
-from microsim.xarray_jax import DataArray
 
 if TYPE_CHECKING:
     import xarray as xr

@@ -32,13 +32,13 @@ classifiers = [
 dependencies = [
     'pydantic-settings',
     "annotated_types",
+    "dm-tree",  # only needed for jax support.  could use an extra instead.
     "numpy",
     "pint>=0.23",
     "pydantic>=2.4",
     "scipy",
     "tqdm",
     "xarray",
-    "dm-tree",
 ]
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies

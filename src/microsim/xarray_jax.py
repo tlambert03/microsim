@@ -178,8 +178,10 @@ def DataArray(  # pylint:disable=invalid-name
       coords, they will be wrapped with JaxArrayWrapper and can be unwrapped via
       `unwrap` and `unwrap_data`.
     """
+    # ADDED by talley ... not in the vendored version
     if dims is None and coords:
         dims = tuple(coords)
+
     result = xarray.DataArray(wrap(data), dims=dims, name=name, attrs=attrs or {})
     return assign_coords(result, coords=coords, jax_coords=jax_coords)
 

@@ -3,7 +3,10 @@ from typing import Any, Protocol, Self, runtime_checkable
 import numpy as np
 import xarray
 
-from .xarray_jax import DataArray
+try:
+    from .xarray_jax import DataArray
+except ImportError:
+    from xarray import DataArray  # type: ignore[assignment]
 
 __all__ = ["DataArray", "xrDataArray", "ArrayProtocol"]
 
