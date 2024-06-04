@@ -68,7 +68,7 @@ def uniformly_spaced_xarray(
     shape: tuple[int, ...] = (64, 128, 128),
     scale: tuple[float, ...] = (),
     extent: tuple[float, ...] = (),
-    axes: str | Sequence[str] = "zyx",
+    axes: str | Sequence[str] = "ZYX",
     array_creator: Callable[[ShapeLike], ArrayProtocol] = np.zeros,
     attrs: Mapping | None = None,
 ) -> xrDataArray:
@@ -218,13 +218,16 @@ def tiled_convolve(
 def ortho_plot(
     img: ArrayProtocol, gamma: float = 0.5, mip: bool = False, cmap: str = "gray"
 ) -> None:
+    """Plot XY and XZ slices of a 3D array."""
     import matplotlib.pyplot as plt
     from matplotlib.colors import PowerNorm
 
     if hasattr(img, "get"):
         img = img.get()
-    img = np.asarray(img)
-    """Plot XY and XZ slices of a 3D array."""
+    img = np.asarray(img).squeeze()
+    if img.ndim != 3:
+        raise ValueError("Input must be a 3D array")
+
     _, ax = plt.subplots(ncols=2, figsize=(10, 5))
     xy = img.max(axis=0) if mip else img[img.shape[0] // 2]
     xz = img.max(axis=1) if mip else img[:, img.shape[1] // 2]
