@@ -1,3 +1,4 @@
+import inspect
 from collections.abc import Sequence
 from typing import Any
 
@@ -108,3 +109,19 @@ class OpticalConfig(SimBaseModel):
             ax.legend(legend)
         if show:
             plt.show()
+
+    # WARNING: dark magic ahead
+    # This is a hack to make OpticalConfig hashable and comparable, but only
+    # when used in the context of a pandas DataFrame or xarray DataArray coordinate.
+    # this allows syntax like `data_array.sel(c='FITC')` to work as expected.
+    def __hash__(self) -> int:
+        frame = inspect.stack()[1]
+        if "pandas" in frame.filename and frame.function == "get_loc":
+            return hash(self.name)
+        return id(self)
+
+    def __eq__(self, value: object) -> bool:
+        frame = inspect.stack()[1]
+        if "pandas" in frame.filename and frame.function == "get_loc":
+            return hash(self.name) == hash(value)
+        return super().__eq__(value)
