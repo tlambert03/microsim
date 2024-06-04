@@ -6,7 +6,7 @@ from annotated_types import Ge, Interval
 from pydantic import Field
 from scipy import stats
 
-from microsim._data_array import ArrayProtocol
+from microsim._data_array import xrDataArray, DataArray
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 
@@ -40,12 +40,12 @@ class Camera(SimBaseModel):
 
     def render(
         self,
-        image: ArrayProtocol,
+        image: xrDataArray,
         exposure_ms: float = 100,
         binning: int = 1,
         add_poisson: bool = True,
         xp: NumpyAPI | None = None,
-    ) -> ArrayProtocol:
+    ) -> xrDataArray:
         """Simulate imaging process.
 
         Parameters
@@ -63,13 +63,16 @@ class Camera(SimBaseModel):
         """
         from microsim.schema.detectors import simulate_camera
 
-        return simulate_camera(
+        new_data = simulate_camera(
             camera=self,
             image=image,
             exposure_ms=exposure_ms,
             binning=binning,
             add_poisson=add_poisson,
             xp=xp,
+        )
+        return DataArray(
+            new_data, dims=image.dims, coords=image.coords, attrs=image.attrs
         )
 
     @property

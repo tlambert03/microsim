@@ -23,6 +23,7 @@ from .optical_config import OpticalConfig
 from .sample import FluorophoreDistribution, Sample
 from .settings import Settings
 from .space import ShapeScaleSpace, Space, _RelativeSpace
+from .dimensions import Axis
 
 if TYPE_CHECKING:
     from typing import TypedDict
@@ -44,6 +45,7 @@ def _check_extensions(path: Path) -> Path:
 
 
 OutPath = Annotated[Path, AfterValidator(_check_extensions)]
+xr.set_options(keep_attrs=True)
 
 
 class Simulation(SimBaseModel):
@@ -108,12 +110,15 @@ class Simulation(SimBaseModel):
         """Return the ground truth data."""
         if not hasattr(self, "_ground_truth"):
             xp = self._xp
-            # make empty space into which we'll add fluorescence
+            # make empty space into which we'll add the ground truth
+            # TODO: this is wasteful... label.render should probably
+            # accept the space object directly
             truth = self.truth_space.create(array_creator=xp.zeros)
-            # add fluorophores to the space
-            for label in self.sample.labels:
-                truth = label.render(truth, xp=xp)
-            truth.attrs["space"] = self.truth_space  # TODO
+            # render each ground truth
+            label_data = [label.render(truth, xp=xp) for label in self.sample.labels]
+            # concat along the F axis
+            truth = xr.concat(label_data, dim=Axis.F)
+            truth.coords.update({Axis.F: list(self.sample.labels)})
             self._ground_truth = truth
         return self._ground_truth
 
@@ -134,6 +139,10 @@ class Simulation(SimBaseModel):
             xp=self._xp,
         )
 
+        # TODO: this is an oversimplification
+        # it works for now, since we only have 1 Fluor and 1 Channel...
+        # but there will not necessarily be a 1-to-1 mapping between F and C
+        result = result.rename({Axis.F: Axis.C}).assign_coords({Axis.C: [channel]})
         return result
 
     def digital_image(
@@ -151,17 +160,19 @@ class Simulation(SimBaseModel):
         if self.output_space is not None:
             image = self.output_space.rescale(image)
         if self.detector is not None and with_detector_noise:
-            photon_flux = image.data * photons_pp_ps_max / self._xp.max(image.data)
+            photon_flux = image * photons_pp_ps_max / self._xp.max(image.data)
             gray_values = self.detector.render(
                 photon_flux, exposure_ms=exposure_ms, xp=self._xp
             )
-            image = DataArray(gray_values, coords=image.coords, attrs=image.attrs)
+            image = gray_values
         return image
 
     def _write(self, result: xr.DataArray) -> None:
         if not self.output_path:
             return
         result.attrs["microsim.Simulation"] = self.model_dump_json()
+        result.attrs.pop("space", None)
+        result.coords[Axis.C] = [c.name for c in result.coords[Axis.C].values]
         if self.output_path.suffix == ".zarr":
             result.to_zarr(self.output_path, mode="w")
         elif self.output_path.suffix in (".nc",):

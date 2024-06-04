@@ -37,5 +37,13 @@ class Confocal(SimBaseModel):
             xp=xp,
         )
 
-        img = xp.fftconvolve(truth.data, psf, mode="same")
-        return DataArray(img, coords=truth.coords, attrs=truth.attrs)
+        if truth.ndim > 3:
+            if truth.ndim > 4:
+                raise ValueError("truth data must be 3D or 4D")
+            # do 3d convolution for each item other axes
+            images = [xp.fftconvolve(t.data, psf, mode="same") for t in truth]
+            img = xp.stack(images)
+        else:
+            img = xp.fftconvolve(truth.data, psf, mode="same")
+
+        return DataArray(img, dims=truth.dims, coords=truth.coords, attrs=truth.attrs)

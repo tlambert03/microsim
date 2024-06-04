@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 import warnings
-from typing import TYPE_CHECKING, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Mapping, Protocol, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -68,12 +68,13 @@ def uniformly_spaced_xarray(
     shape: tuple[int, ...] = (64, 128, 128),
     scale: tuple[float, ...] = (),
     extent: tuple[float, ...] = (),
-    axes: str | Sequence[str] = "ZYX",
+    axes: str | Sequence[str] = "zyx",
     array_creator: Callable[[ShapeLike], ArrayProtocol] = np.zeros,
+    attrs: Mapping | None = None,
 ) -> xrDataArray:
     coords = uniformly_spaced_coords(shape, scale, extent, axes)
     shape = tuple(len(c) for c in coords.values())
-    return DataArray(array_creator(shape), coords=coords, attrs={"units": "um"})
+    return DataArray(array_creator(shape), coords=coords, attrs=attrs)
 
 
 def get_fftconvolve_shape(
