@@ -152,6 +152,7 @@ exclude_lines = [
 
 [tool.coverage.run]
 source = ["microsim"]
+omit = ["*xarray_jax*"]
 
 # https://github.com/mgedmin/check-manifest#configuration
 # add files that you want check-manifest to explicitly ignore here
