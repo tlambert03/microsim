@@ -74,7 +74,7 @@ def uniformly_spaced_xarray(
 ) -> xrDataArray:
     coords = uniformly_spaced_coords(shape, scale, extent, axes)
     shape = tuple(len(c) for c in coords.values())
-    return DataArray(array_creator(shape), coords=coords, attrs=attrs)
+    return DataArray(array_creator(shape), dims=tuple(axes), coords=coords, attrs=attrs)
 
 
 def get_fftconvolve_shape(
