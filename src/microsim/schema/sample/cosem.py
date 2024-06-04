@@ -1,6 +1,7 @@
 from functools import cached_property
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
 
+import numpy as np
 from pydantic import BeforeValidator, computed_field, model_validator
 
 from microsim.cosem.models import CosemDataset, CosemImage
@@ -85,8 +86,8 @@ class Cosem(SimBaseModel):
         # scale now represents how many times larger than 4nm/px the truth space is
         # we need to get the appropriate resolution level from the cosem image
         # where lvl 0 is 4nm/px, lvl 1 is 8nm/px, etc...
-        cosem_level = int(min(scale)) - 1
-        data = self.cosem_image.read(level=cosem_level, bin_mode="sum")
+        cosem_level = int(np.log2(max(scale)))
+        data = self.cosem_image.read(level=cosem_level, bin_mode="auto")
 
         if (trans := self.position) is None:
             trans = tuple(-s // 2 for s in data.shape)

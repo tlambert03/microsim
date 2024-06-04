@@ -1,6 +1,7 @@
 import json
 import shutil
 from collections.abc import Mapping, MutableMapping, Sequence
+from contextlib import suppress
 from dataclasses import dataclass, field
 from os import PathLike
 from pathlib import Path
@@ -72,11 +73,9 @@ class DataArray:
         import tifffile as tf
 
         data = np.asanyarray(self)
-        try:
-            # sometimes description fails
-            tf.imwrite(path, data, description=description)
-        except ValueError:
-            tf.imwrite(path, data)
+        with suppress(Exception):
+            data = data.transpose((1, 0, 2, 3))
+        tf.imwrite(path, data, imagej=True)
 
     def to_zarr(
         self,

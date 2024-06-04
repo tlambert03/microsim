@@ -118,6 +118,11 @@ def read_tensorstore(
     slices = tuple((slice(None) if s > 1 else 0) for s in data.shape)
     data = data[slices]
 
+    # reverse the order of some dimensions
+    # TODO: ... this is probably best done elsewhere
+    slices = tuple(slice(None, None, int(np.sign(scale))) for scale in img.grid_scale)
+    data = data[slices]
+
     # add dimension labels
     data = data[ts.d[:].label[tuple(img.grid_dims)]]
 
