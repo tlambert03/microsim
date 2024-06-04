@@ -45,7 +45,7 @@ def _check_extensions(path: Path) -> Path:
 
 
 OutPath = Annotated[Path, AfterValidator(_check_extensions)]
-xr.set_options(keep_attrs=True)
+xr.set_options(keep_attrs=True)  # type: ignore [no-untyped-call]
 
 
 class Simulation(SimBaseModel):

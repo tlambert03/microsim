@@ -178,7 +178,7 @@ class DownscaledSpace(_RelativeSpace):
         elif isinstance(self.downscale, Sequence):
             axes = dict(zip(self.axes, self.downscale, strict=False))
 
-        return img.coarsen(axes).sum()
+        return img.coarsen(axes).sum()  # type: ignore
 
     @computed_field  # type: ignore
     @property
