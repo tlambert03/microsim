@@ -54,7 +54,7 @@ class _ValidatorMixin:
     def __get_pydantic_core_schema__(
         self: ProvidesCoreSchema, source_type: Any, handler: GetCoreSchemaHandler
     ) -> core_schema.CoreSchema:
-        mode = self._get_mode()  # type: ignore
+        mode = self._get_mode()  # type: ignore[attr-defined]
 
         # if this is a BeforeValidator, then the source_type is the type of the first
         # parameter of the function (or Any if that fails)
@@ -72,7 +72,7 @@ class _ValidatorMixin:
             except Exception:
                 source_type = Any
 
-        schema = super().__get_pydantic_core_schema__(source_type, handler)  # type: ignore
+        schema = super().__get_pydantic_core_schema__(source_type, handler)  # type: ignore[safe-super]
         if ser_schema := getattr(self, "serialization", None):
             schema = {**schema, "serialization": ser_schema}
         return schema
