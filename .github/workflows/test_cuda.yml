@@ -10,9 +10,30 @@ jobs:
   test:
     # Only run on Pull Requests within the same repository, and not from forks.
     if: ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository ) || ( github.event_name == 'push' && github.ref == 'refs/heads/main' )
-    uses: pyapp-kit/workflows/.github/workflows/test-pyrepo.yml@v2
-    with:
-      os: self-hosted
-      python-version: "3.11"
-      coverage-upload: artifact
-      pip-pre-installs: cupy-cuda12x
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache-dependency-path: pyproject.toml
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[test]
+          python -m pip install cupy-cuda12.x
+          python -m pip install coverage
+
+      - name: Run tests
+        run: |
+          coverage run -m pytest --color=yes -v
+          python -m coverage xml -o coverage.xml
+          python -m coverage report
+
+      - name: codecov v4
+        uses: codecov/codecov-action@v4
+        with:
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
