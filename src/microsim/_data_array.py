@@ -67,6 +67,9 @@ class DataArray:
         data = self.data.get() if hasattr(self.data, "get") else self.data
         return np.asanyarray(data, dtype=dtype)
 
+    def __getitem__(self, key: Any) -> "DataArray":
+        return DataArray(self.data[key], self.coords, self.attrs)
+
     def to_tiff(
         self, path: str | PathLike[str], description: str | None = None
     ) -> None:

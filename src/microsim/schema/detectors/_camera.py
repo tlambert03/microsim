@@ -15,7 +15,7 @@ PositiveInt = Annotated[int, Ge(0)]
 
 
 class Camera(SimBaseModel):
-    read_noise: PositiveFloat = 8  # as function of readout rate?
+    read_noise: PositiveFloat = 6  # as function of readout rate?
     qe: Annotated[float, Interval(ge=0, le=1)] = 1  # TODO: spectrum
     full_well: int = 18_000
     # TODO: serial register fullwell?
