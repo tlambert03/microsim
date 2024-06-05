@@ -57,7 +57,7 @@ def test_schema(
 
     out1 = sim1.run()
     assert sim1.output_space
-    assert out1.shape == sim1.output_space.shape
+    assert out1.squeeze().shape == sim1.output_space.shape
     assert sim1.ground_truth().dtype == np.dtype(precision)
 
     # ensure we have the right datatype
@@ -123,7 +123,7 @@ def test_simulation_from_ground_truth() -> None:
     scale = (0.04, 0.02, 0.02)
     sim = ms.Simulation.from_ground_truth(ground_truth=ground_truth, scale=scale)
     assert sim.truth_space.scale == scale
-    np.testing.assert_array_almost_equal(sim.ground_truth(), ground_truth)
+    np.testing.assert_array_almost_equal(sim.ground_truth().squeeze(), ground_truth)
 
 
 def test_pickle(sim1: ms.Simulation) -> None:

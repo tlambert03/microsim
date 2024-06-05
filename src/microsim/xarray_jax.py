@@ -178,11 +178,14 @@ def DataArray(  # pylint:disable=invalid-name
       coords, they will be wrapped with JaxArrayWrapper and can be unwrapped via
       `unwrap` and `unwrap_data`.
     """
-    # ADDED by talley ... not in the vendored version
-    if dims is None and coords:
-        dims = tuple(coords)
-
     result = xarray.DataArray(wrap(data), dims=dims, name=name, attrs=attrs or {})
+
+    # this monkeypatch is required to pass the check jax._src.numpy.util.check_arraylike
+    if isinstance(result.data, JaxArrayWrapper):
+        if "__jax_array__" not in xarray.DataArray.__slots__:
+            xarray.DataArray.__slots__ = xarray.DataArray.__slots__ + ("__jax_array__",)
+            xarray.DataArray.__jax_array__ = lambda r: r.data.jax_array
+
     return assign_coords(result, coords=coords, jax_coords=jax_coords)
 
 
