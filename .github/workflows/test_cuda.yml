@@ -1,0 +1,18 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    # Only run on Pull Requests within the same repository, and not from forks.
+    if: ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository ) || ( github.event_name == 'push' && github.ref == 'refs/heads/main' )
+    uses: pyapp-kit/workflows/.github/workflows/test-pyrepo.yml@v2
+    with:
+      os: self-hosted
+      python-version: "3.11"
+      coverage-upload: artifact
+      pip-pre-installs: cupy-cuda12x
