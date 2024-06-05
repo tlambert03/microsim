@@ -1,3 +1,20 @@
+"""Dimension definitions for microsim.
+
+1. Truth space has dims ZYX (grid on which the truth is defined)
+    - here intensity is zero
+2. Ground truth adds a fluorophore axis (one for each label) -> FZYX
+    - here intensity values correspond to count of the fluorophore.
+3. Optical image: Fluorophore axis -> Wavelength axis (emission spectrum) -> WFZYX
+    - open question: do we leave F in there? (probably yes)
+    - here intensity values correspond to photon count at each wavelength.
+3b. Filtered Optical image applies emission filter: W axis -> C axis -> CZYX
+    - each channel will bin all W (for every fluorophore) into a single value.
+        - Key observation here EACH channel uses ALL Wavelengths (& fluors)
+    - here intensity values correspond to photon count at each wavelength.
+4. Digital image: simply applies noise and pixelation: converts photons to gray values.
+    - here intensity values correspond to gray values (0-255) in the image.
+"""
+
 from enum import Enum
 from typing import NamedTuple
 
