@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    from microsim._data_array import DataArray
+    from microsim._data_array import xrDataArray
     from microsim.schema.backend import NumpyAPI
 
 
@@ -25,6 +25,6 @@ class _BaseDistribution(BaseModel, ABC):
         return None
 
     @abstractmethod
-    def render(self, space: DataArray, xp: NumpyAPI | None = None) -> DataArray:
+    def render(self, space: xrDataArray, xp: NumpyAPI | None = None) -> xrDataArray:
         """Render the distribution into the given space."""
         raise NotImplementedError

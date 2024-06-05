@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from annotated_types import Ge
 
-from microsim._data_array import ArrayProtocol, DataArray
+from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
 from microsim.psf import make_psf
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
@@ -32,16 +32,16 @@ class _PSFModality(SimBaseModel):
 
     def render(
         self,
-        truth: DataArray,
+        truth: xrDataArray,
         channel: OpticalConfig,
         objective_lens: ObjectiveLens,
         settings: Settings,
         xp: NumpyAPI | None = None,
-    ) -> DataArray:
+    ) -> xrDataArray:
         xp = NumpyAPI.create(xp)
         psf = self.psf(truth.attrs["space"], channel, objective_lens, settings, xp)
         img = xp.fftconvolve(truth.data, psf, mode="same")
-        return DataArray(img, coords=truth.coords, attrs=truth.attrs)
+        return DataArray(img, dims=truth.dims, coords=truth.coords, attrs=truth.attrs)
 
 
 class Confocal(_PSFModality):

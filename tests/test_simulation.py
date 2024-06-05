@@ -7,24 +7,11 @@ import pytest
 import microsim.schema as ms
 from microsim.schema.optical_config.lib import FITC
 
-TRUTH_SPACE = ms.ShapeScaleSpace(shape=(64, 128, 128), scale=(0.04, 0.02, 0.02))
 MATSLINES = ms.MatsLines(density=0.4, length=30, azimuth=5, max_r=1)
 GREEN_MATSLINES = ms.FluorophoreDistribution(distribution=MATSLINES)
 NA1_4 = ms.ObjectiveLens(numerical_aperture=1.4)
 CONFOCAL_AU0_2 = ms.Confocal(pinhole_au=0.2)
 WIDEFIELD = ms.Widefield()
-
-
-@pytest.fixture
-def sim1() -> ms.Simulation:
-    return ms.Simulation(
-        truth_space=TRUTH_SPACE,
-        output_space={"downscale": 4},
-        sample=ms.Sample(labels=[GREEN_MATSLINES]),
-        detector=ms.CameraCCD(qe=0.82, read_noise=6, bit_depth=12),
-        objective_lens=NA1_4,
-        channels=[FITC],
-    )
 
 
 def test_simulation_json_schema() -> None:
@@ -61,10 +48,11 @@ def test_schema(
     # assert sim1.ground_truth().dtype == np.dtype(precision)
 
     # ensure we have the right datatype
-    # this is tough with xarray proper... so we use our own DataArray wrapper.
-    # https://github.com/google/jax/issues/17107
-    # https://github.com/pydata/xarray/issues/7848
-    assert type(out1.data).__module__.split(".")[0].startswith(np_backend)
+    if np_backend == "jax":
+        # for jax, we will end up with the xarray_jax.JaxArrayWrapper
+        assert "xarray_jax" in type(out1.data).__module__
+    else:
+        assert type(out1.data).__module__.split(".")[0].startswith(np_backend)
 
     out2 = sim1.run()
     if seed is None and np_backend != "jax":

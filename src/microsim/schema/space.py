@@ -11,7 +11,7 @@ from pydantic import (
 )
 from pydantic_core import CoreSchema, core_schema
 
-from microsim._data_array import ArrayProtocol, DataArray
+from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
 
 from ._base_model import SimBaseModel
 
@@ -46,13 +46,13 @@ ArrayType = TypeVar("ArrayType")
 
 
 class _Space(SimBaseModel):
-    def rescale(self, img: DataArray) -> DataArray:
+    def rescale(self, img: xrDataArray) -> xrDataArray:
         return img
 
     def create(
         self: SpaceProtocol,
         array_creator: Callable[[Sequence[int]], ArrayProtocol] = np.zeros,
-    ) -> DataArray:
+    ) -> xrDataArray:
         from microsim.util import uniformly_spaced_xarray
 
         return uniformly_spaced_xarray(
@@ -174,7 +174,7 @@ class _RelativeSpace(_Space):
 class DownscaledSpace(_RelativeSpace):
     downscale: tuple[int, ...] | int
 
-    def rescale(self, img: DataArray) -> DataArray:
+    def rescale(self, img: xrDataArray) -> xrDataArray:
         from microsim.util import downsample
 
         new_img = downsample(img.data, self.downscale)
