@@ -1,8 +1,7 @@
-from ast import Mod
-from typing import Any, Annotated
-from pydantic import BaseModel, model_validator
-from annotated_types import Ge
+from typing import Annotated, Any
 
+from annotated_types import Ge
+from pydantic import BaseModel, model_validator
 
 PositiveInteger = Annotated[int, Ge(0)]
 
