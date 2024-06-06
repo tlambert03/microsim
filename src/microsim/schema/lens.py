@@ -38,6 +38,7 @@ class ObjectiveLens(SimBaseModel):
     magnification: float = Field(1, description="magnification of objective lens.")
 
     def cache_key(self) -> str:
+        """Persistent identifier for the model."""
         out = ""
         for _, val in sorted(self.model_dump(mode="python").items()):
             val = getattr(val, "magnitude", val)
