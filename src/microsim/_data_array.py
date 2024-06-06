@@ -92,10 +92,10 @@ def _serializeable_attrs(attrs: Any) -> Any:
         data = attrs.model_dump(mode="json", exclude_unset=True)
         data["model_type"] = cls.__module__ + "." + cls.__name__
         return data
-    elif isinstance(attrs, list):
+    elif isinstance(attrs, list | tuple):  # pragma: no cover
         return [_serializeable_attrs(item) for item in attrs]
     else:
-        return attrs
+        return attrs  # pragma: no cover
 
 
 def _deserialize_attrs(attrs: Any) -> Any:
@@ -107,7 +107,7 @@ def _deserialize_attrs(attrs: Any) -> Any:
             return cast("BaseModel", cls).model_validate(attrs)
         else:
             return {key: _deserialize_attrs(value) for key, value in attrs.items()}
-    elif isinstance(attrs, list):
-        return [_deserialize_attrs(item) for item in attrs]
+    elif isinstance(attrs, list | tuple):  # pragma: no cover
+        return type(attrs)(_deserialize_attrs(item) for item in attrs)
     else:
-        return attrs
+        return attrs  # pragma: no cover

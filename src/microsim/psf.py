@@ -405,12 +405,11 @@ def cached_psf(
         if nx % 2 == 0:
             nx += 1
 
-    use_cache = os.getenv("MICROSIM_CACHE", "").lower() in {"true", "1", "yes", "on"}
+    use_cache = os.getenv("MICROSIM_CACHE", "").lower() not in {"0", "false", "no", "n"}
     if use_cache:
         cache_path = _psf_cache_path(
             nz, nx, dz, dx, em_wvl_um, pinhole_au, ex_wvl_um, objective
         )
-
         if cache_path.exists():
             logging.info("Using cached PSF: %s", cache_path)
             return xp.asarray(np.load(cache_path))
