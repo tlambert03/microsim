@@ -77,7 +77,7 @@ fluorophores present at each voxel in the volume.
                     'fluorophore': 'EGFP'
                 }
             ],
-        }
+        },
     )
     ```
 
@@ -143,7 +143,7 @@ channel 1. This is why both F and C remain at this stage.
                     {"type": "bandpass", "bandcenter": 525, "bandwidth": 50, "placement": "EM"}
                 ],
             }
-        ]
+        ],
     )
     ```
 
@@ -268,14 +268,16 @@ will depend on the settings of the `detector` and the `output_space`.
 
 !!! example
 
-    This example sets up a simulation with a 16-bit detector and a 2x2 binning
-    factor. The final image will be 256x256 pixels.
+    This example sets up a simulation with a 16-bit detector with a read noise of
+    2 electrons rms, and a quantum efficiency of 0.82.  Note that, for now,
+    the "pixel size" is implicitly determined by the `output_space` parameter.
+    But that will change in the future.
 
     ```python
     sim = Simulation(
         # ...,
+        output_space={"downscale": 4},
         detector={"bit_depth": 16, "read_noise": 2, "qe": 0.82},
-        output_space={"downscale": 2},
     )
     ```
 
