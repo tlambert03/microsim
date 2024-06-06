@@ -58,3 +58,11 @@ def sim1() -> ms.Simulation:
         objective_lens=NA1_4,
         channels=[FITC],
     )
+
+
+@pytest.fixture(autouse=True)
+def mpl_show_patch(monkeypatch: pytest.MonkeyPatch) -> None:
+    with suppress(ImportError):
+        import matplotlib.pyplot as plt
+
+        monkeypatch.setattr(plt, "show", lambda: None)

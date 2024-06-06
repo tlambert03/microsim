@@ -109,7 +109,7 @@ class NumpyAPI:
     def norm_rvs(
         self, loc: ArrayProtocol, scale: npt.ArrayLike | None = None
     ) -> ArrayProtocol:
-        return self.stats.norm.rvs(loc, scale)  # type: ignore
+        return self.stats.norm.rvs(loc, scale, size=loc.shape)  # type: ignore
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
@@ -235,7 +235,7 @@ class CupyAPI(NumpyAPI):
     def norm_rvs(
         self, loc: ArrayProtocol, scale: npt.ArrayLike | None = None
     ) -> ArrayProtocol:
-        return self.xp.random.normal(loc, scale)  # type: ignore
+        return self.xp.random.normal(loc, scale, size=loc.shape)  # type: ignore
 
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"

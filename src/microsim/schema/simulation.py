@@ -6,11 +6,12 @@ import numpy as np
 import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 
-from microsim._data_array import ArrayProtocol, DataArray, from_cache, to_cache
+from microsim._data_array import ArrayProtocol, from_cache, to_cache
 from microsim.util import microsim_cache
 
 from ._base_model import SimBaseModel
 from .detectors import Detector
+from .dimensions import Axis
 from .lens import ObjectiveLens
 from .modality import Modality, Widefield
 from .optical_config import OpticalConfig
@@ -41,6 +42,7 @@ def _check_extensions(path: Path) -> Path:
 
 
 OutPath = Annotated[Path, AfterValidator(_check_extensions)]
+xr.set_options(keep_attrs=True)  # type: ignore [no-untyped-call]
 
 
 class Simulation(SimBaseModel):
@@ -105,25 +107,29 @@ class Simulation(SimBaseModel):
         """Return the ground truth data."""
         if not hasattr(self, "_ground_truth"):
             xp = self._xp
+            # make empty space into which we'll add the ground truth
+            # TODO: this is wasteful... label.render should probably
+            # accept the space object directly
             truth = self.truth_space.create(array_creator=xp.zeros)
-            if len(self.sample.labels) != 1:
-                # FIXME: easy to support... but not done yet
-                # we need to expand the dimensions to L,Z,Y,X
-                raise NotImplementedError("Only one label supported for now.")
 
-            label = self.sample.labels[0]
-            cache_path = self._truth_cache_path(
-                label, self.truth_space, self.settings.random_seed
-            )
-            if cache_path and cache_path.exists():
-                truth = from_cache(cache_path)
-                logging.info(f"Loaded ground truth from cache: {cache_path}")
-            else:
-                truth = label.render(truth, xp=xp)
-                if cache_path:
-                    to_cache(truth, cache_path, dtype=np.uint16)
+            # render each ground truth
+            label_data = []
+            for label in self.sample.labels:
+                cache_path = self._truth_cache_path(
+                    label, self.truth_space, self.settings.random_seed
+                )
+                if cache_path and cache_path.exists():
+                    data = from_cache(cache_path)
+                    logging.info(f"Loaded ground truth from cache: {cache_path}")
+                else:
+                    data = label.render(truth, xp=xp)
+                    if cache_path:
+                        to_cache(data, cache_path, dtype=np.uint16)
+                label_data.append(data)
 
-            truth.attrs["space"] = self.truth_space
+            # concat along the F axis
+            truth = xr.concat(label_data, dim=Axis.F)
+            truth.coords.update({Axis.F: list(self.sample.labels)})
             self._ground_truth = truth
         return self._ground_truth
 
@@ -161,6 +167,10 @@ class Simulation(SimBaseModel):
             xp=self._xp,
         )
 
+        # TODO: this is an oversimplification
+        # it works for now, since we only have 1 Fluor and 1 Channel...
+        # but there will not necessarily be a 1-to-1 mapping between F and C
+        result = result.rename({Axis.F: Axis.C}).assign_coords({Axis.C: [channel]})
         return result
 
     def digital_image(
@@ -178,17 +188,19 @@ class Simulation(SimBaseModel):
         if self.output_space is not None:
             image = self.output_space.rescale(image)
         if self.detector is not None and with_detector_noise:
-            photon_flux = image.data * photons_pp_ps_max / self._xp.max(image.data)
+            photon_flux = image * photons_pp_ps_max / self._xp.max(image.data)
             gray_values = self.detector.render(
                 photon_flux, exposure_ms=exposure_ms, xp=self._xp
             )
-            image = DataArray(gray_values, coords=image.coords, attrs=image.attrs)
+            image = gray_values
         return image
 
     def _write(self, result: xr.DataArray) -> None:
         if not self.output_path:
             return
         result.attrs["microsim.Simulation"] = self.model_dump_json()
+        result.attrs.pop("space", None)
+        result.coords[Axis.C] = [c.name for c in result.coords[Axis.C].values]
         if self.output_path.suffix == ".zarr":
             result.to_zarr(self.output_path, mode="w")
         elif self.output_path.suffix in (".nc",):

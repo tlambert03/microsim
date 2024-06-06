@@ -97,10 +97,13 @@ the result of the simulation to a file.
 }
 ```
 
-... and then use `parse_file` and [`Simulation.run()`][microsim.Simulation.run].
+... and then load a `Simulation` from that file and [`run()`][microsim.Simulation.run].
 
 ```python
 from microsim import Simulation
+from pathlib import Path
 
-Simulation.parse_file('confocal.json').run()
+spec = Path('confocal.json').read_text()
+sim = Simulation.model_validate_json(spec)
+sim.run()
 ```

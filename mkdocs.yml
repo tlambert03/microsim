@@ -19,7 +19,6 @@ theme:
     - content.tabs.link
     - content.code.annotate
     - content.code.copy
-    - navigation.tabs
     - navigation.footer # next/previous links in footer
 
 markdown_extensions:
