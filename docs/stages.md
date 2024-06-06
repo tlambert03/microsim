@@ -6,6 +6,7 @@ The simulation is divided into several stages, each of which is responsible for 
 2. [Generation of the ground truth target/fluorophore positions](#ground-truth)
 3. [Generation of emission photon fluxes](#emission-flux)
 4. [Forming the optical image](#optical-image)
+5. [Noise and downsampling in the digital image](#digital-image)
 
 ## Space creation
 
@@ -164,13 +165,13 @@ which can be loaded from the library as follows:
 
 ### Optical Configurations from FPbase
 
-You can also load optical configurations from any microscope created in
-[FPbase](https://www.fpbase.org/) using the syntax `microscope_id::config_name`.
-For example, to load the "Widefield Green" config from the [Example Simple
-Widefield microscope on
+You can also load optical configurations from [FPbase
+microscope](https://www.fpbase.org/microscopes) using the syntax
+`microscope_id::config_name`. For example, to load the "Widefield Green" config
+from the [Example Simple Widefield microscope on
 FPbase](https://www.fpbase.org/microscope/wKqWbgApvguSNDSRZNSfpN/), you would
-grab the microscope id from the URL (in this case `wKqWbgAp`) and add the
-config name (`Widefield Green`), separated by two colons (`::`):
+grab the microscope id from the URL (in this case `wKqWbgAp`) and add the config
+name (`Widefield Green`), separated by two colons (`::`):
 
 !!! example
 
@@ -181,19 +182,58 @@ config name (`Widefield Green`), separated by two colons (`::`):
     )
     ```
 
-Here are some useful microscopes with brand-specific filter set catalogs:
+!!! tip
 
-- [Chroma Filter Sets](https://www.fpbase.org/microscope/PMtA2nB6Ld2Y2XvrF5zUuP/)
-- [Semrock Filter Sets](https://www.fpbase.org/microscope/HGtCWRnyn8joPY5WF2t3zW/)
-- [Nikon Filter Sets](https://www.fpbase.org/microscope/up3K5Tp3jwLWXtoTt8T9vB/)
-- [Zeiss Filter Sets](https://www.fpbase.org/microscope/VgeWjEPrGiSL6saRi9myA8/)
+    Here are some useful FPbase microscopes with brand-specific filter set catalogs:
+
+    - [Chroma Filter Sets](https://www.fpbase.org/microscope/PMtA2nB6Ld2Y2XvrF5zUuP/)
+    - [Semrock Filter Sets](https://www.fpbase.org/microscope/HGtCWRnyn8joPY5WF2t3zW/)
+    - [Nikon Filter Sets](https://www.fpbase.org/microscope/up3K5Tp3jwLWXtoTt8T9vB/)
+    - [Zeiss Filter Sets](https://www.fpbase.org/microscope/VgeWjEPrGiSL6saRi9myA8/)
 
 ## Optical Image
+
+*i.e. the "filtered" Emission Flux*
 
 - **value units**: photons / second
 - **dimensions lost**:
     - **`W`**: wavelength
     - **`F`**: Fluorophore
 
-In this stage, the emission photon fluxes are convolved with the optical point
-spread function (PSF) of the microscope to form the (noise free) optical image.
+In this stage, emission photon fluxes are convolved with the optical point
+spread function (PSF) of the microscope and wavelengths are filtered based on
+the emission path configuration to form the (noise free) optical image.
+
+The output of this stage is a 4D array with dimensions `(C, Z, Y, X)` where the
+wavelength and fluorophore dimensions have been collapsed into the channel. Note
+that each channel dimension may contain the emission of *multiple* fluorophores
+(a.k.a. "crosstalk" or "bleedthrough"). In other words, there is a not a 1-to-1
+correspondence between the fluorophores and wavelengths in the ground truth and
+the channels in the optical image.
+
+!!! info "PSF"
+
+    The [point spread function](https://en.wikipedia.org/wiki/Point_spread_function)
+    describes the reponse of the imaging system to a point source. In the context of
+    fluorescence microscopy, the PSF describes how light emitted from a point
+    emitter (i.e. a single fluorophore) is "spread out" or blurred in the image due
+    to diffraction.
+
+    In microsim, the PSF largely be determined by the [`ObjectiveLens`][microsim.schema.ObjectiveLens] and the
+    [`Modality`](api.md#modality) of the simulation
+
+## Digital Image
+
+- **value units**: gray levels
+
+The final stage of the simulation is the conversion of the filtered optical
+image into a digital image. This stage includes the addition of noise
+([photon or shot noise](https://en.wikipedia.org/wiki/Shot_noise) due to the
+discrete nature of photons, [read
+noise](https://hamamatsu.magnet.fsu.edu/articles/ccdsnr.html) due to imprecision
+in the detector, and other sources) as well as downsampling to the final image
+resolution.
+
+The output of this stage is a 4D array with dimensions `(C, Z, Y, X)` where the
+values are in units of gray levels (integers).  The values in the digital image
+will depend on the settings of the `detector` and the `output_space`.
