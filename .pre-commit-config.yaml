@@ -28,3 +28,4 @@ repos:
           - xarray
           - types-tqdm
           - pint
+          - platformdirs

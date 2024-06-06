@@ -13,7 +13,7 @@ examples = [
 ]
 
 
-@pytest.mark.usefixtures("_example_monkeypatch")
+@pytest.mark.usefixtures("mpl_show_patch")
 @pytest.mark.parametrize("fpath", examples, ids=lambda x: x.name)
 def test_examples(fpath: Path, tmp_path: Path) -> None:
     """Test that all of our examples are still working without warnings."""

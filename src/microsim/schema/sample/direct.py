@@ -2,14 +2,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Literal
 
-from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
+
+from ._distribution import _BaseDistribution
 
 if TYPE_CHECKING:
     from microsim._data_array import xrDataArray
 
 
-class FixedArrayTruth(SimBaseModel):
+class FixedArrayTruth(_BaseDistribution):
     type: Literal["fixed-array"] = "fixed-array"
     array: Any
 
