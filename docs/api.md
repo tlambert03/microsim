@@ -78,6 +78,12 @@ Various global settings for the simulation, such as the calculation
 backend (`numpy`, `cupy`, `jax`, etc...) and an optional random seed,
 which can be used to reproduce the same simulation multiple times.
 
+Note that all of these settings can also be defined using environment
+variables prefixed with `MICROSIM_`.  For example, to globally
+disallow caching, you can set `MICROSIM_CACHE=0`.  Nested settings
+can be defined using `__` as a separator, such as `MICROSIM_CACHE__WRITE=0`,
+which would disable writing to the cache (but still allow reading).
+
 ::: microsim.schema.settings
 
 ## Other Types

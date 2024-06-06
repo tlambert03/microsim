@@ -3,7 +3,6 @@ from __future__ import annotations
 import itertools
 import shutil
 import warnings
-from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, TypeVar, cast
 
 import numpy as np
@@ -16,6 +15,7 @@ from ._data_array import ArrayProtocol, DataArray, xrDataArray
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Mapping, Sequence
+    from pathlib import Path
     from typing import Literal
 
     from numpy.typing import DTypeLike, NDArray
@@ -25,11 +25,17 @@ if TYPE_CHECKING:
 
 # don't use this directly... it's patched during tests
 # use cache_path() instead
-_MICROSIM_CACHE = cast(Path, platformdirs.user_cache_path("microsim"))
+_MICROSIM_CACHE = platformdirs.user_cache_path("microsim")
 
 
-def microsim_cache() -> Path:
-    """Return the microsim cache path."""
+def microsim_cache(subdir: Literal["psf", "ground_truth"] | None = None) -> Path:
+    """Return the microsim cache path.
+
+    If `subdir` is provided, return the path to the specified subdirectory.
+    (We use literal here to ensure that only the specified values are allowed.)
+    """
+    if subdir:
+        return _MICROSIM_CACHE / subdir
     return _MICROSIM_CACHE
 
 

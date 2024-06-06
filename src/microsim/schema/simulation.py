@@ -118,13 +118,18 @@ class Simulation(SimBaseModel):
                 cache_path = self._truth_cache_path(
                     label, self.truth_space, self.settings.random_seed
                 )
-                if cache_path and cache_path.exists():
-                    data = from_cache(cache_path)
-                    logging.info(f"Loaded ground truth from cache: {cache_path}")
+                if self.settings.cache.read and cache_path and cache_path.exists():
+                    data = from_cache(cache_path, xp=xp).astype(
+                        self.settings.float_dtype
+                    )
+                    logging.info(
+                        f"Loaded ground truth for {label} from cache: {cache_path}"
+                    )
                 else:
                     data = label.render(truth, xp=xp)
-                    if cache_path:
+                    if self.settings.cache.write and cache_path:
                         to_cache(data, cache_path, dtype=np.uint16)
+
                 label_data.append(data)
 
             # concat along the F axis
@@ -142,7 +147,7 @@ class Simulation(SimBaseModel):
         if not (lbl_path := label.cache_path()):
             return None
 
-        truth_cache = Path(microsim_cache(), "ground_truth", *lbl_path)
+        truth_cache = Path(microsim_cache("ground_truth"), *lbl_path)
         shape = f'shape{"_".join(str(x) for x in truth_space.shape)}'
         scale = f'scale{"_".join(str(x) for x in truth_space.scale)}'
         truth_cache = truth_cache / shape / scale
