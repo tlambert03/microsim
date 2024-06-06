@@ -119,6 +119,12 @@ with two new dimensions:
   configurations (e.g. filter sets) in the simulation, and `len(C)` is determined
   by the number of `channels` in the simulation.
 
+It's worth pointing out that we need to calculate the emission spectral flux for
+*every* combination of fluorophore and channel in order to be able to include
+bleedthrough and crosstalk effects in the simulation. For example `data[{'F': 0,
+'C': 1}]` would represent the emission flux of fluorophore 0 when excited by
+channel 1. This is why both F and C remain at this stage.  
+
 !!! examples
 
     Each channel in the simulation is an arrangement of optical filters
@@ -143,8 +149,12 @@ with two new dimensions:
 
 !!! note "TODO"
 
-    Fluorophore lifetime, ground state depletion, and photobleaching rate
-    also need to be considered in this stage, but are not yet implemented.
+    Things like fluorophore lifetime, ground state depletion, and photobleaching
+    rate also need to be considered in this stage, but are not yet implemented. In
+    order to properly simulate these effects, the simulation will need to also take
+    into account the temporal aspects of the illumination pattern even *within* a
+    single image.  That's a lot of complexity.  So for now, everything will be
+    simulated as a steady-state emission flux.
 
 ### Builtin library of common filter sets
 
@@ -169,9 +179,9 @@ You can also load optical configurations from [FPbase
 microscope](https://www.fpbase.org/microscopes) using the syntax
 `microscope_id::config_name`. For example, to load the "Widefield Green" config
 from the [Example Simple Widefield microscope on
-FPbase](https://www.fpbase.org/microscope/wKqWbgApvguSNDSRZNSfpN/), you would
-grab the microscope id from the URL (in this case `wKqWbgAp`) and add the config
-name (`Widefield Green`), separated by two colons (`::`):
+FPbase](https://www.fpbase.org/microscope/wKqWbgApvguSNDSRZNSfpN/?c=Widefield%20Green),
+you would grab the microscope id from the URL (in this case `wKqWbgAp`) and add
+the config name (`Widefield Green`), separated by two colons (`::`):
 
 !!! example
 
@@ -204,23 +214,41 @@ In this stage, emission photon fluxes are convolved with the optical point
 spread function (PSF) of the microscope and wavelengths are filtered based on
 the emission path configuration to form the (noise free) optical image.
 
-The output of this stage is a 4D array with dimensions `(C, Z, Y, X)` where the
-wavelength and fluorophore dimensions have been collapsed into the channel. Note
-that each channel dimension may contain the emission of *multiple* fluorophores
-(a.k.a. "crosstalk" or "bleedthrough"). In other words, there is a not a 1-to-1
-correspondence between the fluorophores and wavelengths in the ground truth and
-the channels in the optical image.
-
 !!! info "PSF"
 
     The [point spread function](https://en.wikipedia.org/wiki/Point_spread_function)
-    describes the reponse of the imaging system to a point source. In the context of
+    describes the response of the imaging system to a point source. In the context of
     fluorescence microscopy, the PSF describes how light emitted from a point
     emitter (i.e. a single fluorophore) is "spread out" or blurred in the image due
     to diffraction.
 
     In microsim, the PSF largely be determined by the [`ObjectiveLens`][microsim.schema.ObjectiveLens] and the
     [`Modality`](api.md#modality) of the simulation
+
+The output of this stage is a 4D array with dimensions `(C, Z, Y, X)` where the
+wavelength and fluorophore dimensions have been collapsed into the channel. Note
+that each channel dimension will contain the emission of *all* fluorophores that
+emit in the wavelength range of that channel. This is important for simulating
+"crosstalk" or "bleedthrough".  Even for the case of a spectral detection system,
+the `W` dimension will be removed, but there would be a channel for each wavelength
+bin in the detector.
+
+!!! example
+
+    This example sets up a simulation with a confocal microscope with a 1.4 NA
+    objective lens and a 1.2 AU pinhole. The simulation is set up to use the "491"
+    optical configuration from the [Example Yokogawa
+    Setup](https://www.fpbase.org/microscope/4yL4ggAo/?c=491) (spinning disc confocal)
+    microscope on FPbase.
+
+    ```python
+    sim = Simulation(
+        # ...,
+        channels=["4yL4ggAo::491"],
+        objective_lens={"numerical_aperture": 1.4, "immersion_medium_ri": 1.515, 'specimen_ri': 1.33},
+        modality={"type": "confocal", 'pinhole_au': 1.2},
+    )
+    ```
 
 ## Digital Image
 
@@ -237,3 +265,22 @@ resolution.
 The output of this stage is a 4D array with dimensions `(C, Z, Y, X)` where the
 values are in units of gray levels (integers).  The values in the digital image
 will depend on the settings of the `detector` and the `output_space`.
+
+!!! example
+
+    This example sets up a simulation with a 16-bit detector and a 2x2 binning
+    factor. The final image will be 256x256 pixels.
+
+    ```python
+    sim = Simulation(
+        # ...,
+        detector={"bit_depth": 16, "read_noise": 2, "qe": 0.82},
+        output_space={"downscale": 2},
+    )
+    ```
+
+!!! note "TODO"
+
+    We don't yet model pixel-specific characterists of sCMOS cameras.  Ideally,
+    we will generate a random "instance" of an sCMOS camera with noise, gain,
+    and offset distribution pulled from a typical CMOS.
