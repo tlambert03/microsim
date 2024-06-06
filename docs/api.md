@@ -21,11 +21,15 @@ in a highly sampled space, and then downscale the resulting simulation
 to a realistic microscope image sampling.
 
 ```python
+from microsim import Simulation
+import microsim.schema as ms
+
 Simulation(
     # ground truth with z-step 20nm and XY pixel size 10nm
-    truth_space=ShapeScaleSpace(shape=(256, 1024, 1024), scale=(0.02, 0.01, 0.01)),
+    truth_space=ms.ShapeScaleSpace(shape=(256, 1024, 1024), scale=(0.02, 0.01, 0.01)),
     # downscale output to 160nm x 80nm x 80nm pixels with shape (32, 128, 128)
-    output_space=DownscaledSpace(downscale=8),
+    output_space=ms.DownscaledSpace(downscale=8),
+    sample=ms.Sample(labels=[])  # ...
 )
 ```
 

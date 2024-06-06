@@ -22,3 +22,11 @@ with suppress(ImportError):
 @pytest.fixture(params=AVAILABLE_BACKENDS)
 def np_backend(request: pytest.FixtureRequest) -> BackendName:
     return request.param  # type: ignore
+
+
+@pytest.fixture(autouse=True)
+def _example_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    with suppress(ImportError):
+        import matplotlib.pyplot as plt
+
+        monkeypatch.setattr(plt, "show", lambda: None)
