@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 import shutil
 import warnings
-from typing import TYPE_CHECKING, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -288,3 +288,27 @@ def downsample(
     for d in range(array.ndim):
         reshaped = method(reshaped, -1 * (d + 1), dtype)
     return reshaped
+
+
+def view_nd(
+    ary: Any, figsize: tuple[int, int] = (1280, 1000), **view_kwargs: Any
+) -> None:
+    try:
+        from pymmcore_widgets._stack_viewer_v2 import StackViewer
+    except ImportError as e:
+        raise ImportError(
+            "This feature uses a not-yet published widget from pymmcore-widgets."
+            "It will eventually be made available outside of pymmcore-widgets..."
+        ) from e
+    from qtpy.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    if not (hadapp := app is not None):
+        app = QApplication([])
+
+    s = StackViewer(ary, **view_kwargs)
+    s.resize(*figsize)
+    s.show()
+
+    if not hadapp:
+        app.exec()
