@@ -152,7 +152,7 @@ class SWC:
             cz, cy, cx = child.shifted_coord(origin, voxel_size)
             draw_line_3d(px, py, pz, cx, cy, cz, grid, max_r=max_r, width=r)
 
-        soma_scale: float = 1.2
+        soma_scale: float = 1
         for comp in self._node_types[SWCType.SOMA]:
             z, y, x = comp.shifted_coord(origin, voxel_size)
             r = int(0.5 * scale_factor * soma_scale * comp.r)
@@ -224,7 +224,7 @@ class Specimen(BaseModel):
             raise ValueError(qr.msg)
         return cast("Specimen", qr.msg[0])
 
-    def binary_mask(self, voxel_size: float = 1, scale_factor: float = 1) -> np.ndarray:
+    def binary_mask(self, voxel_size: float = 1, scale_factor: float = 3) -> np.ndarray:
         """Return 3D binary mask for this specimen's neuron reconstructions."""
         for recon in self.neuron_reconstructions:
             return recon.load_swc().binary_mask(
@@ -239,8 +239,6 @@ class ApiCellTypesSpecimenDetail(BaseModel):
     structure__acronym: str | None
     donor__species: Literal["Homo Sapiens", "Mus musculus"]
     nr__reconstruction_type: str | None  # probably just 'full' or 'dendrite-only'
-    nr__average_contraction: float | None
-    nr__average_parent_daughter_ratio: float | None
     nr__max_euclidean_distance: float | None
     nr__number_bifurcations: int | None
     nr__number_stems: int | None
