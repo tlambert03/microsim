@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     import numpy as np
 
 
-def bres_draw_segment_2d(
+def draw_line_2d(
     y0: int, x0: int, y1: int, x1: int, grid: np.ndarray, max_r: float
 ) -> None:
     """Bresenham's algorithm.
@@ -41,7 +41,7 @@ def bres_draw_segment_2d(
             y0 += sy
 
 
-def bres_draw_segment_3d(
+def draw_line_3d(
     x0: int,
     y0: int,
     z0: int,
@@ -72,6 +72,9 @@ def bres_draw_segment_3d(
     zr = grid.shape[0] / 2
     yr = grid.shape[1] / 2
     xr = grid.shape[2] / 2
+
+    if max_r < 0:
+        max_r = sqrt(zr**2 + yr**2 + xr**2)
 
     while True:
         if width != 1:
@@ -108,15 +111,16 @@ def draw_sphere(grid: np.ndarray, x0: int, y0: int, z0: int, radius: float) -> N
     for z in z_range:
         for y in y_range:
             for x in x_range:
-                if (x - x0) ** 2 + (y - y0) ** 2 + (z - z0) ** 2 <= radius**2:
-                    grid[z, y, x] = True
+                distance = (x - x0) ** 2 + (y - y0) ** 2 + (z - z0) ** 2
+                if distance <= radius**2:
+                    grid[z, y, x] += 1
 
 
 try:
-    from numba import jit
+    from numba import njit
 except Exception:
     pass
 else:
-    bres_draw_segment_2d = jit(nopython=True)(bres_draw_segment_2d)
-    bres_draw_segment_3d = jit(nopython=True)(bres_draw_segment_3d)
-    draw_sphere = jit(nopython=True)(draw_sphere)
+    draw_line_2d = njit(draw_line_2d)
+    draw_line_3d = njit(draw_line_3d)
+    draw_sphere = njit(draw_sphere)

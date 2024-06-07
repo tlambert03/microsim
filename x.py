@@ -1,9 +1,9 @@
-from microsim.allen import Specimen
+from rich import print
+
+from microsim.allen import get_reconstructions
 from microsim.util import view_nd
 
-spec = Specimen.fetch(555241040)
-swc = spec.neuron_reconstructions[0].load_swc()
-print(spec.id)
-
-mask = swc.build_mask(global_scale_factor=2)
-view_nd(mask)
+for recon in get_reconstructions("Mus musculus", "full"):
+    spec = recon.specimen()
+    print("viewing", recon, spec)
+    view_nd(spec.binary_mask())

@@ -302,13 +302,10 @@ def view_nd(
         ) from e
     from qtpy.QtWidgets import QApplication
 
-    app = QApplication.instance()
-    if not (hadapp := app is not None):
-        app = QApplication([])
+    app = QApplication.instance() or QApplication([])
 
     s = StackViewer(ary, **view_kwargs)
     s.resize(*figsize)
     s.show()
 
-    if not hadapp:
-        app.exec()
+    app.exec()
