@@ -7,6 +7,8 @@ import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
+from microsim.emission_bins import EmissionBins
+from microsim.schema.emission import get_emission_events
 from microsim.util import microsim_cache
 
 from ._base_model import SimBaseModel
@@ -93,13 +95,14 @@ class Simulation(SimBaseModel):
     def _xp(self) -> "NumpyAPI":
         return self.settings.backend_module()
 
-    def run(self, channel_idx: int = 0) -> xr.DataArray:
+    def run(self, channel_idx) -> xr.DataArray:
         """Run the simulation and return the result.
 
         This will also write a file to disk if `output` is set.
         """
         truth = self.ground_truth()
-        optical_image = self.optical_image(truth, channel_idx=channel_idx)
+        emission_flux = self.emission_flux(truth, channel_idx=channel_idx)
+        optical_image = self.optical_image(emission_flux, channel_idx=channel_idx)
         image = self.digital_image(optical_image)
         self._write(image)
         return image
@@ -156,55 +159,60 @@ class Simulation(SimBaseModel):
             truth_cache = truth_cache / f"seed{seed}"
         return truth_cache
 
-    def optical_image(
+    def emission_flux(
         self, truth: "xr.DataArray | None" = None, *, channel_idx: int = 0
     ) -> xr.DataArray:
         if truth is None:
             truth = self.ground_truth()
         elif not isinstance(truth, xr.DataArray):
             raise ValueError("truth must be a DataArray")
+
         # let the given modality render the as an image (convolved, etc..)
         channel = self.channels[channel_idx]  # TODO
+        emission_flux_data = []
+        for fluor_idx in range(len(truth["f"])):
+            fluor = truth["f"][fluor_idx].values.item().fluorophore
+            # get the emission events for the given fluorophore
+            em_wavelengths, em_events = get_emission_events(channel, fluor)
+            binned_events = EmissionBins.bin_events(
+                fluor.name,
+                "test1",
+                self.emission_bins,
+                em_wavelengths,
+                em_events,
+            )
+            # 2 * 128 * 512 * 512 is shape of truth.data
+            # TODO: This is not stochastic. every pixel ideally could have a different binned_events.
+            per_fluor_data = truth.isel(f=fluor_idx)  # .data[None,None,None]
+            per_fluor_data = per_fluor_data.expand_dims(["w", "c", "f"], axis=[0, 1, 2])
 
-        # get the emission events for the given fluorophore
-        fluorophore_str = "EGFP"
-        em_wavelengths, em_events = get_emission_events(
-            "wKqWb", "Widefield Green", fluorophore_str
-        )
-        try:
-            ex_filter_str = f"{channel.excitation.bandcenter.magnitude}-\
-                {channel.excitation.bandwidth.magnitude}"
-        except:
-            ex_filter_str = "spectrum"
+            # NOTE: Here, we get the UnitStrippedWarning warning.
+            per_fluor_data = xr.concat(
+                [per_fluor_data * x.values.item() for x in binned_events], dim="w"
+            )
+            per_fluor_data = per_fluor_data.assign_coords(
+                w=binned_events["w_bins"].values
+            )
+            # (W, C, F, Z, Y, X)
+            emission_flux_data.append(per_fluor_data)
 
-        binned_events, wavelength_bins = EmissionBins.bin_events(
-            fluorophore_str,
-            ex_filter_str,
-            self.emission_bins,
-            em_wavelengths,
-            em_events,
-        )
-        # import pdb; pdb.set_trace()
+        emission_flux_data = xr.concat(emission_flux_data, dim="f")
+        return emission_flux_data
 
-        # TODO: This is not stochastic. every pixel ideally could have a different binned_events.
-        emitted_data = truth.data[None]
-        emitted_data = self._xp.concatenate(
-            [emitted_data * x.magnitude for x in binned_events], axis=0
-        )
-        # create a truth space with the binnded wavelengths
-        truth = WavelengthSpace(
-            wavelength_bins=wavelength_bins,
-            data=emitted_data,
-            space=truth.attrs["space"],
-            coords=truth.coords,
-        )
+    def optical_image(
+        self, emission_flux: "xr.DataArray | None" = None, *, channel_idx: int = 0
+    ) -> xr.DataArray:
+        # Following coordinates: (W, C, F, Z, Y, X)
+
+        breakpoint()
+
         # emitted_data= WavelengthSpace(wavelengths=binned_wavelengths, data=emitted_data)
         # Allocate the emitted light in wavelength intervals. (Pre-computed for
         #           each fluorophore)
         # For all of this, adapt the code from  examples/emission_events.py.
         result = self.modality.render(
-            truth,
-            channel,
+            emission_flux,
+            self.channels[channel_idx],
             objective_lens=self.objective_lens,
             settings=self.settings,
             xp=self._xp,
@@ -223,10 +231,9 @@ class Simulation(SimBaseModel):
         photons_pp_ps_max: int = 10000,
         exposure_ms: float = 100,
         with_detector_noise: bool = True,
-        channel_idx: int = 0,
     ) -> xr.DataArray:
         if optical_image is None:
-            optical_image = self.optical_image(channel_idx=channel_idx)
+            optical_image = self.optical_image()
         image = optical_image
         # TODO:Multi-fluorophore setup: combine information present in all wavelength
         # intervals.

@@ -1,3 +1,5 @@
+import xarray as xr
+
 from .interval_creation import generate_bins
 
 
@@ -30,21 +32,13 @@ class EmissionBins:
     @staticmethod
     def bin_events(
         fluor: str, ex_filter: str, num_bins: int, em_wavelengths, em_events
-    ):
+    ) -> xr.DataArray:
         """Bin the emission data into the given number of bins."""
         bins = EmissionBins.get_bins(
             fluor, ex_filter, num_bins, em_wavelengths, em_events
         )
-        data = [0.0] * len(bins)
-        cur_bin_idx = 0
-        for wave_idx, wavelength in enumerate(em_wavelengths):
-            while wavelength not in bins[cur_bin_idx]:
-                cur_bin_idx += 1
-                if cur_bin_idx >= len(bins):
-                    break
-            if cur_bin_idx >= len(bins):
-                raise ValueError(f"Wavelength:{wavelength} not in any bin between \
-                                 {bins[0]!s} and {bins[-1]!s}")
-
-            data[cur_bin_idx] += em_events[wave_idx]
-        return data, bins
+        bins_arr = [bins.start.magnitude for bins in bins]
+        bins_arr.append(bins[-1].end.magnitude)
+        data = xr.DataArray(em_events, dims=["w"], coords={"w": em_wavelengths})
+        binned_events = data.groupby_bins(data["w"], bins=bins_arr).sum()
+        return binned_events

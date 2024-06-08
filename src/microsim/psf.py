@@ -352,11 +352,11 @@ def make_psf(
     # TODO: @ashesh: enable returning multiple psfs for a single channel.
     channel: OpticalConfig,
     objective: ObjectiveLens,
-    emission_wavelength_bins: list[Bin] | None = None,
+    emission_wavelength_bin: Bin | None = None,
     pinhole_au: float | None = None,
     max_au_relative: float | None = None,
     xp: NumpyAPI | None = None,
-) -> list[ArrayProtocol]:
+) -> ArrayProtocol:
     nz, _ny, nx = space.shape
     dz, _dy, dx = space.scale
 
@@ -371,39 +371,33 @@ def make_psf(
     if em is None:
         em = ex
 
-    if emission_wavelength_bins is None:
-        return [
-            cached_psf(
-                nz=nz,
-                nx=nx,
-                dx=dx,
-                dz=dz,
-                ex_wvl_um=ex.center_wave().to("um").magnitude,
-                em_wvl_um=em.center_wave().to("um").magnitude,
-                objective=_cast_objective(objective),
-                pinhole_au=pinhole_au,
-                max_au_relative=max_au_relative,
-                xp=NumpyAPI.create(xp),
-            )
-        ]
+    if emission_wavelength_bin is None:
+        return cached_psf(
+            nz=nz,
+            nx=nx,
+            dx=dx,
+            dz=dz,
+            ex_wvl_um=ex.center_wave().to("um").magnitude,
+            em_wvl_um=em.center_wave().to("um").magnitude,
+            objective=_cast_objective(objective),
+            pinhole_au=pinhole_au,
+            max_au_relative=max_au_relative,
+            xp=NumpyAPI.create(xp),
+        )
 
     else:
-        psfs = [
-            cached_psf(
-                nz=nz,
-                nx=nx,
-                dx=dx,
-                dz=dz,
-                ex_wvl_um=ex.center_wave().to("um").magnitude,
-                em_wvl_um=bin.mean.to("um").magnitude,
-                objective=_cast_objective(objective),
-                pinhole_au=pinhole_au,
-                max_au_relative=max_au_relative,
-                xp=NumpyAPI.create(xp),
-            )
-            for bin in emission_wavelength_bins
-        ]
-        return psfs
+        return cached_psf(
+            nz=nz,
+            nx=nx,
+            dx=dx,
+            dz=dz,
+            ex_wvl_um=ex.center_wave().to("um").magnitude,
+            em_wvl_um=emission_wavelength_bin.mean.to("um").magnitude,
+            objective=_cast_objective(objective),
+            pinhole_au=pinhole_au,
+            max_au_relative=max_au_relative,
+            xp=NumpyAPI.create(xp),
+        )
 
 
 # variant of make_psf that only accepts hashable arguments

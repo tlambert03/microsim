@@ -3,6 +3,7 @@ from typing import Annotated, Literal
 from annotated_types import Ge
 
 from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
+from microsim.interval_creation import Bin
 from microsim.psf import make_psf
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
@@ -21,6 +22,7 @@ class _PSFModality(SimBaseModel):
         objective_lens: ObjectiveLens,
         settings: Settings,
         xp: NumpyAPI,
+        emission_wavelength_bin: Bin | None = None,
     ) -> ArrayProtocol:
         # default implementation is a widefield PSF
         return make_psf(
@@ -29,6 +31,7 @@ class _PSFModality(SimBaseModel):
             objective=objective_lens,
             max_au_relative=settings.max_psf_radius_aus,
             xp=xp,
+            emission_wavelength_bin=emission_wavelength_bin,
         )
 
     def render(
@@ -37,6 +40,7 @@ class _PSFModality(SimBaseModel):
         channel: OpticalConfig,
         objective_lens: ObjectiveLens,
         settings: Settings,
+        emission_wavelength_bins: Bin | None = None,
         xp: NumpyAPI | None = None,
     ) -> xrDataArray:
         if truth.ndim > 4 or Axis.F not in truth.dims:
@@ -47,9 +51,19 @@ class _PSFModality(SimBaseModel):
 
         xp = NumpyAPI.create(xp)
         # convert label dimension to photon flux
-        psf = self.psf(truth.attrs["space"], channel, objective_lens, settings, xp)
+        [
+            self.psf(
+                truth.attrs["space"],
+                channel,
+                objective_lens,
+                settings,
+                xp,
+                emission_wavelength_bin=bin,
+            )
+            for bin in emission_wavelength_bins
+        ]
         convolved = [
-            xp.fftconvolve(truth.isel({Axis.F: f}), psf, mode="same")
+            xp.fftconvolve(truth.isel({Axis.W: w}), psf, mode="same")
             for f in range(truth.sizes[Axis.F])
         ]
         img = xp.stack(convolved)
@@ -68,6 +82,7 @@ class Confocal(_PSFModality):
         objective_lens: ObjectiveLens,
         settings: Settings,
         xp: NumpyAPI,
+        emission_wavelength_bin: Bin | None = None,
     ) -> ArrayProtocol:
         return make_psf(
             space=space,
@@ -76,6 +91,7 @@ class Confocal(_PSFModality):
             pinhole_au=self.pinhole_au,
             max_au_relative=settings.max_psf_radius_aus,
             xp=xp,
+            emission_wavelength_bin=emission_wavelength_bin,
         )
 
 

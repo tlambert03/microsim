@@ -164,9 +164,6 @@ class SpectrumFilter(_FilterBase):
     def _get_spectrum(self) -> Spectrum:
         return self.transmission
 
-    def _get_spectrum(self) -> Spectrum:
-        return self.transmission
-
 
 Filter = Bandpass | Shortpass | Longpass | SpectrumFilter
 
