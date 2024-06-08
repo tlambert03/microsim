@@ -4,21 +4,25 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
-from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
+from microsim.schema.sample._distribution import _BaseDistribution
 
 if TYPE_CHECKING:
     import numpy.typing as npt
 
-    from microsim._data_array import DataArray
+    from microsim._data_array import xrDataArray
 
 
-class MatsLines(SimBaseModel):
+class MatsLines(_BaseDistribution):
     type: Literal["matslines"] = "matslines"
     density: float = 1
     length: int = 10
     azimuth: int = 10
     max_r: float = 0.9
+
+    def cache_path(self) -> tuple[str, ...] | None:
+        data = self.model_dump(mode="json").items()
+        return ("matslines", *(f"{k}_{v}" for k, v in data if k != "type"))
 
     def _gen_vertices(
         self, xp: NumpyAPI, shape: tuple[int, ...], xypad: int = 1, zpad: int = 1
@@ -53,7 +57,7 @@ class MatsLines(SimBaseModel):
             return xp.stack([z1, y1, x1]).T, xp.stack([z2, y2, x2]).T
         return xp.stack([y1, x1]).T, xp.stack([y2, x2]).T
 
-    def render(self, space: DataArray, xp: NumpyAPI | None = None) -> DataArray:
+    def render(self, space: xrDataArray, xp: NumpyAPI | None = None) -> xrDataArray:
         xp = xp or NumpyAPI()
 
         start, end = self._gen_vertices(xp, space.shape)

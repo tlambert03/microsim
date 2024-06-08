@@ -13,14 +13,7 @@ examples = [
 ]
 
 
-@pytest.fixture()
-def _example_monkeypatch(monkeypatch: pytest.MonkeyPatch) -> None:
-    import matplotlib.pyplot as plt
-
-    monkeypatch.setattr(plt, "show", lambda: None)
-
-
-@pytest.mark.usefixtures("_example_monkeypatch")
+@pytest.mark.usefixtures("mpl_show_patch")
 @pytest.mark.parametrize("fpath", examples, ids=lambda x: x.name)
 def test_examples(fpath: Path, tmp_path: Path) -> None:
     """Test that all of our examples are still working without warnings."""

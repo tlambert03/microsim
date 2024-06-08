@@ -32,10 +32,13 @@ classifiers = [
 dependencies = [
     'pydantic-settings',
     "annotated_types",
+    "dm-tree",  # only needed for jax support.  could use an extra instead.
     "numpy",
     "pint>=0.23",
+    "platformdirs",
     "pydantic>=2.4",
     "scipy",
+    "tensorstore",
     "tqdm",
     "xarray",
 ]
@@ -102,7 +105,7 @@ ignore = [
     "D10",  # Missing docstring in public ...
     "D401", # First line should be in imperative mood
 ]
-
+exclude = ["*xarray_jax*"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["D", "S"]
@@ -123,6 +126,10 @@ plugins = "pydantic.mypy"
 # module = ["numpy.*",]
 # ignore_errors = true
 
+[[tool.mypy.overrides]]
+module = ["microsim.xarray_jax.*"]
+ignore_errors = true
+
 # https://docs.pytest.org/en/6.2.x/customize.html
 [tool.pytest.ini_options]
 minversion = "7.0"
@@ -130,6 +137,7 @@ testpaths = ["tests"]
 filterwarnings = [
     "error",
     "ignore:unclosed transport:ResourceWarning", # only on py3.10... not sure why
+    "ignore:Clipping negative intensity values:UserWarning",  # when importing FPbase spectra
 ]
 
 # https://coverage.readthedocs.io/en/6.4/config.html
@@ -147,6 +155,7 @@ exclude_lines = [
 
 [tool.coverage.run]
 source = ["microsim"]
+omit = ["*xarray_jax*"]
 
 # https://github.com/mgedmin/check-manifest#configuration
 # add files that you want check-manifest to explicitly ignore here

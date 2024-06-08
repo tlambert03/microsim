@@ -1,23 +1,54 @@
 from __future__ import annotations
 
 import itertools
+import shutil
 import warnings
 from typing import TYPE_CHECKING, Protocol, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
+import platformdirs
 import tqdm
 from scipy import signal
 
-from ._data_array import ArrayProtocol, DataArray
+from ._data_array import ArrayProtocol, DataArray, xrDataArray
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator, Sequence
+    from collections.abc import Callable, Iterator, Mapping, Sequence
+    from pathlib import Path
     from typing import Literal
 
     from numpy.typing import DTypeLike, NDArray
 
     ShapeLike = Sequence[int]
+
+
+# don't use this directly... it's patched during tests
+# use cache_path() instead
+_MICROSIM_CACHE = platformdirs.user_cache_path("microsim")
+
+
+def microsim_cache(subdir: Literal["psf", "ground_truth"] | None = None) -> Path:
+    """Return the microsim cache path.
+
+    If `subdir` is provided, return the path to the specified subdirectory.
+    (We use literal here to ensure that only the specified values are allowed.)
+    """
+    if subdir:
+        return _MICROSIM_CACHE / subdir
+    return _MICROSIM_CACHE
+
+
+def clear_cache(pattern: str | None = None) -> None:
+    """Clear the microsim cache."""
+    if pattern:
+        for p in microsim_cache().glob(pattern):
+            if p.is_file():
+                p.unlink()
+            else:
+                shutil.rmtree(p, ignore_errors=True)
+    else:
+        shutil.rmtree(microsim_cache(), ignore_errors=True)
 
 
 def uniformly_spaced_coords(
@@ -70,10 +101,11 @@ def uniformly_spaced_xarray(
     extent: tuple[float, ...] = (),
     axes: str | Sequence[str] = "ZYX",
     array_creator: Callable[[ShapeLike], ArrayProtocol] = np.zeros,
-) -> DataArray:
+    attrs: Mapping | None = None,
+) -> xrDataArray:
     coords = uniformly_spaced_coords(shape, scale, extent, axes)
     shape = tuple(len(c) for c in coords.values())
-    return DataArray(array_creator(shape), coords=coords, attrs={"units": "um"})
+    return DataArray(array_creator(shape), dims=tuple(axes), coords=coords, attrs=attrs)
 
 
 def get_fftconvolve_shape(
@@ -217,13 +249,16 @@ def tiled_convolve(
 def ortho_plot(
     img: ArrayProtocol, gamma: float = 0.5, mip: bool = False, cmap: str = "gray"
 ) -> None:
+    """Plot XY and XZ slices of a 3D array."""
     import matplotlib.pyplot as plt
     from matplotlib.colors import PowerNorm
 
     if hasattr(img, "get"):
         img = img.get()
-    img = np.asarray(img)
-    """Plot XY and XZ slices of a 3D array."""
+    img = np.asarray(img).squeeze()
+    if img.ndim != 3:
+        raise ValueError("Input must be a 3D array")
+
     _, ax = plt.subplots(ncols=2, figsize=(10, 5))
     xy = img.max(axis=0) if mip else img[img.shape[0] // 2]
     xz = img.max(axis=1) if mip else img[:, img.shape[1] // 2]

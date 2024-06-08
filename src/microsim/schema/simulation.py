@@ -1,31 +1,29 @@
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
-from .optical_config.lib import FITC
-
-if TYPE_CHECKING:
-    from typing_extensions import Self
-
-    from .backend import NumpyAPI
-
+import numpy as np
+import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 
-from microsim._data_array import ArrayProtocol, DataArray
-from microsim.emission_bins import EmissionBins
-from microsim.interval_creation import WavelengthSpace
+from microsim._data_array import ArrayProtocol, from_cache, to_cache
+from microsim.util import microsim_cache
 
 from ._base_model import SimBaseModel
 from .detectors import Detector
-from .emission import get_emission_events
+from .dimensions import Axis
 from .lens import ObjectiveLens
 from .modality import Modality, Widefield
 from .optical_config import OpticalConfig
+from .optical_config.lib import FITC
 from .sample import FluorophoreDistribution, Sample
 from .settings import Settings
 from .space import ShapeScaleSpace, Space, _RelativeSpace
 
 if TYPE_CHECKING:
-    from typing import TypedDict
+    from typing import Self, TypedDict, Unpack
+
+    from .backend import NumpyAPI
 
     class SimluationKwargs(TypedDict, total=False):
         output_space: Space | dict | None
@@ -44,6 +42,7 @@ def _check_extensions(path: Path) -> Path:
 
 
 OutPath = Annotated[Path, AfterValidator(_check_extensions)]
+xr.set_options(keep_attrs=True)  # type: ignore [no-untyped-call]
 
 
 class Simulation(SimBaseModel):
@@ -65,7 +64,7 @@ class Simulation(SimBaseModel):
         self,
         ground_truth: ArrayProtocol,
         scale: tuple[float, ...],
-        **kwargs: "Unpack[SimluationKwargs]",  # type: ignore # noqa: F821
+        **kwargs: "Unpack[SimluationKwargs]",  # type: ignore
     ) -> "Self":
         """Shortcut to create a simulation directly from a ground truth array.
 
@@ -94,7 +93,7 @@ class Simulation(SimBaseModel):
     def _xp(self) -> "NumpyAPI":
         return self.settings.backend_module()
 
-    def run(self, channel_idx: int = 0) -> "DataArray":
+    def run(self, channel_idx: int = 0) -> xr.DataArray:
         """Run the simulation and return the result.
 
         This will also write a file to disk if `output` is set.
@@ -105,27 +104,64 @@ class Simulation(SimBaseModel):
         self._write(image)
         return image
 
-    def ground_truth(self) -> "DataArray":
+    def ground_truth(self) -> xr.DataArray:
         """Return the ground truth data."""
         if not hasattr(self, "_ground_truth"):
             xp = self._xp
-            # make empty space into which we'll add fluorescence
+            # make empty space into which we'll add the ground truth
+            # TODO: this is wasteful... label.render should probably
+            # accept the space object directly
             truth = self.truth_space.create(array_creator=xp.zeros)
-            # add fluorophores to the space
+
+            # render each ground truth
+            label_data = []
             for label in self.sample.labels:
-                truth = label.render(truth, xp=xp)
-            truth.attrs["space"] = self.truth_space  # TODO
+                cache_path = self._truth_cache_path(
+                    label, self.truth_space, self.settings.random_seed
+                )
+                if self.settings.cache.read and cache_path and cache_path.exists():
+                    data = from_cache(cache_path, xp=xp).astype(
+                        self.settings.float_dtype
+                    )
+                    logging.info(
+                        f"Loaded ground truth for {label} from cache: {cache_path}"
+                    )
+                else:
+                    data = label.render(truth, xp=xp)
+                    if self.settings.cache.write and cache_path:
+                        to_cache(data, cache_path, dtype=np.uint16)
+
+                label_data.append(data)
+
+            # concat along the F axis
+            truth = xr.concat(label_data, dim=Axis.F)
+            truth.coords.update({Axis.F: list(self.sample.labels)})
             self._ground_truth = truth
         return self._ground_truth
 
-    # TODO: Multi-fluorophore setup: incident light spectrum needs to be passed to
-    # the optical system as an additional arguement.
+    def _truth_cache_path(
+        self,
+        label: "FluorophoreDistribution",
+        truth_space: "Space",
+        seed: int | None,
+    ) -> Path | None:
+        if not (lbl_path := label.cache_path()):
+            return None
+
+        truth_cache = Path(microsim_cache("ground_truth"), *lbl_path)
+        shape = f'shape{"_".join(str(x) for x in truth_space.shape)}'
+        scale = f'scale{"_".join(str(x) for x in truth_space.scale)}'
+        truth_cache = truth_cache / shape / scale
+        if label.distribution.is_random():
+            truth_cache = truth_cache / f"seed{seed}"
+        return truth_cache
+
     def optical_image(
-        self, truth: "DataArray | None" = None, *, channel_idx: int = 0
-    ) -> "DataArray":
+        self, truth: "xr.DataArray | None" = None, *, channel_idx: int = 0
+    ) -> xr.DataArray:
         if truth is None:
             truth = self.ground_truth()
-        elif not isinstance(truth, DataArray):
+        elif not isinstance(truth, xr.DataArray):
             raise ValueError("truth must be a DataArray")
         # let the given modality render the as an image (convolved, etc..)
         channel = self.channels[channel_idx]  # TODO
@@ -174,17 +210,21 @@ class Simulation(SimBaseModel):
             xp=self._xp,
         )
 
+        # TODO: this is an oversimplification
+        # it works for now, since we only have 1 Fluor and 1 Channel...
+        # but there will not necessarily be a 1-to-1 mapping between F and C
+        result = result.rename({Axis.F: Axis.C}).assign_coords({Axis.C: [channel]})
         return result
 
     def digital_image(
         self,
-        optical_image: "DataArray | None" = None,
+        optical_image: "xr.DataArray | None" = None,
         *,
-        photons_pp_ps_max: int = 2000,
+        photons_pp_ps_max: int = 10000,
         exposure_ms: float = 100,
         with_detector_noise: bool = True,
         channel_idx: int = 0,
-    ) -> "DataArray":
+    ) -> xr.DataArray:
         if optical_image is None:
             optical_image = self.optical_image(channel_idx=channel_idx)
         image = optical_image
@@ -193,20 +233,24 @@ class Simulation(SimBaseModel):
         if self.output_space is not None:
             image = self.output_space.rescale(image)
         if self.detector is not None and with_detector_noise:
-            photon_flux = image.data * photons_pp_ps_max / self._xp.max(image.data)
+            photon_flux = image * photons_pp_ps_max / self._xp.max(image.data)
             gray_values = self.detector.render(
                 photon_flux, exposure_ms=exposure_ms, xp=self._xp
             )
-            image = DataArray(gray_values, coords=image.coords, attrs=image.attrs)
+            image = gray_values
         return image
 
-    def _write(self, result: "DataArray") -> None:
+    def _write(self, result: xr.DataArray) -> None:
         if not self.output_path:
             return
-        self_json = self.model_dump_json()
+        result.attrs["microsim.Simulation"] = self.model_dump_json()
+        result.attrs.pop("space", None)
+        result.coords[Axis.C] = [c.name for c in result.coords[Axis.C].values]
         if self.output_path.suffix == ".zarr":
-            result.to_zarr(self.output_path, mode="w", attrs={"microsim": self_json})
-        if self.output_path.suffix in (".tif", ".tiff"):
-            result.to_tiff(self.output_path, description=self_json)
-        if self.output_path.suffix in (".nc",):
-            result.to_netcdf(self.output_path, attrs={"microsim": self_json})
+            result.to_zarr(self.output_path, mode="w")
+        elif self.output_path.suffix in (".nc",):
+            result.to_netcdf(self.output_path)
+        elif self.output_path.suffix in (".tif", ".tiff"):
+            import tifffile as tf
+
+            tf.imwrite(self.output_path, np.asanyarray(result))

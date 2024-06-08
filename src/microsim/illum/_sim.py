@@ -10,7 +10,7 @@ from numpy.typing import NDArray
 from pydantic import BaseModel
 from tqdm import tqdm
 
-from microsim._data_array import DataArray
+from microsim._data_array import xrDataArray
 
 try:
     import cupy as xp
@@ -68,7 +68,7 @@ class SIMIllum2D(BaseModel):
             spotsize=self.spotsize,
         ).sum(0)[1:]
 
-    def render(self, space: DataArray) -> DataArray:
+    def render(self, space: xrDataArray) -> xrDataArray:
         _dz = set(xp.round(xp.diff(space.coords.get("Z", [0, 0.1])), 8).tolist())
         _dx = set(xp.round(xp.diff(space.coords["X"]), 8).tolist())
         if len(_dz) != 1:
