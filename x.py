@@ -1,4 +1,5 @@
 from microsim import schema as ms
+from microsim.util import view_nd
 
 sim = ms.Simulation(
     truth_space=ms.ShapeScaleSpace(
@@ -9,7 +10,7 @@ sim = ms.Simulation(
         labels=[
             # ms.Cosem(dataset="jrc_hela-3", image="chrom_seg"),
             ms.Cosem(dataset="jrc_hela-3", image="er-mem_pred"),
-            ms.Cosem(dataset="jrc_hela-3", image="er-mem_seg"),
+            # ms.Cosem(dataset="jrc_hela-3", image="er-mem_seg"),
             ms.Cosem(dataset="jrc_hela-3", image="mito-mem_pred"),
         ]
     ),
@@ -18,4 +19,4 @@ sim = ms.Simulation(
     output_path="h2-cf.tif",
 )
 
-sim.run()
+view_nd(sim.run())

@@ -248,7 +248,7 @@ def view_nd(
     ary: Any, figsize: tuple[int, int] = (1280, 1000), **view_kwargs: Any
 ) -> None:
     try:
-        from pymmcore_widgets._stack_viewer_v2 import StackViewer
+        from ndv import NDViewer
     except ImportError as e:
         raise ImportError(
             "This feature uses a not-yet published widget from pymmcore-widgets."
@@ -260,7 +260,7 @@ def view_nd(
     if not (hadapp := app is not None):
         app = QApplication([])
 
-    s = StackViewer(ary, **view_kwargs)
+    s = NDViewer(ary, **view_kwargs)
     s.resize(*figsize)
     s.show()
 
