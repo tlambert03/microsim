@@ -225,9 +225,10 @@ class Simulation(SimBaseModel):
         photons_pp_ps_max: int = 10000,
         exposure_ms: float = 100,
         with_detector_noise: bool = True,
+        channel_idx: int = 0,
     ) -> xr.DataArray:
         if optical_image is None:
-            optical_image = self.optical_image()
+            optical_image = self.optical_image(channel_idx=channel_idx)
         image = optical_image
         # TODO:Multi-fluorophore setup: combine information present in all wavelength
         # intervals.
