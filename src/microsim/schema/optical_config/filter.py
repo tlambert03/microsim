@@ -127,9 +127,6 @@ class Shortpass(_FilterBase):
             ),
         )
 
-    def _get_spectrum(self) -> Spectrum:
-        raise NotImplementedError("Needs to be implemented")
-
 
 class Longpass(_FilterBase):
     type: Literal["longpass"] = "longpass"
