@@ -86,4 +86,3 @@ def drawlines_bresenham(
             bres_draw_segment_3d(x0, y0, z0, x1, y1, z1, grid, max_r)
     else:
         raise ValueError(f"grid must be either 2 or 3 dimensional.  Got {grid.ndim}")
-
