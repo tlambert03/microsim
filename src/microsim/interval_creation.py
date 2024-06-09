@@ -9,8 +9,6 @@ from typing import NamedTuple
 
 import numpy as np
 
-from microsim.schema.space import FloatArray
-
 
 class Bin(NamedTuple):
     # TODO : include units for each of these. Use pint.
@@ -35,16 +33,6 @@ class Bin(NamedTuple):
             return f"Mode:{self.mode:.2f}"
 
 
-class WavelengthSpace:
-    def __init__(
-        self, wavelength_bins: list[Bin], data: FloatArray, space, coords
-    ) -> None:
-        self.wavelength_bins = wavelength_bins
-        self.data = data
-        self.attrs = {"space": space}
-        self.coords = coords
-
-
 def generate_bins(x: np.ndarray, y: np.ndarray, num_bins: int) -> list[Bin]:
     """Divide the spectrum into intervals."""
     return _generate_bins_equal_area(x, y, num_bins)
@@ -57,8 +45,12 @@ def _generate_bins_equal_area(x: np.ndarray, y: np.ndarray, num_bins: int) -> li
     step = cumsum[-1] / num_bins
     start_val = 0
     end_vals = np.arange(step, cumsum[-1], step)
+
     # Add the last bin if the last value is quite far from the last bin
-    end_vals = np.append(end_vals, cumsum[-1])
+    if cumsum[-1] - end_vals[-1] > step / 2:
+        end_vals = np.append(end_vals, cumsum[-1])
+    else:
+        end_vals[-1] = cumsum[-1]
 
     for idx, end_val in enumerate(end_vals):
         mid_val = (start_val + end_val) / 2

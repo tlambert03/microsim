@@ -19,8 +19,9 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
 
+    from pint import Quantity
+
     from microsim._data_array import ArrayProtocol
-    from microsim.interval_creation import Bin
     from microsim.schema.optical_config import OpticalConfig
     from microsim.schema.space import SpaceProtocol
 
@@ -352,7 +353,7 @@ def make_psf(
     # TODO: @ashesh: enable returning multiple psfs for a single channel.
     channel: OpticalConfig,
     objective: ObjectiveLens,
-    emission_wavelength_bin: Bin | None = None,
+    em_wvl: Quantity | None = None,
     pinhole_au: float | None = None,
     max_au_relative: float | None = None,
     xp: NumpyAPI | None = None,
@@ -371,7 +372,7 @@ def make_psf(
     if em is None:
         em = ex
 
-    if emission_wavelength_bin is None:
+    if em_wvl is None:
         return cached_psf(
             nz=nz,
             nx=nx,
@@ -392,7 +393,7 @@ def make_psf(
             dx=dx,
             dz=dz,
             ex_wvl_um=ex.center_wave().to("um").magnitude,
-            em_wvl_um=emission_wavelength_bin.mean.to("um").magnitude,
+            em_wvl_um=em_wvl.to("um").magnitude,
             objective=_cast_objective(objective),
             pinhole_au=pinhole_au,
             max_au_relative=max_au_relative,

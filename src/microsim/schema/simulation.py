@@ -95,7 +95,7 @@ class Simulation(SimBaseModel):
     def _xp(self) -> "NumpyAPI":
         return self.settings.backend_module()
 
-    def run(self, channel_idx) -> xr.DataArray:
+    def run(self, channel_idx: int = 0) -> xr.DataArray:
         """Run the simulation and return the result.
 
         This will also write a file to disk if `output` is set.
@@ -169,9 +169,9 @@ class Simulation(SimBaseModel):
 
         # let the given modality render the as an image (convolved, etc..)
         channel = self.channels[channel_idx]  # TODO
-        emission_flux_data = []
-        for fluor_idx in range(len(truth["f"])):
-            fluor = truth["f"][fluor_idx].values.item().fluorophore
+        emission_flux_arr = []
+        for fluor_idx in range(len(truth[Axis.F])):
+            fluor = truth[Axis.F][fluor_idx].values.item().fluorophore
             # get the emission events for the given fluorophore
             em_wavelengths, em_events = get_emission_events(channel, fluor)
             binned_events = EmissionBins.bin_events(
@@ -184,27 +184,27 @@ class Simulation(SimBaseModel):
             # 2 * 128 * 512 * 512 is shape of truth.data
             # TODO: This is not stochastic. every pixel ideally could have a different binned_events.
             per_fluor_data = truth.isel(f=fluor_idx)  # .data[None,None,None]
-            per_fluor_data = per_fluor_data.expand_dims(["w", "c", "f"], axis=[0, 1, 2])
+            per_fluor_data = per_fluor_data.expand_dims(
+                [Axis.W, Axis.C, Axis.F], axis=[0, 1, 2]
+            )
 
             # NOTE: Here, we get the UnitStrippedWarning warning.
             per_fluor_data = xr.concat(
-                [per_fluor_data * x.values.item() for x in binned_events], dim="w"
+                [per_fluor_data * x.values.item() for x in binned_events], dim=Axis.W
             )
             per_fluor_data = per_fluor_data.assign_coords(
-                w=binned_events["w_bins"].values
+                w=binned_events[f"{Axis.W}_bins"].values
             )
             # (W, C, F, Z, Y, X)
-            emission_flux_data.append(per_fluor_data)
+            emission_flux_arr.append(per_fluor_data)
 
-        emission_flux_data = xr.concat(emission_flux_data, dim="f")
+        emission_flux_data = xr.concat(emission_flux_arr, dim=Axis.F)
         return emission_flux_data
 
     def optical_image(
         self, emission_flux: "xr.DataArray | None" = None, *, channel_idx: int = 0
     ) -> xr.DataArray:
         # Following coordinates: (W, C, F, Z, Y, X)
-
-        breakpoint()
 
         # emitted_data= WavelengthSpace(wavelengths=binned_wavelengths, data=emitted_data)
         # Allocate the emitted light in wavelength intervals. (Pre-computed for
@@ -218,10 +218,8 @@ class Simulation(SimBaseModel):
             xp=self._xp,
         )
 
-        # TODO: this is an oversimplification
-        # it works for now, since we only have 1 Fluor and 1 Channel...
-        # but there will not necessarily be a 1-to-1 mapping between F and C
-        result = result.rename({Axis.F: Axis.C}).assign_coords({Axis.C: [channel]})
+        result = result.expand_dims(Axis.C, axis=0)
+        result = result.assign_coords({Axis.C: [self.channels[channel_idx]]})
         return result
 
     def digital_image(
