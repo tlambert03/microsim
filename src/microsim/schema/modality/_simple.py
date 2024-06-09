@@ -1,9 +1,10 @@
 from typing import Annotated, Literal
 
+import numpy as np
 from annotated_types import Ge
+from pint import Quantity, UnitRegistry
 
 from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
-from microsim.interval_creation import Bin
 from microsim.psf import make_psf
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
@@ -22,7 +23,7 @@ class _PSFModality(SimBaseModel):
         objective_lens: ObjectiveLens,
         settings: Settings,
         xp: NumpyAPI,
-        emission_wavelength_bin: Bin | None = None,
+        em_wvl: Quantity | None = None,
     ) -> ArrayProtocol:
         # default implementation is a widefield PSF
         return make_psf(
@@ -31,7 +32,7 @@ class _PSFModality(SimBaseModel):
             objective=objective_lens,
             max_au_relative=settings.max_psf_radius_aus,
             xp=xp,
-            emission_wavelength_bin=emission_wavelength_bin,
+            em_wvl=em_wvl,
         )
 
     def render(
@@ -40,35 +41,41 @@ class _PSFModality(SimBaseModel):
         channel: OpticalConfig,
         objective_lens: ObjectiveLens,
         settings: Settings,
-        emission_wavelength_bins: Bin | None = None,
         xp: NumpyAPI | None = None,
     ) -> xrDataArray:
-        if truth.ndim > 4 or Axis.F not in truth.dims:
-            raise NotImplementedError(
-                "At this stage, we only support rendering 3D or 4D data with a "
-                "fluorophore dimension."
-            )
+        convolved = 0
+        for fluor_idx in range(truth.sizes[Axis.F]):
+            convolved_fluor = 0
+            for bin_idx in range(truth.sizes[Axis.W]):
+                binned_flux = truth.isel({Axis.W: bin_idx, Axis.F: fluor_idx})
+                if np.isnan(np.sum(binned_flux.data)):
+                    # NOTE: there can be bins for which there is no data in one of the
+                    #  fluorophores
+                    continue
+                em_wvl = binned_flux[Axis.W].values.item().mid * UnitRegistry().nm
+                psf = self.psf(
+                    truth.attrs["space"],
+                    channel,
+                    objective_lens,
+                    settings,
+                    xp,
+                    em_wvl=em_wvl,
+                )
+                convolved_fluor += xp.fftconvolve(
+                    binned_flux.isel({Axis.C: 0}), psf, mode="same"
+                )
+            convolved += convolved_fluor
 
-        xp = NumpyAPI.create(xp)
-        # convert label dimension to photon flux
-        [
-            self.psf(
-                truth.attrs["space"],
-                channel,
-                objective_lens,
-                settings,
-                xp,
-                emission_wavelength_bin=bin,
-            )
-            for bin in emission_wavelength_bins
-        ]
-        convolved = [
-            xp.fftconvolve(truth.isel({Axis.W: w}), psf, mode="same")
-            for f in range(truth.sizes[Axis.F])
-        ]
-        img = xp.stack(convolved)
-
-        return DataArray(img, dims=truth.dims, coords=truth.coords, attrs=truth.attrs)
+        return DataArray(
+            convolved,
+            dims=[Axis.Z, Axis.Y, Axis.X],
+            coords={
+                Axis.Z: truth.coords[Axis.Z],
+                Axis.Y: truth.coords[Axis.Y],
+                Axis.X: truth.coords[Axis.X],
+            },
+            attrs=truth.attrs,
+        )
 
 
 class Confocal(_PSFModality):
@@ -82,7 +89,7 @@ class Confocal(_PSFModality):
         objective_lens: ObjectiveLens,
         settings: Settings,
         xp: NumpyAPI,
-        emission_wavelength_bin: Bin | None = None,
+        em_wvl: Quantity | None = None,
     ) -> ArrayProtocol:
         return make_psf(
             space=space,
@@ -91,7 +98,7 @@ class Confocal(_PSFModality):
             pinhole_au=self.pinhole_au,
             max_au_relative=settings.max_psf_radius_aus,
             xp=xp,
-            emission_wavelength_bin=emission_wavelength_bin,
+            em_wvl=em_wvl,
         )
 
 
