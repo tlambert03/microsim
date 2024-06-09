@@ -91,9 +91,8 @@ def get_emission_events(
     and the name of a fluorophore, and returns the number of emission events per second
     per fluorophore.
     """
-    # oc = OpticalConfig.from_fpbase(microscope_id, optical_config)
     if oc.excitation is None:
-        raise ValueError(f"Optical configuration has no excitation.")
+        raise ValueError("Optical configuration has no excitation.")
 
     # get the fluorophore
     if not fluor.excitation_spectrum:

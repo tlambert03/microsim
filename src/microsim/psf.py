@@ -350,7 +350,6 @@ def _pinhole_mask(
 
 def make_psf(
     space: SpaceProtocol,
-    # TODO: @ashesh: enable returning multiple psfs for a single channel.
     channel: OpticalConfig,
     objective: ObjectiveLens,
     em_wvl: Quantity | None = None,

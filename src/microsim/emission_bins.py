@@ -9,8 +9,6 @@ class EmissionBins:
     This can be cached for a given fluorophore, excitation filter and num bins.
     """
 
-    # TODO: One could ideally also have an emission filter here.
-
     data_dict = {}
 
     @staticmethod
