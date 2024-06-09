@@ -204,12 +204,7 @@ class Simulation(SimBaseModel):
     def optical_image(
         self, emission_flux: "xr.DataArray | None" = None, *, channel_idx: int = 0
     ) -> xr.DataArray:
-        # Following coordinates: (W, C, F, Z, Y, X)
-
-        # emitted_data= WavelengthSpace(wavelengths=binned_wavelengths, data=emitted_data)
-        # Allocate the emitted light in wavelength intervals. (Pre-computed for
-        #           each fluorophore)
-        # For all of this, adapt the code from  examples/emission_events.py.
+        # Input has the following co-ordinates: (W, C, F, Z, Y, X)
         result = self.modality.render(
             emission_flux,
             self.channels[channel_idx],
@@ -219,6 +214,7 @@ class Simulation(SimBaseModel):
         )
 
         result = result.expand_dims(Axis.C, axis=0)
+        # Co-ordinates: (C, Z, Y, X)
         result = result.assign_coords({Axis.C: [self.channels[channel_idx]]})
         return result
 
