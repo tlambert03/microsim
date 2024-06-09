@@ -87,13 +87,3 @@ def drawlines_bresenham(
     else:
         raise ValueError(f"grid must be either 2 or 3 dimensional.  Got {grid.ndim}")
 
-
-if __name__ == "__main__":
-    from microsim import schema as ms
-    from microsim.util import ortho_plot
-
-    gen = ms.MatsLines(density=1, length=30, azimuth=5, max_r=10)
-    space_gen = ms.ShapeScaleSpace(shape=(128, 512, 512), scale=(0.02, 0.01, 0.01))
-    space = space_gen.create(array_creator=np.zeros)
-    gt = gen.render(space)
-    ortho_plot(gt.data)
