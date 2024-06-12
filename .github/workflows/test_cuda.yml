@@ -31,6 +31,8 @@ jobs:
           coverage run -m pytest --color=yes -v
           python -m coverage xml -o coverage.xml
           python -m coverage report
+        env:
+          LD_LIBRARY_PATH: /usr/local/cuda/lib64
 
       - name: codecov v4
         uses: codecov/codecov-action@v4
