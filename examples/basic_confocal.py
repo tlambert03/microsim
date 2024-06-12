@@ -1,7 +1,7 @@
 import time
 
 from microsim import schema as ms
-from microsim.util import ortho_plot
+from microsim.util import ndview, ortho_plot
 
 GreenMats = ms.FluorophoreDistribution(
     distribution=ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1),
@@ -20,5 +20,6 @@ sim = ms.Simulation(
 
 _start = time.time()
 result = sim.run()
-print(time.time() - _start)
-ortho_plot(result.data)
+print("ran in", time.time() - _start)
+ortho_plot(result.data, show=True)
+ndview(result)
