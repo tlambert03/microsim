@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 import shutil
 import warnings
-from typing import TYPE_CHECKING, Protocol, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -247,7 +247,11 @@ def tiled_convolve(
 
 # convenience function we'll use a couple times
 def ortho_plot(
-    img: ArrayProtocol, gamma: float = 0.5, mip: bool = False, cmap: str = "gray"
+    img: ArrayProtocol,
+    gamma: float = 0.5,
+    mip: bool = False,
+    cmap: str = "gray",
+    show: bool = True,
 ) -> None:
     """Plot XY and XZ slices of a 3D array."""
     import matplotlib.pyplot as plt
@@ -266,7 +270,19 @@ def ortho_plot(
     ax[1].imshow(xz, norm=PowerNorm(gamma), cmap=cmap)
     ax[0].set_title("XY slice")
     ax[1].set_title("XZ slice")
-    plt.show()
+    if show:
+        plt.show()
+
+
+def ndview(ary: Any, cmap: Any | None = None) -> None:
+    try:
+        import ndv
+    except ImportError as e:
+        raise ImportError(
+            "Please `pip install 'ndv[pyqt,vispy]' to use this function."
+        ) from e
+
+    ndv.imshow(ary, cmap=cmap)
 
 
 ArrayType = TypeVar("ArrayType", bound=ArrayProtocol)
