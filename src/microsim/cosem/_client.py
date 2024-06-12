@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import suppress
 
 try:
     import boto3
@@ -107,10 +108,11 @@ def _collect_fields(model: type[BaseModel]) -> Iterator[str | tuple]:
     """Used in model_query to recursively collect fields from a model."""
     for field, info in model.model_fields.items():
         args = get_args(info.annotation)
-        if args and isinstance(args[0], type) and issubclass(args[0], BaseModel):
-            anno: Any = args[0]
-        else:
-            anno = info.annotation
+        anno: Any = info.annotation
+        with suppress(TypeError):
+            if args and isinstance(args[0], type) and issubclass(args[0], BaseModel):
+                anno = args[0]
+
         if isinstance(anno, type) and issubclass(anno, BaseModel):
             name = anno.__name__
             if name.startswith("Cosem"):
