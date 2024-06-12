@@ -95,15 +95,20 @@ class Simulation(SimBaseModel):
     def _xp(self) -> "NumpyAPI":
         return self.settings.backend_module()
 
-    def run(self, channel_idx: int = 0) -> xr.DataArray:
+    def run(self, *channels: int) -> xr.DataArray:
         """Run the simulation and return the result.
 
         This will also write a file to disk if `output` is set.
         """
         truth = self.ground_truth()
-        emission_flux = self.emission_flux(truth, channel_idx=channel_idx)
-        optical_image = self.optical_image(emission_flux, channel_idx=channel_idx)
-        image = self.digital_image(optical_image)
+        if not channels:
+            channels = tuple(range(len(self.channels)))
+        images = []
+        for channel_idx in channels:
+            emission_flux = self.emission_flux(truth, channel_idx=channel_idx)
+            optical_image = self.optical_image(emission_flux, channel_idx=channel_idx)
+            images.append(self.digital_image(optical_image))
+        image = xr.concat(images, dim=Axis.C)
         self._write(image)
         return image
 
