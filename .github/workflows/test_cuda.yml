@@ -23,7 +23,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[test]
-          python -m pip install cupy-cuda12.x
+          python -m pip install cupy-cuda12x
           python -m pip install coverage
 
       - name: Run tests
