@@ -1,7 +1,18 @@
 from __future__ import annotations
 
-import hashlib
 import logging
+
+try:
+    import boto3
+    from botocore import UNSIGNED, client
+    from supabase import Client
+except ImportError as e:
+    raise ImportError("To use cosem data, please `pip install microsim[cosem]`") from e
+else:
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("botocore").setLevel(logging.WARNING)
+
+import hashlib
 import re
 import shutil
 import urllib.request
@@ -15,19 +26,12 @@ from typing import TYPE_CHECKING, Any, TypeVar, get_args
 import tqdm
 from pydantic import BaseModel
 
-try:
-    import boto3
-    from botocore import UNSIGNED, client
-    from supabase import Client
-except ImportError as e:
-    raise ImportError("To use cosem data, please `pip install microsim[cosem]`") from e
-else:
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("botocore").setLevel(logging.WARNING)
-
-from rich import print
-
 from microsim.util import microsim_cache
+
+try:
+    from rich import print
+except ImportError:
+    pass
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
