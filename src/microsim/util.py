@@ -275,6 +275,10 @@ def ortho_plot(
 
 
 def ndview(ary: Any, cmap: Any | None = None) -> None:
+    """View any array using ndv.imshow.
+
+    This function is a thin wrapper around `ndv.imshow`.
+    """
     try:
         import ndv
     except ImportError as e:
