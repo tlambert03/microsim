@@ -113,7 +113,12 @@ def _collect_fields(model: type[BaseModel]) -> Iterator[str | tuple]:
             if args and isinstance(args[0], type) and issubclass(args[0], BaseModel):
                 anno = args[0]
 
-        if isinstance(anno, type) and issubclass(anno, BaseModel):
+        try:
+            is_model = isinstance(anno, type) and issubclass(anno, BaseModel)
+        except TypeError:
+            is_model = False
+
+        if is_model:
             name = anno.__name__
             if name.startswith("Cosem"):
                 name = name[5:]
