@@ -32,7 +32,7 @@ jobs:
           python -m coverage xml -o coverage.xml
           python -m coverage report
         env:
-          LD_LIBRARY_PATH: /usr/local/cuda/lib64
+          LD_LIBRARY_PATH: /usr/local/cuda/lib64:~/actions-runner/_work/_tool/Python/3.11.9/x64/lib
 
       - name: codecov v4
         uses: codecov/codecov-action@v4
