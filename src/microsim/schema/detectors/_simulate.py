@@ -7,17 +7,17 @@ from microsim.schema.detectors import Camera, CameraCMOS, CameraEMCCD
 from microsim.util import bin_window
 
 if TYPE_CHECKING:
-    from microsim._data_array import ArrayProtocol
+    from microsim._data_array import xrDataArray
 
 
 def simulate_camera(
     camera: Camera,
-    image: ArrayProtocol,
+    image: xrDataArray,
     exposure_ms: float = 100,
     binning: int = 1,
     add_poisson: bool = True,
     xp: NumpyAPI | None = None,
-) -> ArrayProtocol:
+) -> xrDataArray:
     """Simulate camera detection.
 
     Parameters
@@ -45,7 +45,7 @@ def simulate_camera(
     exposure_s = exposure_ms / 1000
     incident_photons = image * exposure_s
     # restrict to positive values
-    incident_photons = xp.maximum(incident_photons, 0)
+    incident_photons = xp.maximum(incident_photons.data, 0)
 
     # sample poisson noise
     if add_poisson:

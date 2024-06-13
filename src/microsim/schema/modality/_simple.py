@@ -49,7 +49,7 @@ class _PSFModality(SimBaseModel):
         # convert label dimension to photon flux
         psf = self.psf(truth.attrs["space"], channel, objective_lens, settings, xp)
         convolved = [
-            xp.fftconvolve(truth.isel({Axis.F: f}), psf, mode="same")
+            xp.fftconvolve(truth.isel({Axis.F: f}).data, psf, mode="same")
             for f in range(truth.sizes[Axis.F])
         ]
         img = xp.stack(convolved)

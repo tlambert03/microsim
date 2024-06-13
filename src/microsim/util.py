@@ -259,6 +259,8 @@ def ortho_plot(
 
     if hasattr(img, "get"):
         img = img.get()
+    if isinstance(img, xrDataArray) and hasattr(img.data, "get"):
+        img = img.data.get()
     img = np.asarray(img).squeeze()
     if img.ndim != 3:
         raise ValueError("Input must be a 3D array")

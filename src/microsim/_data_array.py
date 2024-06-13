@@ -80,6 +80,8 @@ def to_cache(da: xrDataArray, path: Path, dtype: npt.DTypeLike | None = None) ->
     path.mkdir(parents=True, exist_ok=True)
     da = da.copy(deep=False)
     da.attrs = _serializeable_attrs(da.attrs)
+    if hasattr(da.data, 'get'):
+        da.data = da.data.get()
     da.to_zarr(path, mode="w")
 
 

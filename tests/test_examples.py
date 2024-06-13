@@ -21,7 +21,7 @@ def test_examples(fpath: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     """Test that all of our examples are still working without warnings."""
     monkeypatch.setattr(util, "ndview", lambda *args, **kwargs: None)
     if fpath.suffix == ".ipynb":
-        nb = json.loads(fpath.read_text())
+        nb = json.loads(fpath.read_text(encoding='utf-8'))
 
         lines = []
         for cell in nb["cells"]:
