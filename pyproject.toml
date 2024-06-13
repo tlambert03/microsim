@@ -32,7 +32,7 @@ classifiers = [
 dependencies = [
     'pydantic-settings',
     "annotated_types",
-    "dm-tree",  # only needed for jax support.  could use an extra instead.
+    "dm-tree",           # only needed for jax support.  could use an extra instead.
     "numpy",
     "pint>=0.23",
     "platformdirs",
@@ -45,7 +45,7 @@ dependencies = [
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
-cosem = ["xarray-datatree", "s3fs", "dask", "imageio", "supabase"]
+cosem = ["xarray-datatree", "s3fs", "dask", "imageio", "supabase", "boto3"]
 test = [
     "microsim[cosem]",
     "jax[cpu]",
@@ -58,14 +58,14 @@ test = [
 ]
 dev = [
     "microsim[test]",
+    "boto3-stubs[s3]",
     "ipython",
-    "matplotlib",
     "mypy",
-    "types-tqdm",
     "pdbpp",
     "pre-commit",
     "rich",
     "ruff",
+    "types-tqdm",
 ]
 docs = [
     "mkdocs >=1.5.3",
@@ -136,8 +136,8 @@ minversion = "7.0"
 testpaths = ["tests"]
 filterwarnings = [
     "error",
-    "ignore:unclosed transport:ResourceWarning", # only on py3.10... not sure why
-    "ignore:Clipping negative intensity values:UserWarning",  # when importing FPbase spectra
+    "ignore:unclosed transport:ResourceWarning",             # only on py3.10... not sure why
+    "ignore:Clipping negative intensity values:UserWarning", # when importing FPbase spectra
 ]
 
 # https://coverage.readthedocs.io/en/6.4/config.html
