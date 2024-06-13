@@ -1,19 +1,13 @@
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
 import numpy as np
-
-from .optical_config.lib import FITC
-
-if TYPE_CHECKING:
-    from typing import Self, Unpack
-
-    from .backend import NumpyAPI
-
 import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 
-from microsim._data_array import ArrayProtocol
+from microsim._data_array import ArrayProtocol, from_cache, to_cache
+from microsim.util import microsim_cache
 
 from ._base_model import SimBaseModel
 from .detectors import Detector
@@ -21,12 +15,15 @@ from .dimensions import Axis
 from .lens import ObjectiveLens
 from .modality import Modality, Widefield
 from .optical_config import OpticalConfig
+from .optical_config.lib import FITC
 from .sample import FluorophoreDistribution, Sample
 from .settings import Settings
 from .space import ShapeScaleSpace, Space, _RelativeSpace
 
 if TYPE_CHECKING:
-    from typing import TypedDict
+    from typing import Self, TypedDict, Unpack
+
+    from .backend import NumpyAPI
 
     class SimluationKwargs(TypedDict, total=False):
         output_space: Space | dict | None
@@ -114,13 +111,49 @@ class Simulation(SimBaseModel):
             # TODO: this is wasteful... label.render should probably
             # accept the space object directly
             truth = self.truth_space.create(array_creator=xp.zeros)
+
             # render each ground truth
-            label_data = [label.render(truth, xp=xp) for label in self.sample.labels]
+            label_data = []
+            for label in self.sample.labels:
+                cache_path = self._truth_cache_path(
+                    label, self.truth_space, self.settings.random_seed
+                )
+                if self.settings.cache.read and cache_path and cache_path.exists():
+                    data = from_cache(cache_path, xp=xp).astype(
+                        self.settings.float_dtype
+                    )
+                    logging.info(
+                        f"Loaded ground truth for {label} from cache: {cache_path}"
+                    )
+                else:
+                    data = label.render(truth, xp=xp)
+                    if self.settings.cache.write and cache_path:
+                        to_cache(data, cache_path, dtype=np.uint16)
+
+                label_data.append(data)
+
             # concat along the F axis
             truth = xr.concat(label_data, dim=Axis.F)
             truth.coords.update({Axis.F: list(self.sample.labels)})
             self._ground_truth = truth
         return self._ground_truth
+
+    def _truth_cache_path(
+        self,
+        label: "FluorophoreDistribution",
+        truth_space: "Space",
+        seed: int | None,
+    ) -> Path | None:
+        if not (lbl_path := label.cache_path()):
+            return None
+
+        truth_cache = Path(microsim_cache("ground_truth"), *lbl_path)
+        shape = f'shape{"_".join(str(x) for x in truth_space.shape)}'
+        scale = f'scale{"_".join(str(x) for x in truth_space.scale)}'
+        truth_cache = truth_cache / shape / scale
+        if label.distribution.is_random():
+            truth_cache = truth_cache / f"seed{seed}"
+        return truth_cache
 
     def optical_image(
         self, truth: "xr.DataArray | None" = None, *, channel_idx: int = 0
@@ -149,7 +182,7 @@ class Simulation(SimBaseModel):
         self,
         optical_image: "xr.DataArray | None" = None,
         *,
-        photons_pp_ps_max: int = 2000,
+        photons_pp_ps_max: int = 10000,
         exposure_ms: float = 100,
         with_detector_noise: bool = True,
         channel_idx: int = 0,
