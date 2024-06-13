@@ -7,7 +7,7 @@ from microsim.schema.detectors import Camera, CameraCMOS, CameraEMCCD
 from microsim.util import bin_window
 
 if TYPE_CHECKING:
-    from microsim._data_array import xrDataArray
+    from microsim._data_array import ArrayProtocol, xrDataArray
 
 
 def simulate_camera(
@@ -17,7 +17,7 @@ def simulate_camera(
     binning: int = 1,
     add_poisson: bool = True,
     xp: NumpyAPI | None = None,
-) -> xrDataArray:
+) -> ArrayProtocol:
     """Simulate camera detection.
 
     Parameters
