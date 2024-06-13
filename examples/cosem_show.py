@@ -1,35 +1,22 @@
-import numpy as np
-import numpy.typing as npt
+from microsim import schema as ms
+from microsim.util import ndview
 
-from microsim.cosem import CosemDataset
-from microsim.util import view_nd
+sim = ms.Simulation(
+    truth_space=ms.ShapeScaleSpace(
+        shape=(128, 1280, 1280), scale=(0.032, 0.032, 0.032)
+    ),
+    output_space={"downscale": 4},
+    sample=ms.Sample(
+        labels=[
+            # ms.Cosem(dataset="jrc_hela-3", image="chrom_seg"),
+            ms.Cosem(dataset="jrc_hela-3", image="er-mem_pred"),
+            # ms.Cosem(dataset="jrc_hela-3", image="er-mem_seg"),
+            ms.Cosem(dataset="jrc_hela-3", image="mito-mem_pred"),
+        ]
+    ),
+    modality=ms.Confocal(),
+    detector=ms.CameraCCD(qe=0.82, read_noise=6),
+    output_path="h2-cf.tif",
+)
 
-hela3 = CosemDataset.fetch("jrc_hela-3")
-# hela3.image(name="mito-mem_seg").download(max_level=3)
-# hela3.show(["mito-mem_seg"], level=1, transpose=("y", "x", "z"))
-
-img = hela3.image(name="mito-mem_seg")
-data = img.read(level=1, transpose=("y", "x", "z"))
-view_nd(img)
-
-
-def convert(data: npt.NDArray, target: str = ".") -> None:
-    from microsim.util import bin
-
-    bdata = data.astype(bool)
-    bin(bdata, 2, dtype=np.uint8)
-
-
-#     print("converted")
-#     binned = bin(_vol, 2, dtype=np.uint8)
-#     print("binned")
-#     zarr.convenience.save_array(
-#         f"{dataset}/{source}_b2.zarr", binned, chunks=(128, 128, 128)
-#     )
-#     print("saved")
-#     binned = bin(binned, 2, dtype=np.uint8)
-#     print("binned again")
-#     zarr.convenience.save_array(
-#         f"{dataset}/{source}_b4.zarr", binned, chunks=(64, 64, 64)
-#     )
-#     print(data, "DONE")
+ndview(sim.run())

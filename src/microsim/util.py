@@ -289,30 +289,6 @@ def ndview(ary: Any, cmap: Any | None = None) -> None:
     ndv.imshow(ary, cmap=cmap)
 
 
-def view_nd(
-    ary: Any, figsize: tuple[int, int] = (1280, 1000), **view_kwargs: Any
-) -> None:
-    try:
-        from ndv import NDViewer
-    except ImportError as e:
-        raise ImportError(
-            "This feature uses a not-yet published widget from pymmcore-widgets."
-            "It will eventually be made available outside of pymmcore-widgets..."
-        ) from e
-    from qtpy.QtWidgets import QApplication
-
-    app = QApplication.instance()
-    if not (hadapp := app is not None):
-        app = QApplication([])
-
-    s = NDViewer(ary, **view_kwargs)
-    s.resize(*figsize)
-    s.show()
-
-    if not hadapp:
-        app.exec()
-
-
 ArrayType = TypeVar("ArrayType", bound=ArrayProtocol)
 
 
