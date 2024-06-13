@@ -1,0 +1,41 @@
+name: Cuda CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    # Only run on Pull Requests within the same repository, and not from forks.
+    if: ( github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository ) || ( github.event_name == 'push' && github.ref == 'refs/heads/main' )
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.9"
+          cache: "pip"
+          cache-dependency-path: "./pyproject.toml"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[test]
+          python -m pip install cupy-cuda12x
+          python -m pip install coverage
+
+      - name: Run tests
+        run: |
+          coverage run -m pytest --color=yes -v
+          python -m coverage xml -o coverage.xml
+          python -m coverage report
+        env:
+          LD_LIBRARY_PATH: "/usr/local/cuda/lib64:/home/tjl10/actions-runner/_work/_tool/Python/3.11.9/x64/lib"
+
+      - name: codecov v4
+        uses: codecov/codecov-action@v4
+        with:
+          verbose: true
+          token: ${{ secrets.CODECOV_TOKEN }}
