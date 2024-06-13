@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.detectors import Camera, CameraCMOS, CameraEMCCD
+from microsim.util import bin_window
 
 if TYPE_CHECKING:
     from microsim._data_array import ArrayProtocol
@@ -48,7 +49,9 @@ def simulate_camera(
 
     # sample poisson noise
     if add_poisson:
-        detected_photons = xp.poisson_rvs(incident_photons * camera.qe)
+        detected_photons = xp.poisson_rvs(
+            incident_photons * camera.qe, shape=incident_photons.shape
+        )
 
     # dark current
     thermal_electrons = xp.poisson_rvs(
@@ -61,7 +64,7 @@ def simulate_camera(
     total_electrons = xp.minimum(total_electrons, camera.full_well)
 
     if binning > 1 and not isinstance(camera, CameraCMOS):
-        total_electrons = bin(total_electrons, binning, "sum")
+        total_electrons = bin_window(total_electrons, binning, "sum")
 
     # add em gain
     if isinstance(camera, CameraEMCCD):
@@ -72,7 +75,7 @@ def simulate_camera(
 
     # sCMOS binning
     if binning > 1 and isinstance(camera, CameraCMOS):
-        gray_values = bin(gray_values, binning, "mean")
+        gray_values = bin_window(gray_values, binning, "mean")
 
     # ADC saturation
     gray_values = xp.minimum(gray_values, camera.max_intensity)

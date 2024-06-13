@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, computed_field
 
-from microsim.util import norm_name
+from microsim.util import ndview, norm_name
 
 from ._client import (
     COSEM_BUCKET,
@@ -20,6 +20,7 @@ from ._client import (
     fetch_s3,
     fetch_views,
 )
+from ._tstore import BinMode
 
 if TYPE_CHECKING:
     import numpy as np
@@ -45,6 +46,8 @@ ImageFormat = Literal[
 
 
 class CosemSample(BaseModel):
+    """Information about the sample used in the COSEM dataset."""
+
     name: str
     description: str
     protocol: str
@@ -54,6 +57,8 @@ class CosemSample(BaseModel):
 
 
 class CosemImageAcquisition(BaseModel):
+    """Information about the image acquisition process."""
+
     name: str
     start_date: datetime.datetime
     grid_axes: list[str]
@@ -64,6 +69,11 @@ class CosemImageAcquisition(BaseModel):
 
 
 class CosemImage(BaseModel):
+    """Pointer to an image in the COSEM dataset.
+
+    An image contains all levels of the image pyramid and metadata.
+    """
+
     name: str
     description: str
     url: str
@@ -121,17 +131,40 @@ class CosemImage(BaseModel):
         self,
         level: int = -1,
         transpose: Sequence[str] | None = ("y", "x", "z"),
-        bin_mode: Literal["mode", "sum", "auto"] = "auto",
+        bin_mode: Literal[BinMode, "auto"] = "auto",
     ) -> "TensorStore":
+        """Read image as TensorStore.
+
+        Parameters
+        ----------
+        level : int
+            Level of the image pyramid to read. Negative indices may be used to
+            specify up from the the lowest resolution.
+            Default is -1 (lowest resolution).
+        transpose : tuple
+            Axes to transpose the image to.  Default is ("y", "x", "z"), which orients
+            most images with the coverslip co-planar with the last two dimensions.
+        bin_mode : {"standard", "sum", "auto"}
+            Method to bin the image.  Options are "standard" or "sum".  Default is
+            "auto", which chooses "sum" for segmentation images and "standard" for other
+            images.  In COSEM, the "standard" binning method is to take the statistical
+            mode of the pixels in each bin.  This is useful for maintaining instance
+            segmentation IDs, but is not good for simulation purposes, so "sum" is used
+            when loading segmentation images.
+        """
         from microsim.cosem._tstore import read_tensorstore
 
         if bin_mode == "auto":
-            bin_mode = "sum" if self.content_type == "segmentation" else "mode"
+            bin_mode = "sum" if self.content_type == "segmentation" else "standard"
         return read_tensorstore(
             self, level=level, transpose=transpose, bin_mode=bin_mode
         )
 
     def read_xarray(self) -> "xr.DataArray | DataTree":
+        """Read image as xarray or DataTree.
+
+        This is less tested and used than `read`.  Let me know if you need it.
+        """
         from microsim.cosem._xarray import read_xarray
 
         return read_xarray(self.url)
@@ -152,12 +185,12 @@ class CosemImage(BaseModel):
         return self._attrs  # type: ignore [no-any-return]
 
     def show(self, **read_kwargs: Any) -> None:
-        from microsim.util import view_nd
-
-        view_nd(self.read(**read_kwargs))
+        ndview(self.read(**read_kwargs))
 
 
 class CosemDataset(BaseModel):
+    """Top-level container for a COSEM dataset."""
+
     name: str
     description: str
     thumbnail_url: str
@@ -169,6 +202,7 @@ class CosemDataset(BaseModel):
     @computed_field(repr=False)  # type: ignore [misc]
     @property
     def views(self) -> list["CosemView"]:
+        """Return list of all views in the dataset."""
         return [v for v in fetch_views() if v.dataset_name == self.name]
 
     @classmethod
@@ -177,7 +211,7 @@ class CosemDataset(BaseModel):
         datasets = fetch_datasets()
         if name not in datasets:
             if key := _get_similar(name, datasets):
-                logging.warn(
+                logging.warning(
                     f"Dataset {name!r} not found. Using similar {key!r} instead."
                 )
                 name = key
@@ -189,7 +223,7 @@ class CosemDataset(BaseModel):
 
     @classmethod
     def all(cls) -> Mapping[str, "CosemDataset"]:
-        """Fetch dataset with a specific name."""
+        """Return a mapping of all available cosem datasets."""
         return fetch_datasets()
 
     @classmethod
@@ -198,9 +232,16 @@ class CosemDataset(BaseModel):
         return sorted(cls.all())
 
     def view(self, name: str) -> "CosemView":
+        """Return view with a specific name."""
         return next(v for v in self.views if v.name == name)
 
     def image(self, **kwargs: Any) -> "CosemImage":
+        """Return first available image matching kwargs.
+
+        Examples
+        --------
+        >>> dataset.image(name="er_seg")
+        """
         avail: defaultdict[str, set[str]] = defaultdict(set)
         for img in self.images:
             if all(getattr(img, k) == v for k, v in kwargs.items()):
@@ -213,6 +254,7 @@ class CosemDataset(BaseModel):
 
     @property
     def em_layers(self) -> list[CosemImage]:
+        """Return list of all EM layers in the dataset."""
         return [i for i in self.images if i.content_type == "em"]
 
     @property
@@ -243,7 +285,13 @@ class CosemDataset(BaseModel):
 
     @property
     def thumbnail(self) -> "np.ndarray":
-        from imageio.v3 import imread
+        """Return thumbnail image as numpy array."""
+        try:
+            from imageio.v3 import imread
+        except ImportError as e:
+            raise ImportError(
+                "To use the thumbnail property, install the imageio package."
+            ) from e
 
         return imread(self.thumbnail_url)
 
@@ -270,18 +318,21 @@ class CosemDataset(BaseModel):
         )
 
     def show(self, image_keys: str | Sequence[str], **read_kwargs: Any) -> None:
-        from microsim.util import view_nd
-
+        """Show images in `image_keys` using ndview."""
         data = self.read(image_keys, **read_kwargs)
-        view_nd(data)
+        ndview(data)
 
 
 class CosemTaxon(BaseModel):
+    """Organelle taxonomy information."""
+
     name: str
     short_name: str
 
 
 class CosemView(BaseModel):
+    """A pre-defined view of a dataset."""
+
     name: str
     dataset_name: str
     description: str
@@ -295,7 +346,12 @@ class CosemView(BaseModel):
 
     @classmethod
     def filter(cls, **kwargs: Any) -> list["CosemView"]:
-        """Fetch dataset with a specific name."""
+        """Return all views matching specific kwargs.
+
+        Examples
+        --------
+        >>> CosemView.filter(dataset_name="jrc_hela-3")
+        """
         matches = []
         for view in fetch_views():
             if all(getattr(view, k) == v for k, v in kwargs.items()):
@@ -304,33 +360,12 @@ class CosemView(BaseModel):
 
     @classmethod
     def all(cls) -> tuple["CosemView", ...]:
-        """Fetch dataset with a specific name."""
+        """Return all available views."""
         return fetch_views()
 
 
-class CosemImagery(BaseModel):
-    content_type: str
-    coordinate_space: str
-    created_at: str
-    dataset_name: str
-    description: str
-    display_settings: dict
-    format: str
-    grid_dims: list[str]
-    grid_index_order: str
-    grid_scale: list[int]
-    grid_translation: list[int]
-    grid_units: list[str]
-    id: int
-    institution: str
-    name: str
-    sample_type: str
-    source: dict
-    stage: str
-    url: str
-
-
 def _get_similar(search_term: str, available: Iterable[str]) -> str | None:
+    """Return similar string from available list, if any."""
     for avail in available:
         if norm_name(search_term) == norm_name(avail):
             return avail

@@ -21,11 +21,15 @@ in a highly sampled space, and then downscale the resulting simulation
 to a realistic microscope image sampling.
 
 ```python
+from microsim import Simulation
+import microsim.schema as ms
+
 Simulation(
     # ground truth with z-step 20nm and XY pixel size 10nm
-    truth_space=ShapeScaleSpace(shape=(256, 1024, 1024), scale=(0.02, 0.01, 0.01)),
+    truth_space=ms.ShapeScaleSpace(shape=(256, 1024, 1024), scale=(0.02, 0.01, 0.01)),
     # downscale output to 160nm x 80nm x 80nm pixels with shape (32, 128, 128)
-    output_space=DownscaledSpace(downscale=8),
+    output_space=ms.DownscaledSpace(downscale=8),
+    sample=ms.Sample(labels=[])  # ...
 )
 ```
 
@@ -73,6 +77,12 @@ are combined to render the final image.
 Various global settings for the simulation, such as the calculation
 backend (`numpy`, `cupy`, `jax`, etc...) and an optional random seed,
 which can be used to reproduce the same simulation multiple times.
+
+Note that all of these settings can also be defined using environment
+variables prefixed with `MICROSIM_`.  For example, to globally
+disallow caching, you can set `MICROSIM_CACHE=0`.  Nested settings
+can be defined using `__` as a separator, such as `MICROSIM_CACHE__WRITE=0`,
+which would disable writing to the cache (but still allow reading).
 
 ::: microsim.schema.settings
 

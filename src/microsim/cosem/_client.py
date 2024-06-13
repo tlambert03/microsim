@@ -1,7 +1,19 @@
 from __future__ import annotations
 
-import hashlib
 import logging
+from contextlib import suppress
+
+try:
+    import boto3
+    from botocore import UNSIGNED, client
+    from supabase import Client
+except ImportError as e:
+    raise ImportError("To use cosem data, please `pip install microsim[cosem]`") from e
+else:
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("botocore").setLevel(logging.WARNING)
+
+import hashlib
 import re
 import shutil
 import urllib.request
@@ -15,19 +27,12 @@ from typing import TYPE_CHECKING, Any, TypeVar, get_args
 import tqdm
 from pydantic import BaseModel
 
+from microsim.util import microsim_cache
+
 try:
-    import boto3
-    from botocore import UNSIGNED, client
-    from supabase import Client
-except ImportError as e:
-    raise ImportError("To use cosem data, please `pip install microsim[cosem]`") from e
-else:
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("botocore").setLevel(logging.WARNING)
-
-from rich import print
-
-from microsim.util import MICROSIM_CACHE
+    from rich import print
+except ImportError:
+    pass
 
 if TYPE_CHECKING:
     from collections.abc import Iterator, Mapping
@@ -42,7 +47,7 @@ if TYPE_CHECKING:
 
 
 COSEM_BUCKET = "janelia-cosem-datasets"
-COSEM_CACHE = MICROSIM_CACHE / COSEM_BUCKET
+COSEM_CACHE = microsim_cache() / COSEM_BUCKET
 MAX_CONNECTIONS = 50
 CFG = client.Config(signature_version=UNSIGNED, max_pool_connections=MAX_CONNECTIONS)
 
@@ -103,11 +108,17 @@ def _collect_fields(model: type[BaseModel]) -> Iterator[str | tuple]:
     """Used in model_query to recursively collect fields from a model."""
     for field, info in model.model_fields.items():
         args = get_args(info.annotation)
-        if args and isinstance(args[0], type) and issubclass(args[0], BaseModel):
-            anno: Any = args[0]
-        else:
-            anno = info.annotation
-        if isinstance(anno, type) and issubclass(anno, BaseModel):
+        anno: Any = info.annotation
+        with suppress(TypeError):
+            if args and isinstance(args[0], type) and issubclass(args[0], BaseModel):
+                anno = args[0]
+
+        try:
+            is_model = isinstance(anno, type) and issubclass(anno, BaseModel)
+        except TypeError:
+            is_model = False
+
+        if is_model:
             name = anno.__name__
             if name.startswith("Cosem"):
                 name = name[5:]
@@ -162,7 +173,7 @@ def organelles() -> Mapping[str, list[CosemView]]:
 SCALE_RE = re.compile(r"\/s(\d+)\/")
 
 
-def _keys_tags(
+def _keys_tags(  # pragma: no cover
     prefix: str, max_level: int | None = 0, bucket_name: str = COSEM_BUCKET
 ) -> Iterator[tuple[str, str]]:
     paginator = _s3_client().get_paginator("list_objects_v2")
@@ -176,7 +187,7 @@ def _keys_tags(
             yield obj["Key"], obj["ETag"]
 
 
-def download_bucket_path(
+def download_bucket_path(  # pragma: no cover
     bucket_key: str, dest: str | PathLike | None = None, max_level: int | None = 0
 ) -> None:
     """Download a bucket path to a local `dest` directory.
@@ -212,7 +223,7 @@ def download_bucket_path(
         list(tqdm.tqdm(executor.map(_download_file, items), total=len(items)))
 
 
-def _download_file(item: tuple[str, str, Path, str]) -> None:
+def _download_file(item: tuple[str, str, Path, str]) -> None:  # pragma: no cover
     key, etag, dest, bucket_name = item
     _dest = dest / str(key)
     if _dest.exists() and _calculate_etag(_dest) == etag:

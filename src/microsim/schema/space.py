@@ -11,9 +11,10 @@ from pydantic import (
 )
 from pydantic_core import CoreSchema, core_schema
 
-from microsim._data_array import ArrayProtocol, DataArray
+from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
 
 from ._base_model import SimBaseModel
+from .dimensions import Axis
 
 
 class FloatArray(Sequence[float]):
@@ -46,18 +47,19 @@ ArrayType = TypeVar("ArrayType")
 
 
 class _Space(SimBaseModel):
-    def rescale(self, img: DataArray) -> DataArray:
+    def rescale(self, img: xrDataArray) -> xrDataArray:
         return img
 
     def create(
         self: SpaceProtocol,
         array_creator: Callable[[Sequence[int]], ArrayProtocol] = np.zeros,
-    ) -> DataArray:
-        from microsim.util import uniformly_spaced_xarray
+    ) -> xrDataArray:
+        from microsim.util import uniformly_spaced_coords
 
-        return uniformly_spaced_xarray(
-            shape=self.shape, scale=self.scale, array_creator=array_creator
-        )
+        coords = uniformly_spaced_coords(self.shape, self.scale, axes=self.axes)
+        data = array_creator(self.shape)
+        attrs = {"space": self}
+        return DataArray(data, coords=coords, dims=self.axes, name="space", attrs=attrs)
 
     @property
     def coords(self: SpaceProtocol) -> dict[str, FloatArray]:
@@ -67,15 +69,11 @@ class _Space(SimBaseModel):
         }
 
 
-# class CoordsSpace(_Space):
-#     coords: Mapping[str, FloatArray]
-
-
 class _AxesSpace(_Space):
-    axes: tuple[str, ...] = ("T", "C", "Z", "Y", "X")
+    axes: tuple[Axis, ...] = (Axis.Z, Axis.Y, Axis.X)
 
     @field_validator("axes", mode="before")
-    def _cast_axes(cls, value: Any) -> tuple[str, ...]:
+    def _cast_axes(cls, value: Any) -> tuple[Axis, ...]:
         return tuple(value)
 
     @model_validator(mode="after")
@@ -174,17 +172,13 @@ class _RelativeSpace(_Space):
 class DownscaledSpace(_RelativeSpace):
     downscale: tuple[int, ...] | int | Mapping[str, int]
 
-    def rescale(self, img: DataArray) -> DataArray:
-        from microsim.util import downsample
+    def rescale(self, img: xrDataArray) -> xrDataArray:
+        if isinstance(self.downscale, int | float):
+            axes = {ax: self.downscale for ax in self.axes}
+        elif isinstance(self.downscale, Sequence):
+            axes = dict(zip(self.axes, self.downscale, strict=False))
 
-        factor = self.downscale
-        if isinstance(factor, int):
-            factor = {k: factor for k in "ZYX"}
-        if isinstance(factor, Mapping):
-            factor = tuple(factor.get(d, 1) for d in img.dims)
-
-        new_img = downsample(img.data, factor)
-        return DataArray(new_img, coords=self.coords)
+        return img.coarsen(axes).sum()  # type: ignore
 
     @computed_field  # type: ignore
     @property

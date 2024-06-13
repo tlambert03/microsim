@@ -1,170 +1,113 @@
-import json
-import shutil
-from collections.abc import Mapping, MutableMapping, Sequence
-from contextlib import suppress
-from dataclasses import dataclass, field
-from os import PathLike
-from pathlib import Path
-from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Literal, Protocol
+from __future__ import annotations
 
-import numpy as np
-import numpy.typing as npt
-from pydantic import BaseModel, TypeAdapter
+from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
-ZarrWriteModes = Literal["w", "w-", "a", "a-", "r+", "r"]
+import xarray
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
-    import xarray as xr
+    from collections.abc import Hashable, Iterable, Mapping, Sequence
+    from pathlib import Path
+
+    import numpy as np
+    import numpy.typing as npt
+
+    from microsim.schema.backend import NumpyAPI
+
+    def DataArray(
+        data: Any,
+        coords: Sequence[Sequence | xarray.DataArray] | Mapping | None = None,
+        dims: str | Iterable[Hashable] | None = None,
+        name: Hashable | None = None,
+        attrs: Mapping | None = None,
+    ) -> xarray.DataArray: ...
+
+else:
+    try:
+        from .xarray_jax import DataArray
+    except ImportError:
+        from xarray import DataArray  # type: ignore[assignment]
+
+__all__ = ["DataArray", "xrDataArray", "ArrayProtocol"]
+
+xrDataArray = xarray.DataArray
 
 
+@runtime_checkable
+class DType(Protocol):
+    itemsize: int
+    name: str
+    kind: str
+
+
+@runtime_checkable
 class ArrayProtocol(Protocol):
+    """The basic protocol we need from an array-like object."""
+
+    @property
+    def dtype(self) -> np.dtype: ...
     @property
     def shape(self) -> tuple[int, ...]: ...
     @property
     def ndim(self) -> int: ...
     @property
-    def dtype(self) -> np.dtype: ...
+    def size(self) -> int: ...
+
+    def __len__(self) -> int: ...
+    def __getitem__(self, key: Any) -> Any: ...
+    def __setitem__(self, key: Any, value: Any) -> None: ...
     def __array__(self) -> np.ndarray: ...
-    def __mul__(self, other: Any) -> "ArrayProtocol": ...
+    def __mul__(self, other: Any) -> ArrayProtocol: ...
 
 
-@dataclass(frozen=True, slots=True)
-class DataArray:
-    """Data array with coordinates and attributes.
+def from_cache(path: Path, xp: NumpyAPI | None = None) -> xrDataArray:
+    data_set = xarray.open_zarr(path)
+    # get the first data variable
+    first_da = next(iter(data_set.data_vars))
+    # xarray.open_zarr uses dask by default.  we may want that eventually
+    # but for now, we force the computation
+    da = data_set[first_da].compute()
+    if xp is not None:
+        da = DataArray(
+            xp.asarray(da.data), coords=da.coords, dims=da.dims, attrs=da.attrs
+        )
+    da.attrs = _deserialize_attrs(da.attrs)
+    return da  # type: ignore[no-any-return]
 
-    This is the minimal xarray.DataArray API that we use
-    unfortunately, xarray casts data to numpy arrays, making it hard to use as a
-    container for jax, cupy, etc.
-    https://github.com/google/jax/issues/17107
-    https://github.com/pydata/xarray/issues/7848
-    """
 
-    data: ArrayProtocol
-    coords: Mapping[str, Sequence[float]] = field(default_factory=dict)
-    attrs: MutableMapping[str, Any] = field(default_factory=dict)
+def to_cache(da: xrDataArray, path: Path, dtype: npt.DTypeLike | None = None) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    da = da.copy(deep=False)
+    da.attrs = _serializeable_attrs(da.attrs)
+    da.to_zarr(path, mode="w")
 
-    @property
-    def dims(self) -> tuple[str, ...]:
-        return tuple(self.coords)
 
-    @property
-    def shape(self) -> tuple[int, ...]:
-        return self.data.shape
+def _serializeable_attrs(attrs: Any) -> Any:
+    """Make attrs serializable by json, including BaseModels."""
+    if isinstance(attrs, dict):
+        return {key: _serializeable_attrs(value) for key, value in attrs.items()}
+    elif isinstance(attrs, BaseModel):
+        cls = type(attrs)
+        data = attrs.model_dump(mode="json", exclude_unset=True)
+        data["model_type"] = cls.__module__ + "." + cls.__name__
+        return data
+    elif isinstance(attrs, list | tuple):  # pragma: no cover
+        return [_serializeable_attrs(item) for item in attrs]
+    else:
+        return attrs  # pragma: no cover
 
-    @property
-    def dtype(self) -> np.dtype:
-        return self.data.dtype
 
-    @property
-    def sizes(self) -> MappingProxyType[str, int]:
-        return MappingProxyType({k: len(v) for k, v in self.coords.items()})
-
-    def __add__(self, other: Any) -> "DataArray":
-        return DataArray(self.data + other, self.coords, self.attrs)
-
-    def __array__(self, dtype: Any = None) -> np.ndarray:
-        data = self.data.get() if hasattr(self.data, "get") else self.data
-        return np.asanyarray(data, dtype=dtype)
-
-    def __getitem__(self, key: Any) -> "DataArray":
-        return DataArray(self.data[key], self.coords, self.attrs)
-
-    def to_tiff(
-        self, path: str | PathLike[str], description: str | None = None
-    ) -> None:
-        import tifffile as tf
-
-        data = np.asanyarray(self)
-        with suppress(Exception):
-            data = data.transpose((1, 0, 2, 3))
-        tf.imwrite(path, data, imagej=True)
-
-    def to_zarr(
-        self,
-        store: str | PathLike[str],
-        mode: ZarrWriteModes | None = None,
-        attrs: Mapping[str, Any] | None = None,
-    ) -> None:
-        self.to_xarray(attrs=attrs).to_zarr(store, mode=mode)
-
-    def to_netcdf(
-        self,
-        path: str | PathLike[str],
-        attrs: Mapping[str, Any] | None = None,
-    ) -> None:
-        self.to_xarray(attrs=attrs).to_netcdf(path)
-
-    def to_xarray(
-        self,
-        attrs: Mapping[str, Any] | None = None,
-    ) -> "xr.DataArray":
-        import xarray as xr
-
-        attrs = {**self.attrs, **(attrs or {})}
-        return xr.DataArray(np.asanyarray(self), coords=self.coords, attrs=attrs)
-
-    @classmethod
-    def from_xarray(cls, ary: "xr.DataArray") -> "DataArray":
-        coords = {dim: np.asarray(ary.coords[dim]) for dim in ary.dims}
-        return cls(ary.data, coords, ary.attrs)
-
-    @classmethod
-    def from_cache(self, path: Path) -> "DataArray":
-        import tensorstore as ts
-
-        store = ts.open(
-            {
-                "driver": "zarr",
-                "kvstore": {"driver": "file", "path": str(path)},
-            },
-        ).result()
-        data = store.read().result()
-        meta = json.loads(store.kvstore.read(".zattrs").result().value)
-        coords = {k: np.asarray(v) for k, v in meta["coords"].items()}
-        attrs = meta["attrs"]
-        if "space" in attrs:
-            from microsim.schema.space import Space
-
-            attrs["space"] = TypeAdapter(Space).validate_python(attrs["space"])
-        return DataArray(data, coords=coords, attrs=attrs)
-
-    def to_cache(self, path: Path, dtype: npt.DTypeLike | None = None) -> None:
-        import tensorstore as ts
-
-        path.mkdir(parents=True, exist_ok=True)
-        dtype = np.dtype(dtype or self.dtype)
-        store = ts.open(
-            {
-                "driver": "zarr",
-                "kvstore": {"driver": "file", "path": str(path)},
-                "metadata": {
-                    "dtype": dtype.str,
-                    "shape": self.shape,
-                    "chunks": (256,) * len(self.shape),
-                    "dimension_separator": "/",
-                },
-                "create": True,
-            },
-        ).result()
-
-        try:
-            zattrs = self._serializeable_metadata()
-            store.kvstore.write(".zattrs", json.dumps(zattrs)).result()
-            store[:] = np.asarray(self, dtype=dtype)
-        except Exception:
-            shutil.rmtree(path, ignore_errors=True)
-            raise
-
-    def _serializeable_metadata(self) -> dict[str, Any]:
-        attrs = {}
-        for k, v in self.attrs.items():
-            if isinstance(v, np.ndarray):
-                v = v.tolist()
-            if isinstance(v, BaseModel):
-                v = v.model_dump(mode="json")
-            attrs[k] = v
-        return {
-            "coords": {k: list(v) for k, v in self.coords.items()},
-            "attrs": attrs,
-        }
+def _deserialize_attrs(attrs: Any) -> Any:
+    """Convert serialized attrs back to BaseModel instances."""
+    if isinstance(attrs, dict):
+        if model_type := attrs.pop("model_type", None):
+            module, name = model_type.rsplit(".", 1)
+            cls = getattr(__import__(module, fromlist=[name]), name)
+            return cast("BaseModel", cls).model_validate(attrs)
+        else:
+            return {key: _deserialize_attrs(value) for key, value in attrs.items()}
+    elif isinstance(attrs, list | tuple):  # pragma: no cover
+        return type(attrs)(_deserialize_attrs(item) for item in attrs)
+    else:
+        return attrs  # pragma: no cover

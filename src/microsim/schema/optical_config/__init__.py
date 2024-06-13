@@ -1,12 +1,10 @@
-from .config import FITC, OpticalConfig
-from .filter import Bandpass, Filter, FilterSpectrum, Longpass, Shortpass
+from .config import OpticalConfig
+from .filter import Bandpass, Longpass, Shortpass, SpectrumFilter
 
 __all__ = [
-    "Filter",
-    "FilterSpectrum",
+    "SpectrumFilter",
     "Bandpass",
     "Shortpass",
     "Longpass",
     "OpticalConfig",
-    "FITC",
 ]

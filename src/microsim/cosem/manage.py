@@ -1,8 +1,14 @@
-"""CLI scripts for managing COSEM data."""
+"""CLI scripts for managing COSEM data.
+
+python -m microsim.cosem.manage --help
+"""
 
 import argparse
 
-from rich import print
+try:
+    from rich import print
+except ImportError:
+    pass
 
 from microsim.cosem import CosemDataset, bucket_cache, clear_cache
 
@@ -22,7 +28,7 @@ def _show(args: argparse.Namespace) -> None:
     dset.show(image_keys=args.image_keys, level=args.level, bin_mode=args.bin_mode)
 
 
-def _download_dataset(args: argparse.Namespace) -> None:
+def _download_dataset(args: argparse.Namespace) -> None:  # pragma: no cover
     dset = CosemDataset.fetch(args.name)
     for key in args.image_keys:
         try:
