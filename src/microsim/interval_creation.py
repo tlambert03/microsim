@@ -19,8 +19,11 @@ class Bin(NamedTuple):
     mean: float | None = None
     mode: float | None = None
 
-    def __contains__(self, x: float) -> bool:
-        return self.start <= x <= self.end
+    def __contains__(self, x: object) -> bool:
+        try:
+            return self.start <= x <= self.end  # type: ignore
+        except TypeError:
+            return False
 
     def __str__(self) -> str:
         if self.start is not None:
@@ -40,8 +43,7 @@ def generate_bins(x: np.ndarray, y: np.ndarray, num_bins: int) -> list[Bin]:
 
 def _generate_bins_equal_area(x: np.ndarray, y: np.ndarray, num_bins: int) -> list[Bin]:
     bins = []
-
-    cumsum = y.cumsum().magnitude
+    cumsum = y.cumsum()
     step = cumsum[-1] / num_bins
     start_val = 0
     end_vals = np.arange(step, cumsum[-1], step)

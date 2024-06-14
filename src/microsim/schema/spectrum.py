@@ -48,22 +48,31 @@ class Spectrum(SimBaseModel):
     def inverted(self) -> "Spectrum":
         return self.model_copy(update={"intensity": 1 - self.intensity})
 
-    def __mul__(self, other: "float | Spectrum") -> "Spectrum":
-        if np.isscalar(other):
-            return self.model_copy(update={"intensity": self.intensity * other})
+    def integral(self) -> float | pint.Quantity:
+        return np.trapz(self.intensity, self.wavelength.magnitude)  # type: ignore [no-any-return]
+
+    def __mul__(self, other: "float | pint.Quantity | Spectrum") -> "Spectrum":
         if isinstance(other, Spectrum):
-            slc1, slc2 = get_overlapping_indices(
-                self.wavelength.magnitude, other.wavelength.magnitude
-            )
-            intens1 = self.intensity[slc1]
-            intens2 = other.intensity[slc2]
-            return self.model_copy(
-                update={
-                    "intensity": intens1 * intens2,
-                    "wavelength": self.wavelength[slc1],  # type: ignore[index]
-                }
-            )
-        raise TypeError(f"Cannot multiply Spectrum by {type(other)}")
+            return self._intensity_op(other, np.multiply)
+        return self.model_copy(update={"intensity": self.intensity * other})
+
+    def __truediv__(self, other: "float | pint.Quantity | Spectrum") -> "Spectrum":
+        if isinstance(other, Spectrum):
+            return self._intensity_op(other, np.true_divide)
+        return self.model_copy(update={"intensity": self.intensity / other})
+
+    def _intensity_op(self, other: "Spectrum", op: np.ufunc) -> "Spectrum":
+        slc1, slc2 = get_overlapping_indices(
+            self.wavelength.magnitude, other.wavelength.magnitude
+        )
+        intens1 = self.intensity[slc1]
+        intens2 = other.intensity[slc2]
+        return self.model_copy(
+            update={
+                "intensity": op(intens1, intens2),
+                "wavelength": self.wavelength[slc1],  # type: ignore[index]
+            }
+        )
 
     @classmethod
     def from_fpbase(cls, spectrum: "FPbaseSpectrum") -> "Spectrum":
@@ -80,6 +89,11 @@ class Spectrum(SimBaseModel):
     def peak_wavelength(self) -> Nanometers:
         """Wavelength corresponding to maximum intensity."""
         return self.wavelength[np.argmax(self.intensity)]  # type: ignore
+
+    @property
+    def max_intensity(self) -> pint.Quantity | float:
+        """Maximum intensity."""
+        return np.max(self.intensity)  # type: ignore
 
     @field_validator("intensity", mode="after")
     @classmethod
