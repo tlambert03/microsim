@@ -1,37 +1,18 @@
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pint
 from scipy.constants import Avogadro, c, h
 
-from microsim.schema import Fluorophore, OpticalConfig
+if TYPE_CHECKING:
+    from microsim.schema import Fluorophore, OpticalConfig, Spectrum
 
-ureg = pint.application_registry.get()
+ureg = pint.application_registry.get()  # type: ignore
 AVOGADRO = Avogadro / ureg.mol
 PLANCK = h * ureg.joule * ureg.second
 C = c * ureg.meter / ureg.second
-
-
-def get_overlapping_spectra(
-    spectra: np.ndarray, spectrum2: np.ndarray
-) -> tuple[np.ndarray, np.ndarray]:
-    """Return overlapping subset of spectra.
-
-    This assumes that the spectra are (N, 2) arrays where the first column is the
-    wavelength and the second column is the intensity, and that the spectra are
-    sorted by wavelength. (This is the format of the data returned by FPbase.)
-    """
-    # Find the indices of the start and end of the overlapping subset
-    start = max(spectra[0, 0], spectrum2[0, 0])
-    end = min(spectra[-1, 0], spectrum2[-1, 0])
-
-    # Find the indices of the start and end of the overlapping subset
-    start_idx = np.searchsorted(spectra[:, 0], start)
-    end_idx = np.searchsorted(spectra[:, 0], end, side="right")
-
-    start_idx2 = np.searchsorted(spectrum2[:, 0], start)
-    end_idx2 = np.searchsorted(spectrum2[:, 0], end, side="right")
-    return spectra[start_idx:end_idx], spectrum2[start_idx2:end_idx2]
 
 
 def _ensure_quantity(value: Any, units: str) -> pint.Quantity:
@@ -56,84 +37,85 @@ def ec_to_cross_section(ec: Any) -> pint.Quantity:
     # and looking at Nathan Shaner's code
     # need to double check whether it's still correct with our units
     ec = ec * 1000
-    return (ec * np.log(10) / AVOGADRO).to("cm^2")
+    return (ec * np.log(10) / AVOGADRO).to("cm^2")  # type: ignore [no-any-return]
 
 
 def energy_per_photon(wavelength: Any) -> pint.Quantity:
     """Converts a wavelength to energy per photon in J."""
     wavelength = _ensure_quantity(wavelength, "1nm")
-    return (PLANCK * C / wavelength).to("J")
+    return (PLANCK * C / wavelength).to("J")  # type: ignore [no-any-return]
 
 
-def fluorophore_photon_flux(
-    wavelength: Any,
-    irradiance: Any,
-    extinction_coefficient: Any,
-) -> pint.Quantity:
-    """Calculates the number of photons hitting a fluorophore per second."""
-    irradiance = _ensure_quantity(irradiance, "1W/cm^2")
-    E_photon = energy_per_photon(wavelength)
-    cross_section = ec_to_cross_section(extinction_coefficient)
-    exc_rate = (cross_section * irradiance / E_photon).to("1/s")
-
-    return exc_rate
-
-
-def get_emission_events(
-    oc: OpticalConfig,
+def get_excitation_rate(
+    ex_filter_spectrum: Spectrum,
     fluor: Fluorophore,
     *,
     light_power: float = 100,
-) -> np.ndarray:
+) -> Spectrum:
     """Calculate the number of emission events per fluorophore per second.
 
-    This function takes an FPbase microscope ID, the name of an optical configuration,
+    This function takes an excitation spectrum configuration,
     and the name of a fluorophore, and returns the number of emission events per second
     per fluorophore.
     """
-    if oc.excitation is None:
-        raise ValueError("Optical configuration has no excitation.")
-
     # get the fluorophore
-    if not fluor.excitation_spectrum:
-        raise ValueError("Fluorophore has no excitation spectrum.")
+    if not (fluor_ex_spectrum := fluor.excitation_spectrum):
+        raise NotImplementedError("Fluorophore has no excitation spectrum.")
 
-    # convert the spectra to numpy arrays
-    fluor_ex_spectrum = np.asarray(fluor.excitation_spectrum)
-    filter_spectrum = np.asarray(oc.excitation.spectrum)
+    if (ext_coeff := fluor.extinction_coefficient) is None:
+        raise NotImplementedError("Fluorophore has no extinction coefficient.")
 
-    # find the subset of the spectra with overlapping wavelengths
-    ex_spectrum, filter_spectrum = get_overlapping_spectra(
-        fluor_ex_spectrum, filter_spectrum
-    )
+    # TODO: derive light power from model
+    irradiance = ex_filter_spectrum * _ensure_quantity(light_power, "W/cm^2")
+    cross_section = fluor_ex_spectrum * ec_to_cross_section(ext_coeff)
+    power_absorbed = cross_section * irradiance
+    excitation_rate = power_absorbed / energy_per_photon(power_absorbed.wavelength)
+    return excitation_rate
 
-    # wavelengths in nm
-    wavelengths = ex_spectrum[:, 0] * ureg.nm
-    # power in units of W x cm-2 (irradiance), we're making up constant 100 for now...
-    irradiance = filter_spectrum[:, 1] * _ensure_quantity(light_power, "W/cm^2")
-    # scale ex_spectrum by extinction coefficient
-    # note, fluor.extinction_coefficient is already a pint Quantity of units 1/M/cm
-    ext_coeff = ex_spectrum[:, 1] * fluor.extinction_coefficient
-
-    # calculate the number of photons hitting a fluorophore per second
-    exc_rate = fluorophore_photon_flux(wavelengths, irradiance, ext_coeff)
-
+    # TODO
     # if the fluorophore has a lifetime, calculate the effective excitation rate
     # based on the fraction of time in the excited state
     # (i.e. at some point, we'll hit ground state depletion and saturation effects)
     if (lifetime := getattr(fluor, "lifetime", None)) is not None:
         lifetime = _ensure_quantity(lifetime, "ns")
         # Calculate the fraction of time in the excited state
-        f_excited = exc_rate * lifetime
+        f_excited = excitation_rate * lifetime
         # Calculate the fraction of time in the ground state
         f_ground = 1 - f_excited
         # Calculate the effective excitation rate
-        exc_rate = exc_rate * f_ground
+        excitation_rate = excitation_rate * f_ground
+
+    return excitation_rate
+
+
+def get_emission_events(
+    channel: OpticalConfig,
+    fluor: Fluorophore,
+    *,
+    light_power: float = 100,
+) -> Spectrum:
+    # get the emission events for the given fluorophore
+    if (channel_ex := channel.excitation) is None:
+        raise NotImplementedError("Channel without excitation spectrum?")
+
+    if not (fluor_em_spectrum := fluor.emission_spectrum):
+        raise NotImplementedError("Fluorophore has no emission spectrum.")
+
+    ex_rate = get_excitation_rate(channel_ex.spectrum, fluor, light_power=light_power)
+
+    # convert the excitation rate to an emission rate, by matching the integral
+    # of the excitation and emission spectra
+    # I *think* this is correct, but I'm not 100% sure
+    scaling_factor = ex_rate.integral() / fluor_em_spectrum.integral()
+    fluor_em_rate = fluor_em_spectrum * scaling_factor
 
     # multiply by the quantum yield to get the number of emission events
-    emission_events = exc_rate * fluor.quantum_yield
+    if fluor.quantum_yield is not None:
+        fluor_em_rate = fluor_em_rate * fluor.quantum_yield
 
-    # recombine with wavelength:
-    # TODO: wavelengths is essentially excitation wavelengths, we need to get the emission
-    # wavelengths.
-    return wavelengths, emission_events
+    # apply the emission filter(s)
+    if channel_em := channel.emission:
+        # TODO: see what (error) happens when there is no overlap between spectra
+        fluor_em_rate = fluor_em_rate * channel_em.spectrum
+
+    return fluor_em_rate

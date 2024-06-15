@@ -1,42 +1,28 @@
+from collections import defaultdict
+
+import numpy as np
 import xarray as xr
 
-from .interval_creation import generate_bins
+from .interval_creation import Bin, generate_bins
+from .schema.dimensions import Axis
+
+_BIN_CACHE: defaultdict[str, defaultdict[int, dict[str, list[Bin]]]] = defaultdict(
+    lambda: defaultdict(dict)
+)
 
 
-class EmissionBins:
-    """This class is used to generate and store the emission bins for a given fluorophore and emission filter.
+def bin_events(
+    fluor: str,
+    ex_filter: str,
+    num_bins: int,
+    em_wavelengths: np.ndarray,
+    em_events: np.ndarray,
+) -> xr.DataArray:
+    """Bin the emission data into the given number of bins."""
+    cache = _BIN_CACHE[fluor][num_bins]
+    if (bins := cache.get(ex_filter)) is None:
+        cache[ex_filter] = bins = generate_bins(em_wavelengths, em_events, num_bins)
 
-    This can be cached for a given fluorophore, excitation filter and num bins.
-    """
-
-    data_dict = {}
-
-    @staticmethod
-    def get_bins(fluor: str, ex_filter: str, num_bins: int, em_wavelengths, em_events):
-        if fluor in EmissionBins.data_dict:
-            if ex_filter in EmissionBins.data_dict[fluor]:
-                return EmissionBins.data_dict[fluor][num_bins][ex_filter]
-
-        # generate it and store it.
-        EmissionBins.data_dict[fluor] = EmissionBins.data_dict.get(fluor, {})
-        EmissionBins.data_dict[fluor][num_bins] = EmissionBins.data_dict[fluor].get(
-            num_bins, {}
-        )
-        EmissionBins.data_dict[fluor][num_bins][ex_filter] = generate_bins(
-            em_wavelengths, em_events, num_bins
-        )
-        return EmissionBins.data_dict[fluor][num_bins][ex_filter]
-
-    @staticmethod
-    def bin_events(
-        fluor: str, ex_filter: str, num_bins: int, em_wavelengths, em_events
-    ) -> xr.DataArray:
-        """Bin the emission data into the given number of bins."""
-        bins = EmissionBins.get_bins(
-            fluor, ex_filter, num_bins, em_wavelengths, em_events
-        )
-        bins_arr = [bins.start.magnitude for bins in bins]
-        bins_arr.append(bins[-1].end.magnitude)
-        data = xr.DataArray(em_events, dims=["w"], coords={"w": em_wavelengths})
-        binned_events = data.groupby_bins(data["w"], bins=bins_arr).sum()
-        return binned_events
+    bins_arr = np.asarray([bins.start for bins in bins] + [bins[-1].end])
+    data = xr.DataArray(em_events, dims=[Axis.W], coords={Axis.W: em_wavelengths})
+    return data.groupby_bins(data[Axis.W], bins=bins_arr).sum()

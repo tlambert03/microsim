@@ -1,13 +1,14 @@
 import logging
+from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, cast
 
 import numpy as np
 import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
-from microsim.emission_bins import EmissionBins
+from microsim.emission_bins import bin_events
 from microsim.schema.emission import get_emission_events
 from microsim.util import microsim_cache
 
@@ -66,7 +67,7 @@ class Simulation(SimBaseModel):
         self,
         ground_truth: ArrayProtocol,
         scale: tuple[float, ...],
-        **kwargs: "Unpack[SimluationKwargs]",  # type: ignore
+        **kwargs: "Unpack[SimluationKwargs]",
     ) -> "Self":
         """Shortcut to create a simulation directly from a ground truth array.
 
@@ -95,14 +96,16 @@ class Simulation(SimBaseModel):
     def _xp(self) -> "NumpyAPI":
         return self.settings.backend_module()
 
-    def run(self, *channels: int) -> xr.DataArray:
+    def run(self, channels: int | Sequence[int] | None = None) -> xr.DataArray:
         """Run the simulation and return the result.
 
         This will also write a file to disk if `output` is set.
         """
         truth = self.ground_truth()
-        if not channels:
+        if channels is None:
             channels = tuple(range(len(self.channels)))
+        elif isinstance(channels, int):
+            channels = (channels,)
         images = []
         for channel_idx in channels:
             emission_flux = self.emission_flux(truth, channel_idx=channel_idx)
@@ -144,6 +147,7 @@ class Simulation(SimBaseModel):
             # concat along the F axis
             truth = xr.concat(label_data, dim=Axis.F)
             truth.coords.update({Axis.F: list(self.sample.labels)})
+            truth.attrs.update(unit="counts")
             self._ground_truth = truth
         return self._ground_truth
 
@@ -172,44 +176,55 @@ class Simulation(SimBaseModel):
         elif not isinstance(truth, xr.DataArray):
             raise ValueError("truth must be a DataArray")
 
-        # let the given modality render the as an image (convolved, etc..)
+        if Axis.F not in truth.coords:
+            # we have no fluorophores to calculate
+            return truth
+
         channel = self.channels[channel_idx]  # TODO
         emission_flux_arr = []
-        for fluor_idx in range(len(truth[Axis.F])):
-            fluor = truth[Axis.F][fluor_idx].values.item().fluorophore
-            # get the emission events for the given fluorophore
-            em_wavelengths, em_events = get_emission_events(channel, fluor)
-            binned_events = EmissionBins.bin_events(
-                fluor.name,
-                "test1",
-                self.emission_bins,
-                em_wavelengths,
-                em_events,
-            )
-            # 2 * 128 * 512 * 512 is shape of truth.data
-            # TODO: This is not stochastic. every pixel ideally could have a different binned_events.
-            per_fluor_data = truth.isel(f=fluor_idx)  # .data[None,None,None]
-            per_fluor_data = per_fluor_data.expand_dims(
-                [Axis.W, Axis.C, Axis.F], axis=[0, 1, 2]
-            )
+        for f_idx, fluor_dist in enumerate(truth.coords[Axis.F].values):
+            fluor = cast(FluorophoreDistribution, fluor_dist).fluorophore
+            fluor_counts = truth[{Axis.F: f_idx}]
+            if fluor is None:
+                # TODO
+                # what here?  should we pick a default fluor?
+                emission_flux_arr.append(fluor_counts)
+            else:
+                em_events = get_emission_events(channel, fluor)
+                num_events = em_events.intensity
+                binned_events = bin_events(
+                    fluor.name,
+                    "test1",
+                    self.emission_bins,
+                    em_events.wavelength.magnitude,
+                    getattr(num_events, "magnitude", num_events),
+                )
+                # 2 * 128 * 512 * 512 is shape of truth.data
+                # TODO: This is not stochastic.
+                # every pixel ideally could have a different binned_events.
+                fluor_counts = fluor_counts.expand_dims(
+                    [Axis.W, Axis.C, Axis.F], axis=[0, 1, 2]
+                )
 
-            # NOTE: Here, we get the UnitStrippedWarning warning.
-            per_fluor_data = xr.concat(
-                [per_fluor_data * x.values.item() for x in binned_events], dim=Axis.W
-            )
-            per_fluor_data = per_fluor_data.assign_coords(
-                w=binned_events[f"{Axis.W}_bins"].values
-            )
+                fluor_counts = xr.concat(
+                    [fluor_counts * x.values.item() for x in binned_events],
+                    dim=Axis.W,
+                )
+                fluor_counts = fluor_counts.assign_coords(
+                    w=binned_events[f"{Axis.W}_bins"].values
+                )
             # (W, C, F, Z, Y, X)
-            emission_flux_arr.append(per_fluor_data)
+            emission_flux_arr.append(fluor_counts)
 
         emission_flux_data = xr.concat(emission_flux_arr, dim=Axis.F)
+        emission_flux_data.attrs.update(unit="photon/sec")
         return emission_flux_data
 
     def optical_image(
-        self, emission_flux: "xr.DataArray | None" = None, *, channel_idx: int = 0
+        self, emission_flux: xr.DataArray, *, channel_idx: int = 0
     ) -> xr.DataArray:
         # Input has the following co-ordinates: (W, C, F, Z, Y, X)
+        # let the given modality render the as an image (convolved, etc..)
         result = self.modality.render(
             emission_flux,
             self.channels[channel_idx],
@@ -225,15 +240,13 @@ class Simulation(SimBaseModel):
 
     def digital_image(
         self,
-        optical_image: "xr.DataArray | None" = None,
+        optical_image: xr.DataArray,
         *,
         photons_pp_ps_max: int = 10000,
         exposure_ms: float = 100,
         with_detector_noise: bool = True,
         channel_idx: int = 0,
     ) -> xr.DataArray:
-        if optical_image is None:
-            optical_image = self.optical_image(channel_idx=channel_idx)
         image = optical_image
         # TODO:Multi-fluorophore setup: combine information present in all wavelength
         # intervals.
@@ -245,6 +258,7 @@ class Simulation(SimBaseModel):
                 photon_flux, exposure_ms=exposure_ms, xp=self._xp
             )
             image = gray_values
+        image.attrs.update(unit="gray values")
         return image
 
     def _write(self, result: xr.DataArray) -> None:
