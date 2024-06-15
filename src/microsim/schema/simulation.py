@@ -264,6 +264,8 @@ class Simulation(SimBaseModel):
     def _write(self, result: xr.DataArray) -> None:
         if not self.output_path:
             return
+        if hasattr(result.data, "get"):
+            result = result.copy(data=result.data.get(), deep=False)
         result.attrs["microsim.Simulation"] = self.model_dump_json()
         result.attrs.pop("space", None)
         result.coords[Axis.C] = [c.name for c in result.coords[Axis.C].values]

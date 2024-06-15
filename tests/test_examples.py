@@ -4,6 +4,8 @@ from pathlib import Path
 
 import pytest
 
+from microsim import util
+
 EXAMPLE_DIR = Path(__file__).parent.parent / "examples/"
 skip = {"illum_widget", "fftconv_bench"}
 examples = [
@@ -15,10 +17,11 @@ examples = [
 
 @pytest.mark.usefixtures("mpl_show_patch")
 @pytest.mark.parametrize("fpath", examples, ids=lambda x: x.name)
-def test_examples(fpath: Path, tmp_path: Path) -> None:
+def test_examples(fpath: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Test that all of our examples are still working without warnings."""
+    monkeypatch.setattr(util, "ndview", lambda *args, **kwargs: None)
     if fpath.suffix == ".ipynb":
-        nb = json.loads(fpath.read_text())
+        nb = json.loads(fpath.read_text(encoding="utf-8"))
 
         lines = []
         for cell in nb["cells"]:

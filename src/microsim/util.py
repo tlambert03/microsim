@@ -259,6 +259,8 @@ def ortho_plot(
 
     if hasattr(img, "get"):
         img = img.get()
+    if isinstance(img, xrDataArray) and hasattr(img.data, "get"):
+        img = img.data.get()
     img = np.asarray(img).squeeze()
     if img.ndim != 3:
         raise ValueError("Input must be a 3D array")
@@ -308,3 +310,47 @@ def downsample(
     for d in range(array.ndim):
         reshaped = method(reshaped, -1 * (d + 1), dtype)
     return reshaped
+
+
+def bin_window(
+    array: npt.NDArray,
+    window: int | Sequence[int],
+    dtype: npt.DTypeLike | None = None,
+    method: str | Callable = "sum",
+) -> npt.NDArray:
+    """Bin an nd-array by applying `method` over `window`."""
+    # TODO: deal with xarray
+
+    binwindow = (window,) * array.ndim if isinstance(window, int) else window
+    new_shape = []
+    for s, b in zip(array.shape, binwindow, strict=False):
+        new_shape.extend([s // b, b])
+
+    sliced = array[
+        tuple(slice(0, s * b) for s, b in zip(new_shape[::2], binwindow, strict=True))
+    ]
+    reshaped = np.reshape(sliced, new_shape)
+
+    if callable(method):
+        f = method
+    elif method == "mode":
+        # round and cast to int before calling bincount
+        reshaped = np.round(reshaped).astype(np.int32, casting="unsafe")
+
+        def f(a: npt.NDArray, axis: int) -> npt.NDArray:
+            return np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis, a)
+    else:
+        f = getattr(np, method)
+    axes = tuple(range(1, reshaped.ndim, 2))
+    result = np.apply_over_axes(f, reshaped, axes).squeeze()
+    if dtype is not None:
+        result = result.astype(dtype)
+    return result
+
+
+def norm_name(name: str) -> str:
+    """Normalize a name to something easily searchable."""
+    name = str(name).lower()
+    for char in " -/\\()[],;:!?@#$%^&*+=|<>'\"":
+        name = name.replace(char, "_")
+    return name

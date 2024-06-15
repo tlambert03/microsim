@@ -55,6 +55,10 @@ def test_schema(
         assert type(out1.data).__module__.split(".")[0].startswith(np_backend)
 
     out2 = sim1.run()
+    if hasattr(out1.data, "get"):
+        out1 = out1.copy(data=out1.data.get(), deep=False)
+    if hasattr(out2.data, "get"):
+        out2 = out2.copy(data=out2.data.get(), deep=False)
     if seed is None and np_backend != "jax":
         assert not np.allclose(out1, out2)
     else:
@@ -110,7 +114,10 @@ def test_simulation_from_ground_truth() -> None:
     scale = (0.04, 0.02, 0.02)
     sim = ms.Simulation.from_ground_truth(ground_truth=ground_truth, scale=scale)
     assert sim.truth_space.scale == scale
-    np.testing.assert_array_almost_equal(sim.ground_truth().squeeze(), ground_truth)
+    sim_truth = sim.ground_truth().squeeze()
+    if hasattr(sim_truth.data, "get"):
+        sim_truth = sim_truth.data.get()
+    np.testing.assert_array_almost_equal(sim_truth, ground_truth)
 
 
 def test_pickle(sim1: ms.Simulation) -> None:
