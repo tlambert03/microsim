@@ -67,21 +67,23 @@ class MatsLines(_BaseDistribution):
         if hasattr(c, "get"):
             c = c.get()
         drawlines_bresenham(c, data, self.max_r)
+        # TODO: Multi-fluorophore setup: this addition should be replaced by setting
+        # data in a specific dimension and index of space.
         return space + xp.asarray(data).astype(space.dtype)
 
 
 def drawlines_bresenham(
     segments: npt.NDArray, grid: npt.NDArray, max_r: float = 2.0
 ) -> None:
-    from ._bresenham import bres_draw_segment_2d, bres_draw_segment_3d
+    from microsim._draw import draw_line_2d, draw_line_3d
 
     if grid.ndim == 2:
         for segment in segments:
             y0, x0, y1, x1 = (int(x) for x in segment)
-            bres_draw_segment_2d(x0, y0, x1, y1, grid, max_r)
+            draw_line_2d(x0, y0, x1, y1, grid, max_r)
     elif grid.ndim == 3:
         for segment in segments:
             z0, y0, x0, z1, y1, x1 = (int(x) for x in segment)
-            bres_draw_segment_3d(x0, y0, z0, x1, y1, z1, grid, max_r)
+            draw_line_3d(x0, y0, z0, x1, y1, z1, grid, max_r)
     else:
         raise ValueError(f"grid must be either 2 or 3 dimensional.  Got {grid.ndim}")

@@ -4,6 +4,8 @@ import itertools
 import shutil
 import warnings
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
+from urllib import parse, request
+from urllib.error import HTTPError
 
 import numpy as np
 import numpy.typing as npt
@@ -259,6 +261,8 @@ def ortho_plot(
 
     if hasattr(img, "get"):
         img = img.get()
+    if isinstance(img, xrDataArray) and hasattr(img.data, "get"):
+        img = img.data.get()
     img = np.asarray(img).squeeze()
     if img.ndim != 3:
         raise ValueError("Input must be a 3D array")
@@ -352,3 +356,16 @@ def norm_name(name: str) -> str:
     for char in " -/\\()[],;:!?@#$%^&*+=|<>'\"":
         name = name.replace(char, "_")
     return name
+
+
+def http_get(url: str, params: dict | None = None) -> bytes:
+    """API like requests.get but with standard-library urllib."""
+    if params:
+        url += "?" + parse.urlencode(params)
+
+    with request.urlopen(url) as response:
+        if not 200 <= response.getcode() < 300:
+            raise HTTPError(
+                url, response.getcode(), "HTTP request failed", response.headers, None
+            )
+        return cast(bytes, response.read())
