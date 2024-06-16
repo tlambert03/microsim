@@ -67,6 +67,8 @@ class MatsLines(_BaseDistribution):
         if hasattr(c, "get"):
             c = c.get()
         drawlines_bresenham(c, data, self.max_r)
+        # TODO: Multi-fluorophore setup: this addition should be replaced by setting
+        # data in a specific dimension and index of space.
         return space + xp.asarray(data).astype(space.dtype)
 
 
