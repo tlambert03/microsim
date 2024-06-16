@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, cast
+from typing import Annotated, Any, Literal
 
 import pint
 from annotated_types import Ge
@@ -43,10 +43,10 @@ class _PSFModality(SimBaseModel):
         settings: Settings,
         xp: NumpyAPI,
     ) -> xrDataArray:
-        convolved = cast(NumpyAPI, 0)
+        convolved: Any = 0
         ureg = pint.application_registry.get()  # type: ignore
         for fluor_idx in range(truth.sizes[Axis.F]):
-            convolved_fluor = cast(NumpyAPI, 0)
+            convolved_fluor: Any = 0
             for bin_idx in range(truth.sizes[Axis.W]):
                 binned_flux = truth.isel({Axis.W: bin_idx, Axis.F: fluor_idx})
                 if xp.isnan(xp.sum(binned_flux.data)):
