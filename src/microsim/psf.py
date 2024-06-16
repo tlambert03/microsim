@@ -3,11 +3,12 @@ from __future__ import annotations
 import logging
 import os
 from functools import cache
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import numpy.typing as npt
 import tqdm
+from pint import Quantity
 
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.lens import ObjectiveKwargs, ObjectiveLens
@@ -18,8 +19,6 @@ from ._data_array import ArrayProtocol
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from pathlib import Path
-
-    from pint import Quantity
 
     from microsim._data_array import ArrayProtocol
     from microsim.schema.optical_config import OpticalConfig
@@ -372,7 +371,7 @@ def make_psf(
         em = ex
 
     if em_wvl is None:
-        em_wvl = em.center_wave()
+        em_wvl = cast(Quantity, em.center_wave())
 
     return cached_psf(
         nz=nz,

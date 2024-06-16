@@ -1,6 +1,5 @@
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
 
-import numpy as np
 import pint
 from annotated_types import Ge
 from pint import Quantity
@@ -42,15 +41,15 @@ class _PSFModality(SimBaseModel):
         channel: OpticalConfig,
         objective_lens: ObjectiveLens,
         settings: Settings,
-        xp: NumpyAPI | None = None,
+        xp: NumpyAPI,
     ) -> xrDataArray:
-        convolved = 0
+        convolved = cast(NumpyAPI, 0)
         ureg = pint.application_registry.get()  # type: ignore
         for fluor_idx in range(truth.sizes[Axis.F]):
-            convolved_fluor = 0
+            convolved_fluor = cast(NumpyAPI, 0)
             for bin_idx in range(truth.sizes[Axis.W]):
                 binned_flux = truth.isel({Axis.W: bin_idx, Axis.F: fluor_idx})
-                if np.isnan(np.sum(binned_flux.data)):
+                if xp.isnan(xp.sum(binned_flux.data)):
                     # NOTE: there can be bins for which there is no data in one of the
                     #  fluorophores
                     continue
