@@ -247,7 +247,11 @@ def tiled_convolve(
 
 # convenience function we'll use a couple times
 def ortho_plot(
-    img: ArrayProtocol, gamma: float = 0.5, mip: bool = False, cmap: str = "gray"
+    img: ArrayProtocol,
+    gamma: float = 0.5,
+    mip: bool = False,
+    cmap: str = "gray",
+    show: bool = True,
 ) -> None:
     """Plot XY and XZ slices of a 3D array."""
     import matplotlib.pyplot as plt
@@ -255,6 +259,8 @@ def ortho_plot(
 
     if hasattr(img, "get"):
         img = img.get()
+    if isinstance(img, xrDataArray) and hasattr(img.data, "get"):
+        img = img.data.get()
     img = np.asarray(img).squeeze()
     if img.ndim != 3:
         raise ValueError("Input must be a 3D array")
@@ -266,7 +272,23 @@ def ortho_plot(
     ax[1].imshow(xz, norm=PowerNorm(gamma), cmap=cmap)
     ax[0].set_title("XY slice")
     ax[1].set_title("XZ slice")
-    plt.show()
+    if show:
+        plt.show()
+
+
+def ndview(ary: Any, cmap: Any | None = None) -> None:
+    """View any array using ndv.imshow.
+
+    This function is a thin wrapper around `ndv.imshow`.
+    """
+    try:
+        import ndv
+    except ImportError as e:
+        raise ImportError(
+            "Please `pip install 'ndv[pyqt,vispy]' to use this function."
+        ) from e
+
+    ndv.imshow(ary, cmap=cmap)
 
 
 ArrayType = TypeVar("ArrayType", bound=ArrayProtocol)
@@ -290,22 +312,45 @@ def downsample(
     return reshaped
 
 
-def view_nd(
-    ary: Any, figsize: tuple[int, int] = (1280, 1000), **view_kwargs: Any
-) -> None:
-    try:
-        from pymmcore_widgets._stack_viewer_v2 import StackViewer
-    except ImportError as e:
-        raise ImportError(
-            "This feature uses a not-yet published widget from pymmcore-widgets."
-            "It will eventually be made available outside of pymmcore-widgets..."
-        ) from e
-    from qtpy.QtWidgets import QApplication
+def bin_window(
+    array: npt.NDArray,
+    window: int | Sequence[int],
+    dtype: npt.DTypeLike | None = None,
+    method: str | Callable = "sum",
+) -> npt.NDArray:
+    """Bin an nd-array by applying `method` over `window`."""
+    # TODO: deal with xarray
 
-    app = QApplication.instance() or QApplication([])
+    binwindow = (window,) * array.ndim if isinstance(window, int) else window
+    new_shape = []
+    for s, b in zip(array.shape, binwindow, strict=False):
+        new_shape.extend([s // b, b])
 
-    s = StackViewer(ary, **view_kwargs)
-    s.resize(*figsize)
-    s.show()
+    sliced = array[
+        tuple(slice(0, s * b) for s, b in zip(new_shape[::2], binwindow, strict=True))
+    ]
+    reshaped = np.reshape(sliced, new_shape)
 
-    app.exec()
+    if callable(method):
+        f = method
+    elif method == "mode":
+        # round and cast to int before calling bincount
+        reshaped = np.round(reshaped).astype(np.int32, casting="unsafe")
+
+        def f(a: npt.NDArray, axis: int) -> npt.NDArray:
+            return np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis, a)
+    else:
+        f = getattr(np, method)
+    axes = tuple(range(1, reshaped.ndim, 2))
+    result = np.apply_over_axes(f, reshaped, axes).squeeze()
+    if dtype is not None:
+        result = result.astype(dtype)
+    return result
+
+
+def norm_name(name: str) -> str:
+    """Normalize a name to something easily searchable."""
+    name = str(name).lower()
+    for char in " -/\\()[],;:!?@#$%^&*+=|<>'\"":
+        name = name.replace(char, "_")
+    return name

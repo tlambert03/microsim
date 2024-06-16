@@ -15,7 +15,7 @@ JSON_BLOCK = re.compile(r"```json([^`]*)```", re.DOTALL)
 @pytest.mark.parametrize("doc", DOCS_MDS, ids=lambda p: p.name)
 def test_docs(doc: Path, tmp_path: Path) -> None:
     os.chdir(tmp_path)
-    source = doc.read_text()
+    source = doc.read_text(encoding="utf-8")
 
     if jsons := [dedent(match.group(1)) for match in JSON_BLOCK.finditer(source)]:
         # any json block with a title is written to a file in the test directory

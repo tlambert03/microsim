@@ -3,11 +3,12 @@ from __future__ import annotations
 import logging
 import os
 from functools import cache
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import numpy.typing as npt
 import tqdm
+from pint import Quantity
 
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.lens import ObjectiveKwargs, ObjectiveLens
@@ -350,12 +351,14 @@ def make_psf(
     space: SpaceProtocol,
     channel: OpticalConfig,
     objective: ObjectiveLens,
+    em_wvl: Quantity | None = None,
     pinhole_au: float | None = None,
     max_au_relative: float | None = None,
     xp: NumpyAPI | None = None,
 ) -> ArrayProtocol:
     nz, _ny, nx = space.shape
     dz, _dy, dx = space.scale
+
     ex = channel.excitation
     em = channel.emission
     if ex is None:
@@ -367,13 +370,16 @@ def make_psf(
     if em is None:
         em = ex
 
+    if em_wvl is None:
+        em_wvl = cast(Quantity, em.center_wave())
+
     return cached_psf(
         nz=nz,
         nx=nx,
         dx=dx,
         dz=dz,
         ex_wvl_um=ex.center_wave().to("um").magnitude,
-        em_wvl_um=em.center_wave().to("um").magnitude,
+        em_wvl_um=em_wvl.to("um").magnitude,
         objective=_cast_objective(objective),
         pinhole_au=pinhole_au,
         max_au_relative=max_au_relative,

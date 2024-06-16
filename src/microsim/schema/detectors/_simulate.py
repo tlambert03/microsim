@@ -2,22 +2,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.detectors import Camera, CameraCMOS, CameraEMCCD
+from microsim.util import bin_window
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
-    import numpy.typing as npt
-
-    from microsim._data_array import ArrayProtocol
+    from microsim._data_array import ArrayProtocol, xrDataArray
 
 
 def simulate_camera(
     camera: Camera,
-    image: ArrayProtocol,
+    image: xrDataArray,
     exposure_ms: float = 100,
     binning: int = 1,
     add_poisson: bool = True,
@@ -50,7 +45,7 @@ def simulate_camera(
     exposure_s = exposure_ms / 1000
     incident_photons = image * exposure_s
     # restrict to positive values
-    incident_photons = xp.maximum(incident_photons, 0)
+    incident_photons = xp.maximum(incident_photons.data, 0)
 
     # sample poisson noise
     if add_poisson:
@@ -69,7 +64,7 @@ def simulate_camera(
     total_electrons = xp.minimum(total_electrons, camera.full_well)
 
     if binning > 1 and not isinstance(camera, CameraCMOS):
-        total_electrons = bin(total_electrons, binning, "sum")
+        total_electrons = bin_window(total_electrons, binning, "sum")
 
     # add em gain
     if isinstance(camera, CameraEMCCD):
@@ -80,7 +75,7 @@ def simulate_camera(
 
     # sCMOS binning
     if binning > 1 and isinstance(camera, CameraCMOS):
-        gray_values = bin(gray_values, binning, "mean")
+        gray_values = bin_window(gray_values, binning, "mean")
 
     # ADC saturation
     gray_values = xp.minimum(gray_values, camera.max_intensity)
@@ -92,21 +87,3 @@ def simulate_camera(
         output = gray_values.astype("uint8")
 
     return output
-
-
-def bin(  # noqa: A001
-    array: npt.NDArray,
-    factor: int | Sequence[int],
-    method: str = "sum",
-    dtype: npt.DTypeLike | None = None,
-) -> npt.NDArray:
-    # TODO: deal with xarray
-    f = getattr(np, method)
-    binfactor = (factor,) * array.ndim if isinstance(factor, int) else factor
-    new_shape = []
-    for s, b in zip(array.shape, binfactor, strict=False):
-        new_shape.extend([s // b, b])
-    reshaped = np.reshape(array, new_shape)
-    for d in range(array.ndim):
-        reshaped = f(reshaped, axis=-1 * (d + 1), dtype=dtype)
-    return reshaped
