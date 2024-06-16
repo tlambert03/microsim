@@ -3,8 +3,9 @@ from __future__ import annotations
 from functools import cache, cached_property
 from typing import TYPE_CHECKING, Literal, cast
 
-import requests
 from pydantic import BaseModel, Field
+
+from microsim.util import http_get
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -95,9 +96,8 @@ class NeuronReconstruction(BaseModel):
             # get all rows
             "rma::options[num_rows$eq'all']",
         ]
-        response = requests.get(ALLEN_V2_QUERY, params={"q": ",".join(q)})
-        response.raise_for_status()
-        qr = _QueryResponse.model_validate_json(response.content)
+        response = http_get(ALLEN_V2_QUERY, params={"q": ",".join(q)})
+        qr = _QueryResponse.model_validate_json(response)
         if not qr.success:  # pragma: no cover
             raise ValueError(qr.msg)
         return cast("NeuronReconstruction", qr.msg[0])
@@ -143,9 +143,8 @@ class Specimen(BaseModel):
             # get all rows
             "rma::options[num_rows$eq'all']",
         ]
-        response = requests.get(ALLEN_V2_QUERY, params={"q": ",".join(q)})
-        response.raise_for_status()
-        qr = _QueryResponse.model_validate_json(response.content)
+        response = http_get(ALLEN_V2_QUERY, params={"q": ",".join(q)})
+        qr = _QueryResponse.model_validate_json(response)
         if not qr.success:  # pragma: no cover
             raise ValueError(qr.msg)
         return cast("Specimen", qr.msg[0])
@@ -194,9 +193,8 @@ class ApiCellTypesSpecimenDetail(BaseModel):
             "rma::criteria[nr__reconstruction_type$ne'null']",
             "rma::options[num_rows$eq'all']",
         )
-        response = requests.get(ALLEN_V2_QUERY, params={"q": ",".join(q)})
-        response.raise_for_status()
-        qr = _QueryResponse.model_validate_json(response.content)
+        response = http_get(ALLEN_V2_QUERY, params={"q": ",".join(q)})
+        qr = _QueryResponse.model_validate_json(response)
         if not qr.success:  # pragma: no cover
             raise ValueError(qr.msg)
         return tuple(qr.msg)  # type: ignore[arg-type]

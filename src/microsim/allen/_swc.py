@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
 import numpy as np
-import requests
+
+from microsim.util import http_get
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Sequence
@@ -56,9 +57,8 @@ class SWC:
     @classmethod
     def from_path(cls, path: str | Path) -> SWC:
         if str(path).startswith(("http://", "https://")):
-            response = requests.get(str(path))
-            response.raise_for_status()
-            content = response.text
+            response = http_get(str(path))
+            content = response.decode()
         else:
             content = Path(path).expanduser().read_text()
         return cls.from_string(content)
