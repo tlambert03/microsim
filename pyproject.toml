@@ -33,7 +33,7 @@ dependencies = [
     'pydantic-settings',
     "annotated_types",
     "dm-tree",           # only needed for jax support.  could use an extra instead.
-    "numpy<2.0",
+    "numpy<2.0",         # required until tensorstore >0.1.61
     "pint>=0.23",
     "platformdirs",
     "pydantic>=2.4",
