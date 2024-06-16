@@ -9,7 +9,7 @@ from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
 from microsim.emission_bins import bin_events
-from microsim.schema.emission import get_emission_events
+from microsim.schema._emission import get_emission_events
 from microsim.util import microsim_cache
 
 from ._base_model import SimBaseModel
@@ -199,7 +199,6 @@ class Simulation(SimBaseModel):
                     em_events.wavelength.magnitude,
                     getattr(num_events, "magnitude", num_events),
                 )
-                # 2 * 128 * 512 * 512 is shape of truth.data
                 # TODO: This is not stochastic.
                 # every pixel ideally could have a different binned_events.
                 fluor_counts = fluor_counts.expand_dims(
@@ -233,9 +232,7 @@ class Simulation(SimBaseModel):
             xp=self._xp,
         )
 
-        result = result.expand_dims(Axis.C, axis=0)
         # Co-ordinates: (C, Z, Y, X)
-        result = result.assign_coords({Axis.C: [self.channels[channel_idx]]})
         return result
 
     def digital_image(
