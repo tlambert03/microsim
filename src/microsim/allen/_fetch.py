@@ -69,7 +69,9 @@ class NeuronReconstruction(BaseModel):
                 and f.download_link
             ):
                 return ALLEN_ROOT + f.download_link
-        raise ValueError("No SWC file found for this reconstruction.")
+        raise ValueError(
+            "No SWC file found for this reconstruction."
+        )  # pragma: no cover
 
     @cached_property
     def swc(self) -> SWC:
@@ -96,7 +98,7 @@ class NeuronReconstruction(BaseModel):
         response = requests.get(ALLEN_V2_QUERY, params={"q": ",".join(q)})
         response.raise_for_status()
         qr = _QueryResponse.model_validate_json(response.content)
-        if not qr.success:
+        if not qr.success:  # pragma: no cover
             raise ValueError(qr.msg)
         return cast("NeuronReconstruction", qr.msg[0])
 
@@ -144,7 +146,7 @@ class Specimen(BaseModel):
         response = requests.get(ALLEN_V2_QUERY, params={"q": ",".join(q)})
         response.raise_for_status()
         qr = _QueryResponse.model_validate_json(response.content)
-        if not qr.success:
+        if not qr.success:  # pragma: no cover
             raise ValueError(qr.msg)
         return cast("Specimen", qr.msg[0])
 
@@ -164,7 +166,7 @@ class Specimen(BaseModel):
         """Return the URL for this specimen on the Allen Brain Map."""
         return f"http://celltypes.brain-map.org/experiment/morphology/{self.id}"
 
-    def open_webpage(self) -> None:
+    def open_webpage(self) -> None:  # pragma: no cover
         """Open the webpage for this specimen in the Allen Brain Map."""
         import webbrowser
 
@@ -189,15 +191,13 @@ class ApiCellTypesSpecimenDetail(BaseModel):
         """Fetch details for all Specimens with reconstruction info."""
         q = (
             "model::ApiCellTypesSpecimenDetail",
-            # limit to specimens that have neuron reconstructions
             "rma::criteria[nr__reconstruction_type$ne'null']",
-            # get all rows
             "rma::options[num_rows$eq'all']",
         )
         response = requests.get(ALLEN_V2_QUERY, params={"q": ",".join(q)})
         response.raise_for_status()
         qr = _QueryResponse.model_validate_json(response.content)
-        if not qr.success:
+        if not qr.success:  # pragma: no cover
             raise ValueError(qr.msg)
         return tuple(qr.msg)  # type: ignore[arg-type]
 
