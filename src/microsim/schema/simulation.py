@@ -4,12 +4,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, cast
 
 import numpy as np
+import pandas as pd
 import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
 from microsim.emission_bins import bin_events
-from microsim.schema.emission import get_emission_events
+from microsim.schema._emission import get_emission_events
 from microsim.util import microsim_cache
 
 from ._base_model import SimBaseModel
@@ -185,9 +186,14 @@ class Simulation(SimBaseModel):
         for f_idx, fluor_dist in enumerate(truth.coords[Axis.F].values):
             fluor = cast(FluorophoreDistribution, fluor_dist).fluorophore
             fluor_counts = truth[{Axis.F: f_idx}]
+            fluor_counts = fluor_counts.expand_dims(
+                [Axis.W, Axis.C, Axis.F], axis=[0, 1, 2]
+            )
             if fluor is None:
                 # TODO
                 # what here?  should we pick a default fluor?
+                default_bin = [pd.Interval(left=300, right=800)]
+                fluor_counts = fluor_counts.assign_coords(w=default_bin)
                 emission_flux_arr.append(fluor_counts)
             else:
                 em_events = get_emission_events(channel, fluor)
@@ -199,12 +205,8 @@ class Simulation(SimBaseModel):
                     em_events.wavelength.magnitude,
                     getattr(num_events, "magnitude", num_events),
                 )
-                # 2 * 128 * 512 * 512 is shape of truth.data
                 # TODO: This is not stochastic.
                 # every pixel ideally could have a different binned_events.
-                fluor_counts = fluor_counts.expand_dims(
-                    [Axis.W, Axis.C, Axis.F], axis=[0, 1, 2]
-                )
 
                 fluor_counts = xr.concat(
                     [fluor_counts * x.values.item() for x in binned_events],
@@ -233,9 +235,7 @@ class Simulation(SimBaseModel):
             xp=self._xp,
         )
 
-        result = result.expand_dims(Axis.C, axis=0)
         # Co-ordinates: (C, Z, Y, X)
-        result = result.assign_coords({Axis.C: [self.channels[channel_idx]]})
         return result
 
     def digital_image(

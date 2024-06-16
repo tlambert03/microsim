@@ -1,8 +1,9 @@
 from typing import Annotated, Literal
 
 import numpy as np
+import pint
 from annotated_types import Ge
-from pint import Quantity, UnitRegistry
+from pint import Quantity
 
 from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
 from microsim.psf import make_psf
@@ -44,6 +45,7 @@ class _PSFModality(SimBaseModel):
         xp: NumpyAPI | None = None,
     ) -> xrDataArray:
         convolved = 0
+        ureg = pint.application_registry.get()  # type: ignore
         for fluor_idx in range(truth.sizes[Axis.F]):
             convolved_fluor = 0
             for bin_idx in range(truth.sizes[Axis.W]):
@@ -52,7 +54,7 @@ class _PSFModality(SimBaseModel):
                     # NOTE: there can be bins for which there is no data in one of the
                     #  fluorophores
                     continue
-                em_wvl = binned_flux[Axis.W].values.item().mid * UnitRegistry().nm
+                em_wvl = binned_flux[Axis.W].values.item().mid * ureg.nm
                 psf = self.psf(
                     truth.attrs["space"],
                     channel,
@@ -67,9 +69,10 @@ class _PSFModality(SimBaseModel):
             convolved += convolved_fluor
 
         return DataArray(
-            convolved,
-            dims=[Axis.Z, Axis.Y, Axis.X],
+            convolved[None],
+            dims=[Axis.C, Axis.Z, Axis.Y, Axis.X],
             coords={
+                Axis.C: [channel],
                 Axis.Z: truth.coords[Axis.Z],
                 Axis.Y: truth.coords[Axis.Y],
                 Axis.X: truth.coords[Axis.X],
