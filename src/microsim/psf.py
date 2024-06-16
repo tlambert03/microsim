@@ -372,32 +372,20 @@ def make_psf(
         em = ex
 
     if em_wvl is None:
-        return cached_psf(
-            nz=nz,
-            nx=nx,
-            dx=dx,
-            dz=dz,
-            ex_wvl_um=ex.center_wave().to("um").magnitude,
-            em_wvl_um=em.center_wave().to("um").magnitude,
-            objective=_cast_objective(objective),
-            pinhole_au=pinhole_au,
-            max_au_relative=max_au_relative,
-            xp=NumpyAPI.create(xp),
-        )
+        em_wvl = em.center_wave()
 
-    else:
-        return cached_psf(
-            nz=nz,
-            nx=nx,
-            dx=dx,
-            dz=dz,
-            ex_wvl_um=ex.center_wave().to("um").magnitude,
-            em_wvl_um=em_wvl.to("um").magnitude,
-            objective=_cast_objective(objective),
-            pinhole_au=pinhole_au,
-            max_au_relative=max_au_relative,
-            xp=NumpyAPI.create(xp),
-        )
+    return cached_psf(
+        nz=nz,
+        nx=nx,
+        dx=dx,
+        dz=dz,
+        ex_wvl_um=ex.center_wave().to("um").magnitude,
+        em_wvl_um=em_wvl.to("um").magnitude,
+        objective=_cast_objective(objective),
+        pinhole_au=pinhole_au,
+        max_au_relative=max_au_relative,
+        xp=NumpyAPI.create(xp),
+    )
 
 
 # variant of make_psf that only accepts hashable arguments
