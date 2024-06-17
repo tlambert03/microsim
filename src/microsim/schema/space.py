@@ -1,4 +1,4 @@
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from typing import Any, Protocol, TypeVar
 
 import numpy as np
@@ -170,7 +170,7 @@ class _RelativeSpace(_Space):
 
 
 class DownscaledSpace(_RelativeSpace):
-    downscale: tuple[int, ...] | int | Mapping[str, int]
+    downscale: tuple[int, ...] | int
 
     def rescale(self, img: xrDataArray) -> xrDataArray:
         if isinstance(self.downscale, int | float):

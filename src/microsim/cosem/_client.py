@@ -71,7 +71,7 @@ def _supabase(url: str | None = None, key: str | None = None) -> supabase.Client
             text = response.read().decode("utf-8")
         key = text.split("SUPABASE_KEY:")[1].split(",")[0].strip("\"'")
         url = text.split("SUPABASE_URL:")[1].split(",")[0].strip("\"'")
-    return Client(url, key)  # type: ignore
+    return Client(url, key)
 
 
 @cache

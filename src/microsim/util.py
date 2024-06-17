@@ -266,14 +266,14 @@ def ortho_plot(
     if hasattr(img, "get"):
         img = img.get()
     img = np.asarray(img).squeeze()
-    _cmaps = [cmap] if isinstance(cmap, str) else cmap
+    cmap = [cmap] if isinstance(cmap, str) else cmap
     if img.ndim == 3:
         channels = [img]
-        cmaps = _cmaps if cmap is not None else ["gray"]
+        cm_list = cmap if cmap is not None else ["gray"]
     elif img.ndim == 4:
         channels = list(img)
         colors = ["green", "magenta", "cyan", "yellow", "red", "blue"]
-        cmaps = _cmaps if cmap is not None else colors
+        cm_list = cmap if cmap is not None else colors
     else:
         raise ValueError("Input must be a 3D or 4D array")
 
@@ -282,7 +282,7 @@ def ortho_plot(
     xz_rgb = np.zeros((channels[0].shape[0], channels[0].shape[2], 3))
 
     fig, ax = plt.subplots(ncols=2, figsize=(10, 5))
-    for img, cmap in zip(channels, cmaps, strict=False):
+    for img, cmap in zip(channels, cm_list, strict=False):
         xy = np.max(img, axis=0) if mip else img[img.shape[0] // 2]
         xz = np.max(img, axis=1) if mip else img[:, img.shape[1] // 2]
 
@@ -295,9 +295,9 @@ def ortho_plot(
         xz = np.power(xz, 1 / gamma)
 
         # Convert the grayscale images to RGB using the specified colormap
-        cmap = LinearSegmentedColormap.from_list("_cmap", ["black", cmap])
-        xy_rgb += cmap(xy)[..., :3]  # Exclude alpha channel
-        xz_rgb += cmap(xz)[..., :3]  # Exclude alpha channel
+        cm = LinearSegmentedColormap.from_list("_cmap", ["black", cmap])
+        xy_rgb += cm(xy)[..., :3]  # Exclude alpha channel
+        xz_rgb += cm(xz)[..., :3]  # Exclude alpha channel
 
     # Clip the values to the range [0, 1]
     xy_rgb = np.clip(xy_rgb, 0, 1)

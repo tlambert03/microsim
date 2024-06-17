@@ -97,7 +97,7 @@ class CosemImage(BaseModel):
     def bucket_path(self) -> str:
         return urllib.parse.urlparse(self.url).path
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def scales(self) -> list[str]:
         """Fetch all available scales for the image from s3."""
@@ -293,7 +293,7 @@ class CosemDataset(BaseModel):
                 "To use the thumbnail property, install the imageio package."
             ) from e
 
-        return imread(self.thumbnail_url)
+        return imread(self.thumbnail_url)  # type: ignore [no-any-return]
 
     def read(
         self, image_keys: str | Sequence[str], **read_kwargs: Any
