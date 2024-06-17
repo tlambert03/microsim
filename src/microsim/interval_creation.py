@@ -14,8 +14,8 @@ class Bin(NamedTuple):
     # TODO : include units for each of these. Use pint.
     """One interval."""
 
-    start: float | None = None
-    end: float | None = None
+    start: float
+    end: float
     mean: float | None = None
     mode: float | None = None
 
