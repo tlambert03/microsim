@@ -155,6 +155,8 @@ class CosemImage(BaseModel):
         from microsim.cosem._tstore import read_tensorstore
 
         if bin_mode == "auto":
+            # we convert segmentation images to sum mode, because they are encoded
+            # for instance segmentation, which is not what we want.
             bin_mode = "sum" if self.content_type == "segmentation" else "standard"
         return read_tensorstore(
             self, level=level, transpose=transpose, bin_mode=bin_mode

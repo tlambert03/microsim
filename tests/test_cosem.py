@@ -4,7 +4,9 @@ import numpy as np
 import pytest
 import tensorstore as ts
 
+from microsim import schema as ms
 from microsim.cosem import CosemDataset, CosemImage, CosemView, manage, organelles
+from microsim.schema.optical_config import lib
 
 
 def test_cosem_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -72,23 +74,18 @@ def test_cosem_manage(monkeypatch: pytest.MonkeyPatch) -> None:
         manage.main()
 
 
-def test_cosem_simulation():
-    from microsim import schema as ms
-    from microsim.schema.optical_config import lib
-
+def test_cosem_simulation() -> None:
     sim = ms.Simulation(
-        truth_space=ms.ShapeScaleSpace(
-            shape=(128, 1024, 1024), scale=(0.032, 0.032, 0.032)
-        ),
-        output_space={"downscale": 4},
+        truth_space=ms.ShapeScaleSpace(shape=(32, 256, 256), scale=(0.64, 0.64, 0.64)),
+        output_space={"downscale": 2},
         sample=ms.Sample(
             labels=[
                 ms.FluorophoreDistribution(
-                    distribution=ms.CosemLabel(dataset="jrc_hela-3", image="er-mem_pred"),
+                    distribution={"dataset": "jrc_hela-3", "image": "er-mem_pred"},
                     fluorophore="EGFP",
                 ),
                 ms.FluorophoreDistribution(
-                    distribution=ms.CosemLabel(dataset="jrc_hela-3", image="mito-mem_pred"),
+                    distribution={"dataset": "jrc_hela-3", "image": "mito-mem_pred"},
                     fluorophore="mCherry",
                 ),
             ]
@@ -96,7 +93,7 @@ def test_cosem_simulation():
         channels=[lib.FITC, lib.TRITC],
         modality=ms.Confocal(),
         detector=ms.CameraCCD(qe=0.82, read_noise=6),
-        output_path="h2-cf.tif",
+        settings=ms.Settings(max_psf_radius_aus=2),
     )
 
     sim.run()

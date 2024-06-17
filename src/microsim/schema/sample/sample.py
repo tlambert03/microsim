@@ -16,7 +16,7 @@ DistributionTypes = get_args(Distribution)
 
 
 class FluorophoreDistribution(SimBaseModel):
-    distribution: Distribution = Field(..., discriminator="type")
+    distribution: Distribution = Field(...)
     fluorophore: Fluorophore | None = None
 
     def cache_path(self) -> tuple[str, ...] | None:

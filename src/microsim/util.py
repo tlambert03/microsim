@@ -310,7 +310,7 @@ def ortho_plot(
     try:
         fig.set_layout_engine("tight")
     except AttributeError:
-        fig.set_tight_layout(True)  # type: ignore [attr-defined]
+        fig.set_tight_layout(True)  # type: ignore
 
     if title:
         fig.suptitle(title)

@@ -26,9 +26,15 @@ Dataset = Annotated[CosemDataset, BeforeValidator(_validate_dataset)]
 
 
 class CosemLabel(_BaseDistribution):
+    """Renders ground truth based on a specific layer from a COSEM dataset.
+
+    Go to https://openorganelle.janelia.org/datasets/ to find a dataset, and then
+    chose a label from the dataset to render.
+    """
+
     type: Literal["cosem"] = "cosem"
     dataset: str
-    image: str
+    label: str
     # position None implies crop to center
     position: tuple[float, float, float] | None = None
 
@@ -37,7 +43,7 @@ class CosemLabel(_BaseDistribution):
             pos = "_".join(f"{p:.4f}" for p in self.position)
         else:
             pos = "center"
-        return (self.type, self.dataset, self.image, pos)
+        return (self.type, self.dataset, self.label, pos)
 
     @computed_field(repr=False)  # type: ignore
     @cached_property
@@ -47,7 +53,16 @@ class CosemLabel(_BaseDistribution):
     @computed_field(repr=False)  # type: ignore
     @cached_property
     def cosem_image(self) -> CosemImage:
-        return self.cosem_dataset.image(name=self.image)
+        try:
+            return self.cosem_dataset.image(name=self.label)
+        except ValueError:
+            # if a description is provided, look for something with that description
+            # we default to looking through prediction layers here, since they provide
+            # and "interesting" ground truth.  but segmentation_layers could be used
+            for layer in self.cosem_dataset.prediction_layers:
+                if layer.description.lower() == self.label.lower():
+                    return layer
+            raise
 
     @model_validator(mode="after")
     def _verify(self) -> "CosemLabel":
