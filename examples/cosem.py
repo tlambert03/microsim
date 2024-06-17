@@ -20,8 +20,7 @@ sim = ms.Simulation(
     channels=[lib.FITC, lib.DSRED],
     modality=ms.Widefield(),
     detector=ms.CameraCCD(qe=0.82, read_noise=6),
-    output_path="h2-cf.tif",
     settings=ms.Settings(max_psf_radius_aus=2),
 )
 
-ndview(sim.run())
+ndview(sim.digital_image())

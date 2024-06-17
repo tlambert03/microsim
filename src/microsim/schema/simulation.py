@@ -220,8 +220,10 @@ class Simulation(SimBaseModel):
         return emission_flux_data
 
     def optical_image(
-        self, emission_flux: xr.DataArray, *, channel_idx: int = 0
+        self, emission_flux: xr.DataArray | None = None, *, channel_idx: int = 0
     ) -> xr.DataArray:
+        if emission_flux is None:
+            emission_flux = self.emission_flux()
         # Input has the following co-ordinates: (W, C, F, Z, Y, X)
         # let the given modality render the as an image (convolved, etc..)
         result = self.modality.render(
@@ -237,13 +239,15 @@ class Simulation(SimBaseModel):
 
     def digital_image(
         self,
-        optical_image: xr.DataArray,
+        optical_image: xr.DataArray | None = None,
         *,
         photons_pp_ps_max: int = 10000,
         exposure_ms: float = 100,
         with_detector_noise: bool = True,
         channel_idx: int = 0,
     ) -> xr.DataArray:
+        if optical_image is None:
+            optical_image = self.optical_image(channel_idx=channel_idx)
         image = optical_image
         # TODO:Multi-fluorophore setup: combine information present in all wavelength
         # intervals.

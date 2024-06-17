@@ -307,7 +307,7 @@ def ortho_plot(
     ax[1].imshow(xz_rgb)
     ax[0].set_title("XY slice")
     ax[1].set_title("XZ slice")
-    fig.set_tight_layout(True)
+    fig.set_layout_engine("tight")
     if title:
         fig.suptitle(title)
     if show:
