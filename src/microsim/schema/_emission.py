@@ -68,7 +68,7 @@ def get_excitation_rate(
         raise NotImplementedError("Fluorophore has no excitation spectrum.")
 
     if (ext_coeff := fluor.extinction_coefficient) is None:
-        ext_coeff = 55000
+        ext_coeff = _ensure_quantity(55000, "cm^2/mol")
         warnings.warn(
             "No extinction coefficient provided for fluorophore, "
             "using 55,000 M^-1 * cm^-1.",

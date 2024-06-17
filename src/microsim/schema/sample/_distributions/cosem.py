@@ -1,5 +1,5 @@
 from functools import cached_property
-from typing import TYPE_CHECKING, Annotated, Any, Literal, Self, cast
+from typing import TYPE_CHECKING, Annotated, Any, Literal, cast
 
 import numpy as np
 from pydantic import BeforeValidator, computed_field, model_validator
@@ -10,7 +10,7 @@ from microsim.schema.backend import NumpyAPI
 from ._base import _BaseDistribution
 
 if TYPE_CHECKING:
-    from microsim._data_array import DataArray
+    from microsim._data_array import xrDataArray
     from microsim.schema.space import Space
 
 
@@ -50,7 +50,7 @@ class Cosem(_BaseDistribution):
         return self.cosem_dataset.image(name=self.image)
 
     @model_validator(mode="after")
-    def _verify(self) -> Self:
+    def _verify(self) -> "Cosem":
         img = self.cosem_image  # will raise if not found
         if img.content_type not in {"segmentation", "prediction"}:
             raise ValueError(
@@ -59,7 +59,7 @@ class Cosem(_BaseDistribution):
             )
         return self
 
-    def render(self, space: "DataArray", xp: NumpyAPI | None = None) -> "DataArray":
+    def render(self, space: "xrDataArray", xp: NumpyAPI | None = None) -> "xrDataArray":
         xp = xp or NumpyAPI()
 
         # FIXME: ugly
