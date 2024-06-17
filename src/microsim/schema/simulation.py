@@ -9,8 +9,7 @@ import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
-from microsim.emission_bins import bin_events
-from microsim.schema._emission import get_emission_events
+from microsim.schema._emission import bin_events, get_emission_events
 from microsim.util import microsim_cache
 
 from ._base_model import SimBaseModel
@@ -199,8 +198,6 @@ class Simulation(SimBaseModel):
                 em_events = get_emission_events(channel, fluor)
                 num_events = em_events.intensity
                 binned_events = bin_events(
-                    fluor.name,
-                    "test1",
                     self.emission_bins,
                     em_events.wavelength.magnitude,
                     getattr(num_events, "magnitude", num_events),
