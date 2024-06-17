@@ -5,8 +5,9 @@ import numpy as np
 from pydantic import BeforeValidator, computed_field, model_validator
 
 from microsim.cosem.models import CosemDataset, CosemImage
-from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
+
+from ._base import _BaseDistribution
 
 if TYPE_CHECKING:
     from microsim._data_array import DataArray
@@ -24,7 +25,7 @@ def _validate_dataset(v: Any) -> CosemDataset:
 Dataset = Annotated[CosemDataset, BeforeValidator(_validate_dataset)]
 
 
-class Cosem(SimBaseModel):
+class Cosem(_BaseDistribution):
     type: Literal["cosem"] = "cosem"
     dataset: str
     image: str

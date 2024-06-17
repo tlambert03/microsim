@@ -64,5 +64,4 @@ def _generate_bins_equal_area(x: np.ndarray, y: np.ndarray, num_bins: int) -> li
         mid_idx = bisect_left(cumsum, mid_val)
         bins.append(Bin(start=x[start_idx], end=x[end_idx], mean=x[mid_idx]))
         start_val = end_val
-
     return bins

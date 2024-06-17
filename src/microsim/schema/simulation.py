@@ -253,7 +253,11 @@ class Simulation(SimBaseModel):
         if self.output_space is not None:
             image = self.output_space.rescale(image)
         if self.detector is not None and with_detector_noise:
-            photon_flux = image * photons_pp_ps_max / self._xp.max(image.data)
+            im_max = self._xp.max(image.data)
+            if not np.any(im_max):
+                photon_flux = image
+            else:
+                photon_flux = image * photons_pp_ps_max / im_max
             gray_values = self.detector.render(
                 photon_flux, exposure_ms=exposure_ms, xp=self._xp
             )

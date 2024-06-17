@@ -19,10 +19,11 @@ def bin_events(
     em_events: np.ndarray,
 ) -> xr.DataArray:
     """Bin the emission data into the given number of bins."""
-    cache = _BIN_CACHE[fluor][num_bins]
-    if (bins := cache.get(ex_filter)) is None:
-        cache[ex_filter] = bins = generate_bins(em_wavelengths, em_events, num_bins)
-
-    bins_arr = np.asarray([bins.start for bins in bins] + [bins[-1].end])
+    # cache = _BIN_CACHE[fluor][num_bins]
+    # if (bins := cache.get(ex_filter)) is None:
+    # cache[ex_filter] =
+    bins = generate_bins(em_wavelengths, em_events, num_bins)
+    bins = sorted(set([bins.start for bins in bins] + [bins[-1].end]))
+    bins_arr = np.asarray(bins)
     data = xr.DataArray(em_events, dims=[Axis.W], coords={Axis.W: em_wavelengths})
     return data.groupby_bins(data[Axis.W], bins=bins_arr).sum()

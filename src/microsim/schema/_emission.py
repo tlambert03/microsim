@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -63,7 +64,12 @@ def get_excitation_rate(
         raise NotImplementedError("Fluorophore has no excitation spectrum.")
 
     if (ext_coeff := fluor.extinction_coefficient) is None:
-        raise NotImplementedError("Fluorophore has no extinction coefficient.")
+        ext_coeff = 55000
+        warnings.warn(
+            "No extinction coefficient provided for fluorophore, "
+            "using 55,000 M^-1 * cm^-1.",
+            stacklevel=2,
+        )
 
     # TODO: derive light power from model
     irradiance = ex_filter_spectrum * _ensure_quantity(light_power, "W/cm^2")

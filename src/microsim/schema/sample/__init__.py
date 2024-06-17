@@ -1,6 +1,6 @@
-from .cosem import Cosem
+from ._distributions.cosem import Cosem
+from ._distributions.matslines import MatsLines
 from .fluorophore import Fluorophore
-from .matslines._matslines import MatsLines
 from .sample import Distribution, FluorophoreDistribution, Sample
 
 __all__ = [

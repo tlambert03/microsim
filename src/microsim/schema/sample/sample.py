@@ -6,10 +6,10 @@ from microsim._data_array import ArrayProtocol, xrDataArray
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 
-from .cosem import Cosem
-from .direct import FixedArrayTruth
+from ._distributions.cosem import Cosem
+from ._distributions.direct import FixedArrayTruth
+from ._distributions.matslines import MatsLines
 from .fluorophore import Fluorophore
-from .matslines import MatsLines
 
 Distribution = MatsLines | Cosem | FixedArrayTruth
 DistributionTypes = get_args(Distribution)

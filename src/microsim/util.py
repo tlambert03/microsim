@@ -252,28 +252,64 @@ def ortho_plot(
     img: ArrayProtocol,
     gamma: float = 0.5,
     mip: bool = False,
-    cmap: str = "gray",
+    cmap: str | list[str] | None = None,
+    *,
+    title: str | None = None,
     show: bool = True,
 ) -> None:
     """Plot XY and XZ slices of a 3D array."""
     import matplotlib.pyplot as plt
-    from matplotlib.colors import PowerNorm
+    from matplotlib.colors import LinearSegmentedColormap
 
+    if isinstance(img, xrDataArray):
+        img = img.data
     if hasattr(img, "get"):
         img = img.get()
-    if isinstance(img, xrDataArray) and hasattr(img.data, "get"):
-        img = img.data.get()
     img = np.asarray(img).squeeze()
-    if img.ndim != 3:
-        raise ValueError("Input must be a 3D array")
+    _cmaps = [cmap] if isinstance(cmap, str) else cmap
+    if img.ndim == 3:
+        channels = [img]
+        cmaps = _cmaps if cmap is not None else ["gray"]
+    elif img.ndim == 4:
+        channels = list(img)
+        colors = ["green", "magenta", "cyan", "yellow", "red", "blue"]
+        cmaps = _cmaps if cmap is not None else colors
+    else:
+        raise ValueError("Input must be a 3D or 4D array")
 
-    _, ax = plt.subplots(ncols=2, figsize=(10, 5))
-    xy = img.max(axis=0) if mip else img[img.shape[0] // 2]
-    xz = img.max(axis=1) if mip else img[:, img.shape[1] // 2]
-    ax[0].imshow(xy, norm=PowerNorm(gamma), cmap=cmap)
-    ax[1].imshow(xz, norm=PowerNorm(gamma), cmap=cmap)
+    # Initialize RGB images for xy and xz
+    xy_rgb = np.zeros((channels[0].shape[1], channels[0].shape[2], 3))
+    xz_rgb = np.zeros((channels[0].shape[0], channels[0].shape[2], 3))
+
+    fig, ax = plt.subplots(ncols=2, figsize=(10, 5))
+    for img, cmap in zip(channels, cmaps, strict=False):
+        xy = np.max(img, axis=0) if mip else img[img.shape[0] // 2]
+        xz = np.max(img, axis=1) if mip else img[:, img.shape[1] // 2]
+
+        # Normalize the images to the range [0, 1]
+        xy = (xy - xy.min()) / (xy.max() - xy.min())
+        xz = (xz - xz.min()) / (xz.max() - xz.min())
+
+        # Apply gamma correction
+        xy = np.power(xy, 1 / gamma)
+        xz = np.power(xz, 1 / gamma)
+
+        # Convert the grayscale images to RGB using the specified colormap
+        cmap = LinearSegmentedColormap.from_list("_cmap", ["black", cmap])
+        xy_rgb += cmap(xy)[..., :3]  # Exclude alpha channel
+        xz_rgb += cmap(xz)[..., :3]  # Exclude alpha channel
+
+    # Clip the values to the range [0, 1]
+    xy_rgb = np.clip(xy_rgb, 0, 1)
+    xz_rgb = np.clip(xz_rgb, 0, 1)
+
+    ax[0].imshow(xy_rgb)
+    ax[1].imshow(xz_rgb)
     ax[0].set_title("XY slice")
     ax[1].set_title("XZ slice")
+    fig.set_tight_layout(True)
+    if title:
+        fig.suptitle(title)
     if show:
         plt.show()
 
@@ -285,11 +321,14 @@ def ndview(ary: Any, cmap: Any | None = None) -> None:
     """
     try:
         import ndv
+        import qtpy
+        import vispy.app
     except ImportError as e:
         raise ImportError(
             "Please `pip install 'ndv[pyqt,vispy]' to use this function."
         ) from e
 
+    vispy.use(qtpy.API_NAME)
     ndv.imshow(ary, cmap=cmap)
 
 
