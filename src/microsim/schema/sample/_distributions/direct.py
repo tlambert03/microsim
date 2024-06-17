@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from microsim.schema.backend import NumpyAPI
 
-from ._distribution import _BaseDistribution
+from ._base import _BaseDistribution
 
 if TYPE_CHECKING:
     from microsim._data_array import xrDataArray

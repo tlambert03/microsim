@@ -4,7 +4,9 @@ import numpy as np
 import pytest
 import tensorstore as ts
 
+from microsim import schema as ms
 from microsim.cosem import CosemDataset, CosemImage, CosemView, manage, organelles
+from microsim.schema.optical_config import lib
 
 
 def test_cosem_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -70,3 +72,28 @@ def test_cosem_manage(monkeypatch: pytest.MonkeyPatch) -> None:
     with monkeypatch.context() as m:
         m.setattr(sys, "argv", ["", "clear_cache"])
         manage.main()
+
+
+def test_cosem_simulation() -> None:
+    sim = ms.Simulation(
+        truth_space=ms.ShapeScaleSpace(shape=(32, 256, 256), scale=(0.64, 0.64, 0.64)),
+        output_space={"downscale": 2},
+        sample=ms.Sample(
+            labels=[
+                ms.FluorophoreDistribution(
+                    distribution={"dataset": "jrc_hela-3", "image": "er-mem_pred"},
+                    fluorophore="EGFP",
+                ),
+                ms.FluorophoreDistribution(
+                    distribution={"dataset": "jrc_hela-3", "image": "mito-mem_pred"},
+                    fluorophore="mCherry",
+                ),
+            ]
+        ),
+        channels=[lib.FITC, lib.TRITC],
+        modality=ms.Confocal(),
+        detector=ms.CameraCCD(qe=0.82, read_noise=6),
+        settings=ms.Settings(max_psf_radius_aus=2),
+    )
+
+    sim.run()

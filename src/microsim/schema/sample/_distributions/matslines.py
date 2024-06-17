@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 from microsim.schema.backend import NumpyAPI
-from microsim.schema.sample._distribution import _BaseDistribution
+from microsim.schema.sample._distributions._base import _BaseDistribution
 
 if TYPE_CHECKING:
     import numpy.typing as npt

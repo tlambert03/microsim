@@ -7,7 +7,11 @@ import pytest
 from microsim import util
 
 EXAMPLE_DIR = Path(__file__).parent.parent / "examples/"
-skip = {"illum_widget", "fftconv_bench", "sim3d"}
+skip = {
+    "illum_widget",
+    "fftconv_bench",
+    "sim3d",  # very slow, and not really used yet
+}
 examples = [
     f
     for f in EXAMPLE_DIR.glob("*")

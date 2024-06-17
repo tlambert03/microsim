@@ -137,7 +137,7 @@ def create_dataarray(
     if attrs is None:
         attrs = dict(getattr(element, "attrs", {}))
     if use_dask:
-        element = da.from_array(element, chunks=chunks, inline_array=True)  # type: ignore
+        element = da.from_array(element, chunks=chunks, inline_array=True)
     result = xr.DataArray(element, coords=coords, attrs=attrs, name=name)
     return result
 

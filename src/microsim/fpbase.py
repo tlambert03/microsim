@@ -44,8 +44,8 @@ class State(BaseModel):
     id: int
     exMax: Nanometers
     emMax: Nanometers
-    extCoeff: ExtCoeff
-    qy: float
+    extCoeff: ExtCoeff | None = None
+    qy: float | None = None
     spectra: list[Spectrum]
     lifetime: Nanoseconds | None = None
 

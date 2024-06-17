@@ -97,7 +97,7 @@ class CosemImage(BaseModel):
     def bucket_path(self) -> str:
         return urllib.parse.urlparse(self.url).path
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def scales(self) -> list[str]:
         """Fetch all available scales for the image from s3."""
@@ -155,6 +155,8 @@ class CosemImage(BaseModel):
         from microsim.cosem._tstore import read_tensorstore
 
         if bin_mode == "auto":
+            # we convert segmentation images to sum mode, because they are encoded
+            # for instance segmentation, which is not what we want.
             bin_mode = "sum" if self.content_type == "segmentation" else "standard"
         return read_tensorstore(
             self, level=level, transpose=transpose, bin_mode=bin_mode
@@ -293,7 +295,7 @@ class CosemDataset(BaseModel):
                 "To use the thumbnail property, install the imageio package."
             ) from e
 
-        return imread(self.thumbnail_url)
+        return imread(self.thumbnail_url)  # type: ignore [no-any-return]
 
     def read(
         self, image_keys: str | Sequence[str], **read_kwargs: Any

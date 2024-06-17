@@ -262,12 +262,12 @@ def _sum_bin_chunk(
     dest_slice = tuple(slice(*x) for x in dest)
     block = in_arr[src_slice]
     # TODO: see if tensorstore has a better way to check if a block is empty
-    if np.any(block):  # type: ignore
+    if np.any(block):
         binned = block_bin(block.translate_to[0, 0, 0])
         if np.any(binned):
             # note, we could also use .write(), which is async...
             # but we're already in a thread, so it's not necessary?
-            out_arr[dest_slice] = binned.astype(out_arr.dtype.numpy_dtype)  # type: ignore
+            out_arr[dest_slice] = binned.astype(out_arr.dtype.numpy_dtype)
 
 
 def block_bin(
@@ -294,6 +294,6 @@ def block_bin(
     sliced = block[slc]
 
     # reshape the block and sum the values
-    reshaped_block = np.reshape(sliced, new_shape)  # type: ignore
+    reshaped_block = np.reshape(sliced, new_shape)
     axes = tuple(range(1, reshaped_block.ndim, 2))
     return ufunc(reshaped_block, axis=axes)
