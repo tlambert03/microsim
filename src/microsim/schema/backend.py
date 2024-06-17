@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Literal, TypeVar
 
 import numpy as np
 import numpy.typing as npt
+import xarray as xr
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -240,6 +241,10 @@ class CupyAPI(NumpyAPI):
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
     ) -> ArrT:
+        if isinstance(a, xr.DataArray):
+            a = a.data
+        if isinstance(b, xr.DataArray):
+            b = b.data
         return self.signal.fftconvolve(a, b, mode=mode)  # type: ignore
 
 
