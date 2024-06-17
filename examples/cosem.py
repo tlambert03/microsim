@@ -8,11 +8,11 @@ sim = ms.Simulation(
     sample=ms.Sample(
         labels=[
             ms.FluorophoreDistribution(
-                distribution=ms.Cosem(dataset="jrc_hela-3", image="er-mem_pred"),
+                distribution=ms.CosemLabel(dataset="jrc_hela-3", image="er-mem_pred"),
                 fluorophore="EGFP",
             ),
             ms.FluorophoreDistribution(
-                distribution=ms.Cosem(dataset="jrc_hela-3", image="mito-mem_pred"),
+                distribution=ms.CosemLabel(dataset="jrc_hela-3", image="mito-mem_pred"),
                 fluorophore="mCherry",
             ),
         ]

@@ -25,7 +25,7 @@ def _validate_dataset(v: Any) -> CosemDataset:
 Dataset = Annotated[CosemDataset, BeforeValidator(_validate_dataset)]
 
 
-class Cosem(_BaseDistribution):
+class CosemLabel(_BaseDistribution):
     type: Literal["cosem"] = "cosem"
     dataset: str
     image: str
@@ -50,7 +50,7 @@ class Cosem(_BaseDistribution):
         return self.cosem_dataset.image(name=self.image)
 
     @model_validator(mode="after")
-    def _verify(self) -> "Cosem":
+    def _verify(self) -> "CosemLabel":
         img = self.cosem_image  # will raise if not found
         if img.content_type not in {"segmentation", "prediction"}:
             raise ValueError(
