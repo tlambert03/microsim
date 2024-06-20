@@ -1,5 +1,6 @@
 import concurrent.futures
 import logging
+import os
 import shutil
 from collections.abc import Callable, Sequence
 from itertools import product
@@ -7,10 +8,16 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import numpy as np
-import tensorstore as ts
 import tqdm
 
 from ._client import COSEM_BUCKET, COSEM_CACHE
+
+# https://github.com/google/tensorstore/issues/171
+RED_HAT_CA = "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"
+if os.path.exists(RED_HAT_CA) and "TENSORSTORE_CA_BUNDLE" not in os.environ:
+    os.environ["TENSORSTORE_CA_BUNDLE"] = RED_HAT_CA
+
+import tensorstore as ts  # noqa: E402
 
 if TYPE_CHECKING:
     from .models import CosemImage
