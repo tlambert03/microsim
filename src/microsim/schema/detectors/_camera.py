@@ -116,7 +116,7 @@ class CameraCMOS(Camera): ...
 
 
 ICX285 = CameraCCD(
-    photodiode_size=6.45,
+    # photodiode_size=6.45,
     qe=0.70,
     gain=1,
     full_well=18000,
@@ -126,6 +126,6 @@ ICX285 = CameraCCD(
     readout_rate=14,
     bit_depth=12,
     offset=100,
-    npixels_h=1344,
-    npixels_v=1024,
+    # npixels_h=1344,
+    # npixels_v=1024,
 )
