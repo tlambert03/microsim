@@ -70,7 +70,7 @@ class _FilterBase(SimBaseModel):
 
         return SpectrumFilter(
             name=filter.ownerFilter.name,
-            placemen=placement,
+            placement=placement,
             transmission=Spectrum.from_fpbase(filter),
         )
 
