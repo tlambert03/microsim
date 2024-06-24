@@ -121,7 +121,11 @@ disallow_any_generics = false
 disallow_subclassing_any = false
 show_error_codes = true
 pretty = true
-plugins = "pydantic.mypy"
+plugins = ["pydantic.mypy"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = false
 
 # [[tool.mypy.overrides]]
 # module = ["numpy.*",]
