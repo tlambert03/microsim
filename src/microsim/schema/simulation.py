@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, cast
 
@@ -95,13 +96,16 @@ class Simulation(SimBaseModel):
     def _xp(self) -> "NumpyAPI":
         return self.settings.backend_module()
 
-    def run(self) -> xr.DataArray:
+    def run(self, channels: int | Sequence[int] | None = None) -> xr.DataArray:
         """Run the simulation and return the result.
 
         This will also write a file to disk if `output` is set.
         """
         truth = self.ground_truth()
-        channels = tuple(range(len(self.channels)))
+        if channels is None:
+            channels = tuple(range(len(self.channels)))
+        elif isinstance(channels, int):
+            channels = (channels,)
         images = []
         for channel_idx in channels:
             emission_flux = self.emission_flux(truth, channel_idx=channel_idx)
@@ -112,13 +116,7 @@ class Simulation(SimBaseModel):
         return image
 
     def ground_truth(self) -> xr.DataArray:
-        """Return the ground truth data.
-
-        Ground truth data is the result of rendering each label
-        (FluorophoreDistribution) in the sample into the truth_space.
-
-        The result is a DataArray with dimensions (F, Z, Y, X).
-        """
+        """Return the ground truth data."""
         if not hasattr(self, "_ground_truth"):
             xp = self._xp
             # make empty space into which we'll add the ground truth
@@ -149,14 +147,26 @@ class Simulation(SimBaseModel):
             # concat along the F axis
             truth = xr.concat(label_data, dim=Axis.F)
             truth.coords.update({Axis.F: list(self.sample.labels)})
-            truth.attrs.update(unit="counts", stage="ground_truth")
+            truth.attrs.update(unit="counts")
             self._ground_truth = truth
         return self._ground_truth
 
-    def illumination(self) -> xr.DataArray:
-        """Generate the illumination irradiance."""
-        # TODO: derive light power from model
-        ex_filter_spectrum * _ensure_quantity(light_power, "W/cm^2")
+    def _truth_cache_path(
+        self,
+        label: "FluorophoreDistribution",
+        truth_space: "Space",
+        seed: int | None,
+    ) -> Path | None:
+        if not (lbl_path := label.cache_path()):
+            return None
+
+        truth_cache = Path(microsim_cache("ground_truth"), *lbl_path)
+        shape = f'shape{"_".join(str(x) for x in truth_space.shape)}'
+        scale = f'scale{"_".join(str(x) for x in truth_space.scale)}'
+        truth_cache = truth_cache / shape / scale
+        if label.distribution.is_random():
+            truth_cache = truth_cache / f"seed{seed}"
+        return truth_cache
 
     def emission_flux(
         self, truth: "xr.DataArray | None" = None, *, channel_idx: int = 0
@@ -204,7 +214,7 @@ class Simulation(SimBaseModel):
                 )
             # (W, C, F, Z, Y, X)
             emission_flux_arr.append(fluor_counts)
-        breakpoint()
+
         emission_flux_data = xr.concat(emission_flux_arr, dim=Axis.F)
         emission_flux_data.attrs.update(unit="photon/sec")
         return emission_flux_data
@@ -272,20 +282,3 @@ class Simulation(SimBaseModel):
             import tifffile as tf
 
             tf.imwrite(self.output_path, np.asanyarray(result))
-
-    def _truth_cache_path(
-        self,
-        label: "FluorophoreDistribution",
-        truth_space: "Space",
-        seed: int | None,
-    ) -> Path | None:
-        if not (lbl_path := label.cache_path()):
-            return None
-
-        truth_cache = Path(microsim_cache("ground_truth"), *lbl_path)
-        shape = f'shape{"_".join(str(x) for x in truth_space.shape)}'
-        scale = f'scale{"_".join(str(x) for x in truth_space.scale)}'
-        truth_cache = truth_cache / shape / scale
-        if label.distribution.is_random():
-            truth_cache = truth_cache / f"seed{seed}"
-        return truth_cache
