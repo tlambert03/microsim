@@ -9,7 +9,10 @@ import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
-from microsim.schema._emission import bin_events, get_emission_events
+from microsim.schema._emission import (
+    bin_events,
+    get_emission_events,
+)
 from microsim.util import microsim_cache
 
 from ._base_model import SimBaseModel
@@ -150,6 +153,11 @@ class Simulation(SimBaseModel):
             truth.attrs.update(unit="counts")
             self._ground_truth = truth
         return self._ground_truth
+
+    def irradiance(self) -> xr.DataArray:
+        """Return the irradiance data."""
+        for _channel in self.channels:
+            pass
 
     def _truth_cache_path(
         self,

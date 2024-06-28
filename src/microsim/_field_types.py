@@ -153,3 +153,6 @@ Nanometers = Annotated[PlainQuantity, BeforeValidator(_validators.validate_nm)]
 ExtCoeff = Annotated[PlainQuantity, BeforeValidator(_validators.validate_ext_coeff)]
 Nanoseconds = Annotated[PlainQuantity, BeforeValidator(_validators.validate_ns)]
 Seconds = Annotated[PlainQuantity, BeforeValidator(_validators.validate_seconds)]
+
+Watts = Annotated[PlainQuantity, BeforeValidator(_validators.validate_watts)]
+Watts_cm2 = Annotated[PlainQuantity, BeforeValidator(_validators.validate_irradiance)]
