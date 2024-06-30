@@ -20,7 +20,7 @@ PLANCK = h * ureg.joule * ureg.second
 C = c * ureg.meter / ureg.second
 
 
-def _ensure_quantity(value: Any, units: str, strict:bool=False) -> pint.Quantity:
+def _ensure_quantity(value: Any, units: str, strict: bool = False) -> pint.Quantity:
     """Helper function to ensure that a value is a pint Quantity with `units`."""
     if isinstance(value, pint.Quantity):
         quant = value
