@@ -20,11 +20,12 @@ PLANCK = h * ureg.joule * ureg.second
 C = c * ureg.meter / ureg.second
 
 
-def _ensure_quantity(value: Any, units: str) -> pint.Quantity:
+def _ensure_quantity(value: Any, units: str, strict: bool = False) -> pint.Quantity:
     """Helper function to ensure that a value is a pint Quantity with `units`."""
     if isinstance(value, pint.Quantity):
         quant = value
     else:
+        assert not strict, f"Expected a pint.Quantity with units {units}, got {value}"
         quant = ureg.Quantity(value)
     if quant.dimensionless:
         quant *= ureg.Quantity(units)
@@ -35,13 +36,8 @@ def _ensure_quantity(value: Any, units: str) -> pint.Quantity:
 
 
 def ec_to_cross_section(ec: Any) -> pint.Quantity:
-    """Gives cross section in cm^2 from extinction coefficient in M^-1 * cm^-1."""
-    ec = _ensure_quantity(ec, "cm^2/mol")
-    # x1000?
-    # this came from calculations elsewhere, and looking at wikipedia
-    # and looking at Nathan Shaner's code
-    # need to double check whether it's still correct with our units
-    ec = ec * 1000
+    """Gives cross section in cm^2 from extinction coefficient in cm^2 * mol^-1."""
+    ec = _ensure_quantity(ec, "cm^2/mol", strict=True)
     return (ec * np.log(10) / AVOGADRO).to("cm^2")  # type: ignore [no-any-return]
 
 
@@ -68,7 +64,7 @@ def get_excitation_rate(
         raise NotImplementedError("Fluorophore has no excitation spectrum.")
 
     if (ext_coeff := fluor.extinction_coefficient) is None:
-        ext_coeff = _ensure_quantity(55000, "cm^2/mol")
+        ext_coeff = _ensure_quantity(55000, "cm^-1/M")
         warnings.warn(
             "No extinction coefficient provided for fluorophore, "
             "using 55,000 M^-1 * cm^-1.",
