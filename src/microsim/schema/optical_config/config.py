@@ -4,12 +4,25 @@ from typing import Any
 
 from pydantic import Field, model_validator
 
+from microsim._field_types import Watts, Watts_cm2
+from microsim.fpbase import SpectrumOwner
 from microsim.schema._base_model import SimBaseModel
+from microsim.schema.spectrum import Spectrum
 
 from .filter import Filter, Placement, SpectrumFilter
 
 
-class LightSource(SimBaseModel): ...
+class LightSource(SimBaseModel):
+    name: str = ""
+    spectrum: Spectrum
+    power: Watts | Watts_cm2 | None = None
+
+    @classmethod
+    def from_fpbase(cls, light: SpectrumOwner) -> "LightSource":
+        return cls(name=light.name, spectrum=Spectrum.from_fpbase(light.spectrum))
+
+    def plot(self, show: bool = True) -> None:
+        self.spectrum.plot(show=show)
 
 
 class OpticalConfig(SimBaseModel):
@@ -27,6 +40,20 @@ class OpticalConfig(SimBaseModel):
             if f.placement == Placement.BS:
                 filters.append(f.inverted())
         return self._merge(filters, spectrum="excitation")
+
+    @property
+    def illumination(self) -> Spectrum | None:
+        exc = self.excitation
+        if self.lights:
+            l0, *rest = self.lights
+            illum_spect = l0.spectrum
+            if rest:
+                for light in rest:
+                    illum_spect = illum_spect * light.spectrum
+            if exc:
+                return illum_spect * exc.spectrum
+            return illum_spect
+        return exc.spectrum if exc else None
 
     @property
     def emission(self) -> Filter | None:
@@ -71,9 +98,14 @@ class OpticalConfig(SimBaseModel):
         fpbase_scope = get_microscope(microscope_id)
         for cfg in fpbase_scope.opticalConfigs:
             if cfg.name.lower() == config_name.lower():
+                if cfg.light:
+                    lights = [LightSource.from_fpbase(cfg.light)]
+                else:
+                    lights = []
                 return cls(
                     name=cfg.name,
                     filters=[SpectrumFilter.from_fpbase(f) for f in cfg.filters],
+                    lights=lights,
                 )
 
         raise ValueError(

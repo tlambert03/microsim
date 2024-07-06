@@ -59,3 +59,5 @@ validate_ext_coeff = make_unit_validator("1 / M / cm")
 
 validate_ns = make_unit_validator("ns")
 validate_seconds = make_unit_validator("second")
+validate_watts = make_unit_validator("watt")
+validate_irradiance = make_unit_validator("W/cm^2")

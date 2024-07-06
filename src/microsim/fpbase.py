@@ -159,7 +159,7 @@ def _fpbase_query(query: str) -> bytes:
 
 
 @cache
-def get_microscope(id: str) -> FPbaseMicroscope:
+def get_microscope(id: str = "i6WL2W") -> FPbaseMicroscope:
     query = """
     {{
         microscope(id: "{id}") {{
