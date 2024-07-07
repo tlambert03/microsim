@@ -126,7 +126,8 @@ def get_emission_events(
 
     return fluor_em_rate
 
-
+# TODO: make this more general, move it to interval_creation.py 
+# Update: see new version there --> `bin_spectrum`
 def bin_events(
     num_bins: int, 
     em_wavelengths: np.ndarray, 

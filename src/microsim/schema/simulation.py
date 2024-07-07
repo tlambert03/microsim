@@ -22,9 +22,12 @@ from .lens import ObjectiveLens
 from .modality import Modality, Widefield
 from .optical_config import OpticalConfig
 from .optical_config.lib import FITC
+from .spectrum import Spectrum
 from .sample import FluorophoreDistribution, Sample
 from .settings import Settings
 from .space import ShapeScaleSpace, Space, _RelativeSpace
+from ..interval_creation import Bin, generate_bins, bin_spectrum
+
 
 if TYPE_CHECKING:
     from typing import Self, TypedDict, Unpack
@@ -60,6 +63,7 @@ class Simulation(SimBaseModel):
     modality: Modality = Field(default_factory=Widefield)
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC])
+    # TODO: channels should also include `lights: list[LightSource]`
     detector: Detector | None = None
     settings: Settings = Field(default_factory=Settings)
     output_path: OutPath | None = None
@@ -105,12 +109,16 @@ class Simulation(SimBaseModel):
         This will also write a file to disk if `output` is set.
         """
         truth = self.ground_truth()
+        # based on the fluorophores in the ground truth
+        # generate bins common to illumination and emission
+        self.w_bins = self.get_wavelength_bins(truth) # TODO: should be here? should be class attribute?
         if channels is None:
             channels = tuple(range(len(self.channels)))
         elif isinstance(channels, int):
             channels = (channels,)
         images = []
         for channel_idx in channels:
+            illumination = self.illumination_flux(truth, channel_idx=channel_idx)
             emission_flux = self.emission_flux(truth, channel_idx=channel_idx)
             optical_image = self.optical_image(emission_flux, channel_idx=channel_idx)
             images.append(self.digital_image(optical_image))
@@ -153,12 +161,100 @@ class Simulation(SimBaseModel):
             truth.attrs.update(unit="counts")
             self._ground_truth = truth
         return self._ground_truth
+    
+    def get_wavelength_bins(
+        self, 
+        truth: xr.DataArray
+    ) -> list[Bin]:
+        """
+        Create wavelength bins depending on flurophores emission spectra.
+        
+        NOTE: we assume this is independent of the excitation/emission filters
+        applied, so we only consider the emission spectra of the fluorophores.
+        Why? Because the excitation filters are applied to the light source, and 
+        emission filters are after illumination of fluorophores, for which we need
+        matching bins.
+        """
+        if truth is None:
+            truth = self.ground_truth()
+        elif not isinstance(truth, xr.DataArray):
+            raise ValueError("truth must be a DataArray")
 
-    def irradiance(self) -> xr.DataArray:
-        """Return the irradiance data."""
-        for _channel in self.channels:
-            pass
+        if Axis.F not in truth.coords:
+            # we have no fluorophores to calculate
+            return truth
+        
+        # Get emission spectra for all the fluorophores
+        fluor_em_spectra = []
+        for i, fluor_dist in enumerate(truth.coords[Axis.F].values):
+            fluor = cast(FluorophoreDistribution, fluor_dist).fluorophore
+            if fluor is None:
+                raise  NotImplementedError("Fluorophore must be defined, instead we got `None`")
+            else:
+                # get emission Spectrum for the given fluorophore
+                fluor_em_spectra.append(fluor.emission_spectrum.wavelength.magnitude)
+                
+        # Get the min and max wavelength over all the spectra
+        min_wave = min([x.min() for x in fluor_em_spectra])
+        max_wave = max([x.max() for x in fluor_em_spectra])
+        
+        # Create the same bins for all the spectra
+        em_range = np.arange(min_wave, max_wave, 1)
+        em_bins = generate_bins(em_range, self.emission_bins)
+        # em_sbins = sorted(set([bins.start for bins in em_bins] + [em_bins[-1].end]))
+        
+        # TODO: is this the right format for returning the bins?   
+        return em_bins
 
+    def illumination_flux(
+        self,
+        truth: xr.DataArray | None = None,
+        *,
+        light_power: float = 100,
+        min_wavelength: float = 300,
+        max_wavelength: float = 800,
+    ) -> xr.DataArray:
+        """
+        Return the illumination data as an array of shape (W, C, Z, Y, X).
+        
+        NOTE: we assume this happens before the excitation filters are applied.
+        
+        NOTE: for the moment we assume the light source to be the same over all
+        the spatial dimensions. Only dimension is the wavelength.
+        """
+        if truth is None:
+            truth = self.ground_truth()
+        elif not isinstance(truth, xr.DataArray):
+            raise ValueError("truth must be a DataArray")
+        
+        illumination_data = []
+        for channel in self.channels:
+            illum = channel.illumination
+            if not illum: 
+                # If illumination is not defined, we assume a white light source
+                illum = Spectrum(
+                    wavelength=np.arange(min_wavelength, max_wavelength, 1), 
+                    intensity=np.ones(max_wavelength - min_wavelength),
+                    scalar=light_power
+                )
+            # Bin illum spectrum
+            binned_illum = bin_spectrum(spectrum=illum, bins=self.w_bins) # shape: (W)
+            # Broadcast to (W, Z, Y, X)
+            binned_illum = binned_illum.expand_dims([Axis.Z, Axis.Y, Axis.X], axis=[1, 2, 3])
+            spatial_illum = binned_illum * np.ones((1, *truth.shape[1:])) # shape: (W, Z, Y, X)
+            illumination_data.append(spatial_illum[:, np.newaxis, ...])
+        
+        illumination_data = xr.concat(illumination_data, dim=Axis.C) # shape: (W, C, Z, Y, X)
+        illumination_data.coords.update(
+            {
+                Axis.C: [c.name for c in self.channels],
+                Axis.Z: truth.coords[Axis.Z],
+                Axis.Y: truth.coords[Axis.Y],
+                Axis.X: truth.coords[Axis.X],
+            }
+        )
+        return illumination_data
+      
     def _truth_cache_path(
         self,
         label: "FluorophoreDistribution",

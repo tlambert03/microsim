@@ -8,6 +8,10 @@ from bisect import bisect_left
 from typing import NamedTuple, Literal
 
 import numpy as np
+import xarray as xr
+
+from microsim.schema.spectrum import Spectrum
+from microsim.schema.dimensions import Axis
 
 
 class Bin(NamedTuple):
@@ -99,3 +103,31 @@ def _generate_bins_equal_space(
         start = end
         
     return bins
+
+
+def bin_spectrum(
+    spectrum: Spectrum,
+    bins: list[Bin],
+    *,
+    num_bins: int = 64, 
+    binning_strategy: Literal["equal_area", "equal_space"] = "equal_space",
+) -> xr.DataArray:
+    """
+    Bin the input spectrum into the given bins.
+    If bins are not provided, generate them from the input spectrum
+    and number of bins using the given binning strategy.
+    
+    Returns the binned spectrum as a DataArray.
+    """
+    wavelengths = spectrum.wavelength.magnitude
+    intensities = spectrum.intensity
+    if bins is None:
+        bins = generate_bins(
+           x=wavelengths, 
+           y=intensities,
+           num_bins=num_bins, 
+           strategy=binning_strategy
+        )
+    sbins = sorted(set([bins.start for bins in bins] + [bins[-1].end]))
+    data = xr.DataArray(intensities, dims=[Axis.W], coords={Axis.W: wavelengths})
+    return data.groupby_bins(data[Axis.W], bins=np.asarray(sbins)).sum()

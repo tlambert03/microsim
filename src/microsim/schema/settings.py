@@ -53,6 +53,14 @@ class Settings(SimBaseModel, BaseSettings):
             " accurate, but is not supported in the case of multiple fluorophores."
         ),
     )
+    num_wavelength_bins: int = Field(
+        32,
+        description=(
+            "Number of bins to use when discretizing the wavelength spectrum."
+            "It regards the wavelength range for illumination and excitation spectra."
+            "Increasing this will increase accuracy but also increase memory usage."
+        ),
+    )
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         validate_assignment=True,
