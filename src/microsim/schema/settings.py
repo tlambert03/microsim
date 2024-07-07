@@ -1,5 +1,5 @@
 import random
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -44,6 +44,15 @@ class Settings(SimBaseModel, BaseSettings):
         ),
     )
     cache: CacheSettings = Field(default_factory=CacheSettings)
+    binning_strategy: Literal["equal_area", "equal_space"] = Field(
+        "equal_space",
+        description=(
+            "The strategy to use for binning data. `equal_area` will divide the spectrum "
+            "into intervals with intensity integral, while `equal_space` will divide the "
+            "range of values into equally spaced bins. Note that `equal_area` is more    "
+            " accurate, but is not supported in the case of multiple fluorophores."
+        ),
+    )
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         validate_assignment=True,

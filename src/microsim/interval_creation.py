@@ -5,7 +5,7 @@ ensures that the area under the curve is equal for all intervals.
 """
 
 from bisect import bisect_left
-from typing import NamedTuple
+from typing import NamedTuple, Literal
 
 import numpy as np
 
@@ -36,12 +36,26 @@ class Bin(NamedTuple):
             return f"Mode:{self.mode:.2f}"
 
 
-def generate_bins(x: np.ndarray, y: np.ndarray, num_bins: int) -> list[Bin]:
+def generate_bins(
+    x: np.ndarray,
+    y: np.ndarray, 
+    num_bins: int,
+    strategy: Literal["equal_area", "equal_space"], 
+) -> list[Bin]:
     """Divide the spectrum into intervals."""
-    return _generate_bins_equal_area(x, y, num_bins)
+    if strategy == "equal_area":
+        return _generate_bins_equal_area(x, y, num_bins)
+    elif strategy == "equal_space":
+        return _generate_bins_equal_space(x, num_bins)
+    else:
+        raise ValueError(f"Unknown binning strategy: {strategy}")
 
 
-def _generate_bins_equal_area(x: np.ndarray, y: np.ndarray, num_bins: int) -> list[Bin]:
+def _generate_bins_equal_area(
+    x: np.ndarray, 
+    y: np.ndarray, 
+    num_bins: int
+) -> list[Bin]:
     bins = []
     cumsum = y.cumsum()
     step = cumsum[-1] / num_bins
@@ -64,4 +78,24 @@ def _generate_bins_equal_area(x: np.ndarray, y: np.ndarray, num_bins: int) -> li
         mid_idx = bisect_left(cumsum, mid_val)
         bins.append(Bin(start=x[start_idx], end=x[end_idx], mean=x[mid_idx]))
         start_val = end_val
+    return bins
+
+def _generate_bins_equal_space(
+    x: np.ndarray, 
+    num_bins: int
+) -> list[Bin]:
+    """
+    Split the range of values in x into num_bins equally spaced bins.
+    If len(x) is not divisible by num_bins, the len(x) % num_bins extra elements are distributed to the first len(x) % num_bins bins.
+    """
+    bins = []
+    start = 0
+    bin_size = len(x) // num_bins
+    extra_elements = len(x) % num_bins
+    for i in range(num_bins):
+        extra_element = 1 if i < extra_elements else 0
+        end = start + bin_size + extra_element
+        bins.append(Bin(start=x[start], end=x[end-1]))
+        start = end
+        
     return bins

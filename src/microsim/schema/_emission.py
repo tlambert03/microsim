@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import pint
@@ -128,10 +128,13 @@ def get_emission_events(
 
 
 def bin_events(
-    num_bins: int, em_wavelengths: np.ndarray, em_events: np.ndarray
+    num_bins: int, 
+    em_wavelengths: np.ndarray, 
+    em_events: np.ndarray,
+    binning_strategy: Literal["equal_area", "equal_space"],
 ) -> xr.DataArray:
     """Bin the emission data into the given number of bins."""
-    bins = generate_bins(em_wavelengths, em_events, num_bins)
+    bins = generate_bins(em_wavelengths, em_events, num_bins, binning_strategy)
     sbins = sorted(set([bins.start for bins in bins] + [bins[-1].end]))
     data = xr.DataArray(em_events, dims=[Axis.W], coords={Axis.W: em_wavelengths})
     return data.groupby_bins(data[Axis.W], bins=np.asarray(sbins)).sum()
