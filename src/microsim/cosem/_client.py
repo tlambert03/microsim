@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import logging
 import os
+import urllib.response
 from contextlib import suppress
-from urllib.error import HTTPError
+from urllib.error import URLError
 
 try:
     import boto3
@@ -62,11 +63,20 @@ def clear_cache() -> None:
     shutil.rmtree(COSEM_CACHE, ignore_errors=True)
 
 
+def _urlopen(url: str) -> Any:
+    # urlopen with a custom user agent
+    from microsim import __version__
+
+    user_agent = f"microsim/{__version__}"
+    request = urllib.request.Request(url, headers={"User-Agent": user_agent})
+    return urllib.request.urlopen(request)
+
+
 def _get_chunk_js() -> str | None:
     root = "https://openorganelle.janelia.org"
-    with urllib.request.urlopen(root) as response:
+    with _urlopen(root) as response:
         if response.status != 200:
-            raise HTTPError(root, response.status, "", None, None)
+            raise URLError(f"Failed to fetch {root}.")
         text = response.read().decode("utf-8")
         if main := re.search(r"(/static/js/main\.[^/]+\.js)", text):
             return root + main.group(1)
@@ -78,10 +88,10 @@ def _guess_cosem_url_key() -> tuple[str, str]:
     if not (url := _get_chunk_js()):
         raise ValueError("Failed to fetch openorganelle JS file.")
     try:
-        with urllib.request.urlopen(url) as response:
+        with _urlopen(url) as response:
             if response.status != 200:
-                raise HTTPError(url, response.status, "", None, None)
-            text = response.read().decode("utf-8")
+                raise URLError(f"Failed to fetch {url}.")
+            text: str = response.read().decode("utf-8")
         url = text.split("SUPABASE_URL:")[1].split(",")[0].strip("\"'")
         key = text.split("SUPABASE_KEY:")[1].split(",")[0].strip("\"'")
         return url, key
