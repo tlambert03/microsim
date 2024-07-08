@@ -43,8 +43,9 @@ class Bin(NamedTuple):
 def generate_bins(
     x: np.ndarray,
     y: np.ndarray, 
-    num_bins: int,
-    strategy: Literal["equal_area", "equal_space"], 
+    *,
+    num_bins: int = 32,
+    strategy: Literal["equal_area", "equal_space"] = "equal_space", 
 ) -> list[Bin]:
     """Divide the spectrum into intervals."""
     if strategy == "equal_area":
@@ -130,4 +131,5 @@ def bin_spectrum(
         )
     sbins = sorted(set([bins.start for bins in bins] + [bins[-1].end]))
     data = xr.DataArray(intensities, dims=[Axis.W], coords={Axis.W: wavelengths})
-    return data.groupby_bins(data[Axis.W], bins=np.asarray(sbins)).sum()
+    binned_data = data.groupby_bins(data[Axis.W], bins=np.asarray(sbins)).sum()
+    return binned_data.rename({f"{Axis.W}_bins": Axis.W})

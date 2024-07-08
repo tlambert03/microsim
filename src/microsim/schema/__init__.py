@@ -8,6 +8,7 @@ from .optical_config import (
     OpticalConfig,
     Shortpass,
     SpectrumFilter,
+    LightSource
 )
 from .sample import CosemLabel, Fluorophore, FluorophoreDistribution, MatsLines, Sample
 from .settings import Settings
@@ -36,6 +37,7 @@ __all__ = [
     "NumpyAPI",
     "ObjectiveLens",
     "OpticalConfig",
+    "LightSource",
     "Sample",
     "Settings",
     "ShapeExtentSpace",
