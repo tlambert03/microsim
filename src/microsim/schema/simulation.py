@@ -1,8 +1,8 @@
 import logging
 from collections.abc import Sequence
+from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, cast
-from functools import cached_property
 
 import numpy as np
 import pandas as pd
@@ -10,6 +10,7 @@ import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
+from microsim.interval_creation import Bin, bin_spectrum, generate_bins
 from microsim.schema._emission import (
     bin_events,
     get_emission_events,
@@ -23,12 +24,10 @@ from .lens import ObjectiveLens
 from .modality import Modality, Widefield
 from .optical_config import OpticalConfig
 from .optical_config.lib import FITC
-from .spectrum import Spectrum
 from .sample import FluorophoreDistribution, Sample
 from .settings import Settings
 from .space import ShapeScaleSpace, Space, _RelativeSpace
-from ..interval_creation import Bin, generate_bins, bin_spectrum
-
+from .spectrum import Spectrum
 
 if TYPE_CHECKING:
     from typing import Self, TypedDict, Unpack
@@ -103,12 +102,12 @@ class Simulation(SimBaseModel):
     @property
     def _xp(self) -> "NumpyAPI":
         return self.settings.backend_module()
-    
-    # TODO: binning should happen here like this? 
+
+    # TODO: binning should happen here like this?
     @cached_property
     def wavelength_bins(self) -> list[Bin]:
         """
-        Based on the fluorophores in the ground truth generate 
+        Based on the fluorophores in the ground truth generate
         bins that will be common to illumination and emission.
         """
         return self.get_wavelength_bins()
@@ -125,7 +124,7 @@ class Simulation(SimBaseModel):
             channels = (channels,)
         images = []
         for channel_idx in channels:
-            illumination = self.illumination_flux(truth, channel_idx=channel_idx)
+            self.illumination_flux(truth, channel_idx=channel_idx)
             # TODO: implement emission_flux given new illumination implementation
             emission_flux = self.emission_flux(truth, channel_idx=channel_idx)
             optical_image = self.optical_image(emission_flux, channel_idx=channel_idx)
@@ -169,7 +168,7 @@ class Simulation(SimBaseModel):
             truth.attrs.update(unit="counts")
             self._ground_truth = truth
         return self._ground_truth
-    
+
     def _truth_cache_path(
         self,
         label: "FluorophoreDistribution",
@@ -186,46 +185,47 @@ class Simulation(SimBaseModel):
         if label.distribution.is_random():
             truth_cache = truth_cache / f"seed{seed}"
         return truth_cache
-    
-    def get_wavelength_bins(self) -> list[Bin]: #TODO: private? 
+
+    def get_wavelength_bins(self) -> list[Bin]:  # TODO: private?
         """
         Create wavelength bins depending on flurophores emission spectra.
-        
+
         NOTE: we assume this is independent of the excitation/emission filters
         applied, so we only consider the emission spectra of the fluorophores.
-        Why? Because the excitation filters are applied to the light source, and 
+        Why? Because the excitation filters are applied to the light source, and
         emission filters are after illumination of fluorophores, for which we need
         matching bins.
         """
-
         fluorophores = [x.fluorophore for x in self.sample.labels]
         if len(fluorophores) == 0:
             # we have no fluorophores to calculate
             raise ValueError("No fluorophores in the current sample!")
-        
+
         # Get emission spectra for all the fluorophores
         fluor_em_spectra = []
         for fluor in fluorophores:
             if fluor is None:
-                raise  NotImplementedError("Fluorophore must be defined, instead we got `None`")
+                raise NotImplementedError(
+                    "Fluorophore must be defined, instead we got `None`"
+                )
             else:
                 # get emission Spectrum for the given fluorophore
                 fluor_em_spectra.append(fluor.emission_spectrum.wavelength.magnitude)
-                
+
         # Get the min and max wavelength over all the spectra
         min_wave = min([x.min() for x in fluor_em_spectra])
         max_wave = max([x.max() for x in fluor_em_spectra])
-        
+
         # Create the same bins for all the spectra
         wave_range = np.arange(min_wave, max_wave, 1)
         em_bins = generate_bins(
             x=wave_range,
             y=None,
             num_bins=self.settings.num_wavelength_bins,
-            strategy=self.settings.binning_strategy
+            strategy=self.settings.binning_strategy,
         )
-        
-        # TODO: is this the right format for returning the bins?   
+
+        # TODO: is this the right format for returning the bins?
         return em_bins
 
     def illumination_flux(
@@ -239,9 +239,9 @@ class Simulation(SimBaseModel):
     ) -> xr.DataArray:
         """
         Return the illumination data as an array of shape (W, C, Z, Y, X).
-        
+
         NOTE: we assume this happens before the excitation filters are applied.
-        
+
         NOTE: for the moment we assume the light source to be the same over all
         the spatial dimensions. Only dimension is the wavelength.
         """
@@ -249,23 +249,31 @@ class Simulation(SimBaseModel):
             truth = self.ground_truth()
         elif not isinstance(truth, xr.DataArray):
             raise ValueError("truth must be a DataArray")
-        
-        channel=self.channels[channel_idx]
+
+        channel = self.channels[channel_idx]
         illum = channel.illumination
-        if not illum: 
+        if not illum:
             # If illumination is not defined, we assume a white light source
             illum = Spectrum(
-                wavelength=np.arange(min_wavelength, max_wavelength, 1), 
+                wavelength=np.arange(min_wavelength, max_wavelength, 1),
                 intensity=np.ones(max_wavelength - min_wavelength),
-                scalar=light_power
+                scalar=light_power,
             )
         # Bin illum spectrum
-        binned_illum = bin_spectrum(spectrum=illum, bins=self.wavelength_bins) # shape: (W)
+        binned_illum = bin_spectrum(
+            spectrum=illum, bins=self.wavelength_bins
+        )  # shape: (W)
         binned_illum
         # Broadcast to (W, Z, Y, X)
-        binned_illum = binned_illum.expand_dims([Axis.Z, Axis.Y, Axis.X], axis=[1, 2, 3])
-        spatial_illum = binned_illum * np.ones((1, *truth.shape[1:])) # shape: (W, Z, Y, X)
-        spatial_illum = spatial_illum.expand_dims([Axis.C], axis=1) # shape: (W, 1, Z, Y, X)
+        binned_illum = binned_illum.expand_dims(
+            [Axis.Z, Axis.Y, Axis.X], axis=[1, 2, 3]
+        )
+        spatial_illum = binned_illum * np.ones(
+            (1, *truth.shape[1:])
+        )  # shape: (W, Z, Y, X)
+        spatial_illum = spatial_illum.expand_dims(
+            [Axis.C], axis=1
+        )  # shape: (W, 1, Z, Y, X)
         spatial_illum.coords.update(
             {
                 Axis.C: [channel],

@@ -4,11 +4,11 @@ from .lens import ObjectiveLens
 from .modality import Confocal, Modality, Widefield
 from .optical_config import (
     Bandpass,
+    LightSource,
     Longpass,
     OpticalConfig,
     Shortpass,
     SpectrumFilter,
-    LightSource
 )
 from .sample import CosemLabel, Fluorophore, FluorophoreDistribution, MatsLines, Sample
 from .settings import Settings
