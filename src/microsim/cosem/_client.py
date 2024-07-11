@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import logging
+import os
+import urllib.response
 from contextlib import suppress
+from urllib.error import URLError
 
 try:
     import boto3
@@ -60,17 +63,56 @@ def clear_cache() -> None:
     shutil.rmtree(COSEM_CACHE, ignore_errors=True)
 
 
+def _urlopen(url: str) -> Any:
+    # urlopen with a custom user agent
+    from microsim import __version__
+
+    user_agent = f"microsim/{__version__}"
+    request = urllib.request.Request(url, headers={"User-Agent": user_agent})
+    return urllib.request.urlopen(request)
+
+
+def _get_chunk_js() -> str | None:
+    root = "https://openorganelle.janelia.org"
+    with _urlopen(root) as response:
+        if response.status != 200:
+            raise URLError(f"Failed to fetch {root}.")
+        text = response.read().decode("utf-8")
+        if main := re.search(r"(/static/js/main\.[^/]+\.js)", text):
+            return root + main.group(1)
+    return None
+
+
+@cache
+def _guess_cosem_url_key() -> tuple[str, str]:
+    if not (url := _get_chunk_js()):
+        raise ValueError("Failed to fetch openorganelle JS file.")
+    try:
+        with _urlopen(url) as response:
+            if response.status != 200:
+                raise URLError(f"Failed to fetch {url}.")
+            text: str = response.read().decode("utf-8")
+        url = text.split("SUPABASE_URL:")[1].split(",")[0].strip("\"'")
+        key = text.split("SUPABASE_KEY:")[1].split(",")[0].strip("\"'")
+        return url, key
+    except Exception as e:
+        raise ValueError(f"Failed to fetch Supabase URL and key: {e}") from e
+
+
 @cache
 def _supabase(url: str | None = None, key: str | None = None) -> supabase.Client:
-    if not (url and key):
-        with urllib.request.urlopen(
-            "https://openorganelle.janelia.org/static/js/4743.a9f85e14.chunk.js"
-        ) as response:
-            if response.status != 200:
-                raise ValueError("Failed to fetch Supabase URL and key")
-            text = response.read().decode("utf-8")
-        key = text.split("SUPABASE_KEY:")[1].split(",")[0].strip("\"'")
-        url = text.split("SUPABASE_URL:")[1].split(",")[0].strip("\"'")
+    if url is None:
+        url = os.getenv("COSEM_SUPABASE_URL")
+    if key is None:
+        key = os.getenv("COSEM_SUPABASE_KEY")
+    if url is None or key is None:
+        try:
+            url, key = _guess_cosem_url_key()
+        except ValueError as e:  # pragma: no cover
+            raise ValueError(
+                "No Cosem API key. You may set your own COSEM_SUPABASE_URL "
+                "and COSEM_SUPABASE_KEY environment variables."
+            ) from e
     return Client(url, key)
 
 

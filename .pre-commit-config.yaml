@@ -22,7 +22,7 @@ repos:
       - id: mypy
         files: "^src/microsim/schema/.*\\.py$"
         additional_dependencies:
-          - numpy
+          - numpy<2.0
           - pydantic
           - pydantic-settings
           - xarray
