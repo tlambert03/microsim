@@ -53,14 +53,14 @@ class CosemSample(BaseModel):
     protocol: str
     type: list[str] | None
     subtype: list[str] | None
-    organism: list[str]
+    organism: list[str] | None
 
 
 class CosemImageAcquisition(BaseModel):
     """Information about the image acquisition process."""
 
     name: str
-    start_date: datetime.datetime
+    start_date: datetime.datetime | None
     grid_axes: list[str]
     grid_dimensions: list[float]
     grid_dimensions_unit: str
