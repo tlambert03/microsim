@@ -7,9 +7,9 @@ import urllib.parse
 from collections import defaultdict
 from collections.abc import Iterable, Mapping, Sequence
 from os import PathLike
-from typing import TYPE_CHECKING, Any, Literal, Annotated
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
-from pydantic import BaseModel, computed_field, AfterValidator
+from pydantic import AfterValidator, BaseModel, computed_field
 
 from microsim.util import ndview, norm_name
 
