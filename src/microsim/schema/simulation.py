@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Sequence
-from functools import cached_property
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, cast
 
@@ -11,10 +10,7 @@ from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
 from microsim.interval_creation import Bin, bin_spectrum, generate_bins
-from microsim.schema._emission import (
-    bin_events,
-    get_emission_events,
-)
+from microsim.schema._emission import get_emission_events
 from microsim.util import microsim_cache
 
 from ._base_model import SimBaseModel
@@ -103,14 +99,14 @@ class Simulation(SimBaseModel):
     def _xp(self) -> "NumpyAPI":
         return self.settings.backend_module()
 
-    # TODO: binning should happen here like this?
-    @cached_property
-    def wavelength_bins(self) -> list[Bin]:
+    def _wavelength_bins(self) -> list[Bin]:
+        """Create wavelength bins depending on flurophores emission spectra.
+
+        Bins placement is based on the fluorophores emission spectra in the ground
+        truth sample. If fluorophores are not defined, bins are created in the range
+        identified by [`settings.min_wavelength`-`settings.max_wavelength`].
         """
-        Based on the fluorophores in the ground truth generate
-        bins that will be common to illumination and emission.
-        """
-        return self.get_wavelength_bins()
+        return self._get_wavelength_bins()
 
     def run(self, channels: int | Sequence[int] | None = None) -> xr.DataArray:
         """Run the simulation and return the result.
@@ -124,7 +120,6 @@ class Simulation(SimBaseModel):
             channels = (channels,)
         images = []
         for channel_idx in channels:
-            self.illumination_flux(truth, channel_idx=channel_idx)
             # TODO: implement emission_flux given new illumination implementation
             emission_flux = self.emission_flux(truth, channel_idx=channel_idx)
             optical_image = self.optical_image(emission_flux, channel_idx=channel_idx)
@@ -186,11 +181,14 @@ class Simulation(SimBaseModel):
             truth_cache = truth_cache / f"seed{seed}"
         return truth_cache
 
-    def get_wavelength_bins(self) -> list[Bin]:  # TODO: private?
-        """
-        Create wavelength bins depending on flurophores emission spectra.
+    def _get_wavelength_bins(self) -> list[Bin]:
+        """Create wavelength bins depending on flurophores emission spectra.
 
-        NOTE: we assume this is independent of the excitation/emission filters
+        Bins placement is based on the fluorophores emission spectra in the ground
+        truth sample. If fluorophores are not defined, bins are created in the range
+        identified by [`settings.min_wavelength`-`settings.max_wavelength`].
+
+        NOTE: We assume binning to be independent of the excitation/emission filters
         applied, so we only consider the emission spectra of the fluorophores.
         Why? Because the excitation filters are applied to the light source, and
         emission filters are after illumination of fluorophores, for which we need
@@ -205,6 +203,7 @@ class Simulation(SimBaseModel):
         fluor_em_spectra = []
         for fluor in fluorophores:
             if fluor is None:
+                # TODO: append maximum range of wavelengths
                 raise NotImplementedError(
                     "Fluorophore must be defined, instead we got `None`"
                 )
@@ -224,8 +223,6 @@ class Simulation(SimBaseModel):
             num_bins=self.settings.num_wavelength_bins,
             strategy=self.settings.binning_strategy,
         )
-
-        # TODO: is this the right format for returning the bins?
         return em_bins
 
     def illumination_flux(
@@ -234,8 +231,8 @@ class Simulation(SimBaseModel):
         channel_idx: int = 0,
         *,
         light_power: float = 100,
-        min_wavelength: float = 300,
-        max_wavelength: float = 800,
+        min_wavelength: int = 300,
+        max_wavelength: int = 800,
     ) -> xr.DataArray:
         """
         Return the illumination data as an array of shape (W, C, Z, Y, X).
@@ -256,14 +253,12 @@ class Simulation(SimBaseModel):
             # If illumination is not defined, we assume a white light source
             illum = Spectrum(
                 wavelength=np.arange(min_wavelength, max_wavelength, 1),
-                intensity=np.ones(max_wavelength - min_wavelength),
-                scalar=light_power,
+                intensity=np.ones(max_wavelength - min_wavelength) * light_power,
             )
         # Bin illum spectrum
         binned_illum = bin_spectrum(
-            spectrum=illum, bins=self.wavelength_bins
+            spectrum=illum, bins=self._wavelength_bins()
         )  # shape: (W)
-        binned_illum
         # Broadcast to (W, Z, Y, X)
         binned_illum = binned_illum.expand_dims(
             [Axis.Z, Axis.Y, Axis.X], axis=[1, 2, 3]
@@ -311,12 +306,12 @@ class Simulation(SimBaseModel):
                 fluor_counts = fluor_counts.assign_coords(w=default_bin)
                 emission_flux_arr.append(fluor_counts)
             else:
-                em_events = get_emission_events(channel, fluor)
-                num_events = em_events.intensity
-                binned_events = bin_events(
-                    self.emission_bins,
-                    em_events.wavelength.magnitude,
-                    getattr(num_events, "magnitude", num_events),
+                em_spectrum = get_emission_events(channel, fluor)
+                binned_events = bin_spectrum(
+                    spectrum=em_spectrum,
+                    bins=None,  # TODO: use the same bins as illumination?
+                    num_bins=self.emission_bins,  # TODO: same num_bins as illumination?
+                    binning_strategy="equal_area",  # to be consistent with PR#35
                 )
                 # TODO: This is not stochastic.
                 # every pixel ideally could have a different binned_events.

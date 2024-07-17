@@ -42,13 +42,16 @@ class Bin(NamedTuple):
 
 def generate_bins(
     x: np.ndarray,
-    y: np.ndarray,
+    y: np.ndarray | None,
     *,
     num_bins: int = 32,
     strategy: Literal["equal_area", "equal_space"] = "equal_space",
 ) -> list[Bin]:
     """Divide the spectrum into intervals."""
     if strategy == "equal_area":
+        assert (
+            y is not None
+        ), "Can't generate equal area bins without intensities for the spectrum."
         return _generate_bins_equal_area(x, y, num_bins)
     elif strategy == "equal_space":
         return _generate_bins_equal_space(x, num_bins)
@@ -83,9 +86,10 @@ def _generate_bins_equal_area(x: np.ndarray, y: np.ndarray, num_bins: int) -> li
 
 
 def _generate_bins_equal_space(x: np.ndarray, num_bins: int) -> list[Bin]:
-    """
-    Split the range of values in x into num_bins equally spaced bins.
-    If len(x) is not divisible by num_bins, the len(x) % num_bins extra elements are distributed to the first len(x) % num_bins bins.
+    """Split the range of values in x into num_bins equally spaced bins.
+
+    If len(x) is not divisible by num_bins, the len(x) % num_bins extra elements
+    are distributed to the first len(x) % num_bins bins.
     """
     bins = []
     start = 0
@@ -102,17 +106,17 @@ def _generate_bins_equal_space(x: np.ndarray, num_bins: int) -> list[Bin]:
 
 def bin_spectrum(
     spectrum: Spectrum,
-    bins: list[Bin],
+    bins: list[Bin] | None,
     *,
     num_bins: int = 64,
     binning_strategy: Literal["equal_area", "equal_space"] = "equal_space",
 ) -> xr.DataArray:
-    """
-    Bin the input spectrum into the given bins.
+    """Bin the input spectrum into the given bins.
+
     If bins are not provided, generate them from the input spectrum
     and number of bins using the given binning strategy.
 
-    Returns the binned spectrum as a DataArray.
+    Returns the binned spectrum as a `DataArray`.
     """
     wavelengths = spectrum.wavelength.magnitude
     intensities = spectrum.intensity
