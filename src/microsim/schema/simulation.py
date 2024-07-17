@@ -256,19 +256,13 @@ class Simulation(SimBaseModel):
                 intensity=np.ones(max_wavelength - min_wavelength) * light_power,
             )
         # Bin illum spectrum
-        binned_illum = bin_spectrum(
-            spectrum=illum, bins=self._wavelength_bins()
-        )  # shape: (W)
+        binned_illum = bin_spectrum(spectrum=illum, bins=self._wavelength_bins())  # (W)
         # Broadcast to (W, Z, Y, X)
         binned_illum = binned_illum.expand_dims(
             [Axis.Z, Axis.Y, Axis.X], axis=[1, 2, 3]
         )
-        spatial_illum = binned_illum * np.ones(
-            (1, *truth.shape[1:])
-        )  # shape: (W, Z, Y, X)
-        spatial_illum = spatial_illum.expand_dims(
-            [Axis.C], axis=1
-        )  # shape: (W, 1, Z, Y, X)
+        spatial_illum = binned_illum * np.ones((1, *truth.shape[1:]))  # (W, Z, Y, X)
+        spatial_illum = spatial_illum.expand_dims([Axis.C], axis=1)  # (W, 1, Z, Y, X)
         spatial_illum.coords.update(
             {
                 Axis.C: [channel],
