@@ -62,6 +62,22 @@ class Settings(SimBaseModel, BaseSettings):
             "Increasing this will increase accuracy but also increase memory usage."
         ),
     )
+    min_wavelength: int = Field(
+        300,
+        description=(
+            "Minimum wavelength to consider in the simulation."
+            "It is used to define the range of the wavelength spectrum when "
+            "fluorophores are not defined."
+        ),
+    )
+    max_wavelength: int = Field(
+        800,
+        description=(
+            "Maximum wavelength to consider in the simulation."
+            "It is used to define the range of the wavelength spectrum when "
+            "fluorophores are not defined."
+        ),
+    )
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         validate_assignment=True,

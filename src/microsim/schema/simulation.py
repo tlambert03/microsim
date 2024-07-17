@@ -203,9 +203,10 @@ class Simulation(SimBaseModel):
         fluor_em_spectra = []
         for fluor in fluorophores:
             if fluor is None:
-                # TODO: append maximum range of wavelengths
-                raise NotImplementedError(
-                    "Fluorophore must be defined, instead we got `None`"
+                fluor_em_spectra.append(
+                    np.array(
+                        [self.settings.min_wavelength, self.settings.max_wavelength]
+                    )
                 )
             else:
                 # get emission Spectrum for the given fluorophore
@@ -231,8 +232,6 @@ class Simulation(SimBaseModel):
         channel_idx: int = 0,
         *,
         light_power: float = 100,
-        min_wavelength: int = 300,
-        max_wavelength: int = 800,
     ) -> xr.DataArray:
         """
         Return the illumination data as an array of shape (W, C, Z, Y, X).
@@ -252,8 +251,13 @@ class Simulation(SimBaseModel):
         if not illum:
             # If illumination is not defined, we assume a white light source
             illum = Spectrum(
-                wavelength=np.arange(min_wavelength, max_wavelength, 1),
-                intensity=np.ones(max_wavelength - min_wavelength) * light_power,
+                wavelength=np.arange(
+                    self.settings.min_wavelength, self.settings.max_wavelength, 1
+                ),
+                intensity=np.ones(
+                    self.settings.max_wavelength - self.settings.min_wavelength
+                )
+                * light_power,
             )
         # Bin illum spectrum
         binned_illum = bin_spectrum(spectrum=illum, bins=self._wavelength_bins())  # (W)
@@ -296,7 +300,12 @@ class Simulation(SimBaseModel):
             if fluor is None:
                 # TODO
                 # what here?  should we pick a default fluor?
-                default_bin = [pd.Interval(left=300, right=800)]
+                default_bin = [
+                    pd.Interval(
+                        left=self.settings.min_wavelength,
+                        right=self.settings.max_wavelength,
+                    )
+                ]
                 fluor_counts = fluor_counts.assign_coords(w=default_bin)
                 emission_flux_arr.append(fluor_counts)
             else:
