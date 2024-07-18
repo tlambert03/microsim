@@ -119,7 +119,10 @@ def bin_spectrum(
     Returns the binned spectrum as a `DataArray`.
     """
     wavelengths = spectrum.wavelength.magnitude
-    intensities = spectrum.intensity
+    if isinstance(spectrum.intensity, np.ndarray):
+        intensities = spectrum.intensity
+    else:
+        intensities = spectrum.intensity.magnitude
     if bins is None:
         bins = generate_bins(
             x=wavelengths, y=intensities, num_bins=num_bins, strategy=binning_strategy

@@ -324,7 +324,7 @@ class Simulation(SimBaseModel):
                     dim=Axis.W,
                 )
                 fluor_counts = fluor_counts.assign_coords(
-                    w=binned_events[f"{Axis.W}_bins"].values
+                    w=binned_events[Axis.W].values
                 )
             # (W, C, F, Z, Y, X)
             emission_flux_arr.append(fluor_counts)
