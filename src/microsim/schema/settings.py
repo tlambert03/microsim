@@ -1,5 +1,5 @@
 import random
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -44,6 +44,40 @@ class Settings(SimBaseModel, BaseSettings):
         ),
     )
     cache: CacheSettings = Field(default_factory=CacheSettings)
+    binning_strategy: Literal["equal_area", "equal_space"] = Field(
+        "equal_space",
+        description=(
+            "The strategy to use for binning data. `'equal_area'` will divide the "
+            "spectrum into intervals with intensity integral, while `'equal_space'` "
+            "will divide the range of values into equally spaced bins. Note that "
+            "`'equal_area'` is more accurate, but is not supported in the case of "
+            "multiple fluorophores."
+        ),
+    )
+    num_wavelength_bins: int = Field(
+        32,
+        description=(
+            "Number of bins to use when discretizing the wavelength spectrum."
+            "It regards the wavelength range for illumination and excitation spectra."
+            "Increasing this will increase accuracy but also increase memory usage."
+        ),
+    )
+    min_wavelength: int = Field(
+        300,
+        description=(
+            "Minimum wavelength to consider in the simulation."
+            "It is used to define the range of the wavelength spectrum when "
+            "fluorophores are not defined."
+        ),
+    )
+    max_wavelength: int = Field(
+        800,
+        description=(
+            "Maximum wavelength to consider in the simulation."
+            "It is used to define the range of the wavelength spectrum when "
+            "fluorophores are not defined."
+        ),
+    )
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
         validate_assignment=True,

@@ -5,9 +5,13 @@ ensures that the area under the curve is equal for all intervals.
 """
 
 from bisect import bisect_left
-from typing import NamedTuple
+from typing import Literal, NamedTuple
 
 import numpy as np
+import xarray as xr
+
+from microsim.schema.dimensions import Axis
+from microsim.schema.spectrum import Spectrum
 
 
 class Bin(NamedTuple):
@@ -36,9 +40,23 @@ class Bin(NamedTuple):
             return f"Mode:{self.mode:.2f}"
 
 
-def generate_bins(x: np.ndarray, y: np.ndarray, num_bins: int) -> list[Bin]:
+def generate_bins(
+    x: np.ndarray,
+    y: np.ndarray | None,
+    *,
+    num_bins: int = 32,
+    strategy: Literal["equal_area", "equal_space"] = "equal_space",
+) -> list[Bin]:
     """Divide the spectrum into intervals."""
-    return _generate_bins_equal_area(x, y, num_bins)
+    if strategy == "equal_area":
+        assert (
+            y is not None
+        ), "Can't generate equal area bins without intensities for the spectrum."
+        return _generate_bins_equal_area(x, y, num_bins)
+    elif strategy == "equal_space":
+        return _generate_bins_equal_space(x, num_bins)
+    else:
+        raise ValueError(f"Unknown binning strategy: {strategy}")
 
 
 def _generate_bins_equal_area(x: np.ndarray, y: np.ndarray, num_bins: int) -> list[Bin]:
@@ -65,3 +83,51 @@ def _generate_bins_equal_area(x: np.ndarray, y: np.ndarray, num_bins: int) -> li
         bins.append(Bin(start=x[start_idx], end=x[end_idx], mean=x[mid_idx]))
         start_val = end_val
     return bins
+
+
+def _generate_bins_equal_space(x: np.ndarray, num_bins: int) -> list[Bin]:
+    """Split the range of values in x into num_bins equally spaced bins.
+
+    If len(x) is not divisible by num_bins, the len(x) % num_bins extra elements
+    are distributed to the first len(x) % num_bins bins.
+    """
+    bins = []
+    start = 0
+    bin_size = len(x) // num_bins
+    extra_elements = len(x) % num_bins
+    for i in range(num_bins):
+        extra_element = 1 if i < extra_elements else 0
+        end = start + bin_size + extra_element
+        bins.append(Bin(start=x[start], end=x[end - 1]))
+        start = end
+
+    return bins
+
+
+def bin_spectrum(
+    spectrum: Spectrum,
+    bins: list[Bin] | None,
+    *,
+    num_bins: int = 64,
+    binning_strategy: Literal["equal_area", "equal_space"] = "equal_space",
+) -> xr.DataArray:
+    """Bin the input spectrum into the given bins.
+
+    If bins are not provided, generate them from the input spectrum
+    and number of bins using the given binning strategy.
+
+    Returns the binned spectrum as a `DataArray`.
+    """
+    wavelengths = spectrum.wavelength.magnitude
+    if isinstance(spectrum.intensity, np.ndarray):
+        intensities = spectrum.intensity
+    else:
+        intensities = spectrum.intensity.magnitude
+    if bins is None:
+        bins = generate_bins(
+            x=wavelengths, y=intensities, num_bins=num_bins, strategy=binning_strategy
+        )
+    sbins = sorted(set([bins.start for bins in bins] + [bins[-1].end]))
+    data = xr.DataArray(intensities, dims=[Axis.W], coords={Axis.W: wavelengths})
+    binned_data = data.groupby_bins(data[Axis.W], bins=np.asarray(sbins)).sum()
+    return binned_data.rename({f"{Axis.W}_bins": Axis.W})

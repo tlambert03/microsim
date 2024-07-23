@@ -5,11 +5,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pint
-import xarray as xr
 from scipy.constants import Avogadro, c, h
-
-from microsim.interval_creation import generate_bins
-from microsim.schema.dimensions import Axis
 
 if TYPE_CHECKING:
     from microsim.schema import Fluorophore, OpticalConfig, Spectrum
@@ -125,13 +121,3 @@ def get_emission_events(
         fluor_em_rate = fluor_em_rate * channel_em.spectrum
 
     return fluor_em_rate
-
-
-def bin_events(
-    num_bins: int, em_wavelengths: np.ndarray, em_events: np.ndarray
-) -> xr.DataArray:
-    """Bin the emission data into the given number of bins."""
-    bins = generate_bins(em_wavelengths, em_events, num_bins)
-    sbins = sorted(set([bins.start for bins in bins] + [bins[-1].end]))
-    data = xr.DataArray(em_events, dims=[Axis.W], coords={Axis.W: em_wavelengths})
-    return data.groupby_bins(data[Axis.W], bins=np.asarray(sbins)).sum()
