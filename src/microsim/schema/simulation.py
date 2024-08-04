@@ -30,7 +30,7 @@ if TYPE_CHECKING:
 
     from .backend import NumpyAPI
 
-    class SimluationKwargs(TypedDict, total=False):
+    class SimulationKwargs(TypedDict, total=False):
         output_space: Space | dict | None
         objective_lens: ObjectiveLens
         channels: list[OpticalConfig]
@@ -70,7 +70,7 @@ class Simulation(SimBaseModel):
         self,
         ground_truth: ArrayProtocol,
         scale: tuple[float, ...],
-        **kwargs: "Unpack[SimluationKwargs]",
+        **kwargs: "Unpack[SimulationKwargs]",
     ) -> "Self":
         """Shortcut to create a simulation directly from a ground truth array.
 
