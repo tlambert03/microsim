@@ -23,7 +23,6 @@ from .optical_config.lib import FITC
 from .sample import FluorophoreDistribution, Sample
 from .settings import Settings
 from .space import ShapeScaleSpace, Space, _RelativeSpace
-from .spectrum import Spectrum
 
 if TYPE_CHECKING:
     from typing import Self, TypedDict, Unpack
@@ -99,15 +98,6 @@ class Simulation(SimBaseModel):
     def _xp(self) -> "NumpyAPI":
         return self.settings.backend_module()
 
-    def _wavelength_bins(self) -> list[Bin]:
-        """Create wavelength bins depending on flurophores emission spectra.
-
-        Bins placement is based on the fluorophores emission spectra in the ground
-        truth sample. If fluorophores are not defined, bins are created in the range
-        identified by [`settings.min_wavelength`-`settings.max_wavelength`].
-        """
-        return self._get_wavelength_bins()
-
     def run(self, channels: int | Sequence[int] | None = None) -> xr.DataArray:
         """Run the simulation and return the result.
 
@@ -158,8 +148,7 @@ class Simulation(SimBaseModel):
                 label_data.append(data)
 
             # concat along the F axis
-            truth = xr.concat(label_data, dim=Axis.F)
-            truth.coords.update({Axis.F: list(self.sample.labels)})
+            truth = xr.concat(label_data, dim=pd.Index(self.sample.labels, name=Axis.F))
             truth.attrs.update(unit="counts")
             self._ground_truth = truth
         return self._ground_truth
@@ -226,56 +215,48 @@ class Simulation(SimBaseModel):
         )
         return em_bins
 
-    def illumination_flux(
-        self,
-        truth: xr.DataArray | None = None,
-        channel_idx: int = 0,
-        *,
-        light_power: float = 100,
-    ) -> xr.DataArray:
+    def _emission_rates(self):
+        """Returns a (C, F) array of emission flux for each channel and fluorophore.
+
+        Only depends on the fluorophores in the sample and the optical config.  Does
+        not yet take into consideration the distribution of fluorophores in the sample.
+
+        Values are in units of photons/s.
         """
-        Return the illumination data as an array of shape (W, C, Z, Y, X).
-
-        NOTE: we assume this happens before the excitation filters are applied.
-
-        NOTE: for the moment we assume the light source to be the same over all
-        the spatial dimensions. Only dimension is the wavelength.
-        """
-        if truth is None:
-            truth = self.ground_truth()
-        elif not isinstance(truth, xr.DataArray):
-            raise ValueError("truth must be a DataArray")
-
-        channel = self.channels[channel_idx]
-        illum = channel.illumination
-        if not illum:
-            # If illumination is not defined, we assume a white light source
-            illum = Spectrum(
-                wavelength=np.arange(
-                    self.settings.min_wavelength, self.settings.max_wavelength, 1
-                ),
-                intensity=np.ones(
-                    self.settings.max_wavelength - self.settings.min_wavelength
-                )
-                * light_power,
-            )
-        # Bin illum spectrum
-        binned_illum = bin_spectrum(spectrum=illum, bins=self._wavelength_bins())  # (W)
-        # Broadcast to (W, Z, Y, X)
-        binned_illum = binned_illum.expand_dims(
-            [Axis.Z, Axis.Y, Axis.X], axis=[1, 2, 3]
+        fluorophors = [x.fluorophore for x in self.sample.labels]
+        return xr.DataArray(
+            [
+                [
+                    ch.absorption_rate(f).sum().pint.magnitude.item()
+                    * (f.quantum_yield or 1)
+                    for f in fluorophors
+                ]
+                for ch in self.channels
+            ],
+            name="em_rate",
+            coords={Axis.C: self.channels, Axis.F: fluorophors},
+            attrs={"unit": "photons/s"},
         )
-        spatial_illum = binned_illum * np.ones((1, *truth.shape[1:]))  # (W, Z, Y, X)
-        spatial_illum = spatial_illum.expand_dims([Axis.C], axis=1)  # (W, 1, Z, Y, X)
-        spatial_illum.coords.update(
-            {
-                Axis.C: [channel],
-                Axis.Z: truth.coords[Axis.Z],
-                Axis.Y: truth.coords[Axis.Y],
-                Axis.X: truth.coords[Axis.X],
-            }
-        )
-        return spatial_illum
+
+    # def irradiance(self, channel_idx: int = 0) -> xr.DataArray:
+    #     """
+    #     Return the illumination data as an array of shape (W, C, Z, Y, X).
+
+    #     NOTE: we assume this happens before the excitation filters are applied.
+
+    #     NOTE: for the moment we assume the light source to be the same over all
+    #     the spatial dimensions. Only dimension is the wavelength.
+    #     """
+    #     wave_bins = self._get_wavelength_bins()
+    #     binned_illum = xr.concat(
+    #         [
+    #             bin_spectrum(spectrum=c.illumination, bins=wave_bins)
+    #             for c in self.channels
+    #         ],
+    #         dim=pd.Index(self.channels, name=Axis.C),
+    #     )
+    #     binned_illum = binned_illum.expand_dims([Axis.Z, Axis.Y, Axis.X])
+    #     return binned_illum.transpose(Axis.W, Axis.C, Axis.Z, Axis.Y, Axis.X)
 
     def emission_flux(
         self, truth: "xr.DataArray | None" = None, *, channel_idx: int = 0

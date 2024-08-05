@@ -94,7 +94,7 @@ def get_emission_events(
     channel: OpticalConfig,
     fluor: Fluorophore,
     *,
-    light_power: float = 100,
+    light_power: float = 100.0,
 ) -> Spectrum:
     # get the emission events for the given fluorophore
     if (channel_ex := channel.excitation) is None:

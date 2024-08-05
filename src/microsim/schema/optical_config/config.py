@@ -2,11 +2,14 @@ import inspect
 from collections.abc import Sequence
 from typing import Any
 
+import pint_xarray  # noqa: F401
+import xarray as xr
 from pydantic import Field, model_validator
 
 from microsim._field_types import Watts, Watts_cm2
 from microsim.fpbase import SpectrumOwner
 from microsim.schema._base_model import SimBaseModel
+from microsim.schema.sample.fluorophore import Fluorophore
 from microsim.schema.spectrum import Spectrum
 
 from .filter import Filter, Placement, SpectrumFilter
@@ -29,6 +32,46 @@ class OpticalConfig(SimBaseModel):
     name: str = ""
     filters: list[Filter] = Field(default_factory=list)
     lights: list[LightSource] = Field(default_factory=list)
+    # seemingly duplicate of power in LightSource
+    # but it depends on where the power is being measured
+    # TODO: it's tough deciding where power should go...
+    # it could also go on Simulation itself as a function of space.
+    power: Watts_cm2 | None = None  # total power of all lights after filters
+
+    def absorption_rate(self, fluorophore: Fluorophore | Spectrum) -> "OpticalConfig":
+        """Return the absorption rate of a fluorophore in this configuration.
+
+        The absorption rate is the number of photons absorbed per second per
+        fluorophore.
+        """
+        from microsim.schema._emission import AVOGADRO, PLANCK, C
+
+        if (illum := self.illumination) is None:
+            raise ValueError("No illumination spectrum defined.")
+
+        # get cross section
+        if isinstance(fluorophore, Fluorophore):
+            fluorophore = fluorophore.excitation_spectrum
+        elif not isinstance(fluorophore, Spectrum):  # pragma: no cover
+            raise TypeError("fluorophore must be a Fluorophore or Spectrum")
+        ec = fluorophore.as_xarray().pint.quantify("1/cm/M")
+        cross_section = (ec / AVOGADRO).pint.to("cm^2")
+
+        # get irradiance scaled to power
+        irrad = illum.as_xarray()
+        # normalize area under curve to 1
+        irrad = irrad / irrad.sum()
+        # scale to power
+        if self.power is not None:
+            irrad = irrad * self.power
+        # add units
+        irrad = irrad.pint.quantify("W/cm^2")
+
+        # calculate excitation rate
+        watts_absorbed = irrad * cross_section  # includes only overlapping wavelengths
+        wavelength = xr.DataArray(watts_absorbed.coords["w"]).pint.quantify("nm")
+        energy_per_photon = PLANCK * C / wavelength
+        return (watts_absorbed / energy_per_photon).pint.to("1/s")
 
     @property
     def excitation(self) -> Filter | None:

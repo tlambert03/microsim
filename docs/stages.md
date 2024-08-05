@@ -62,7 +62,7 @@ fluorophores present at each voxel in the volume.
     Here is an example using a ground-truth generator
     [`MatsLines`][microsim.schema.sample.MatsLines] that draws random lines in the
     volume.  The fluorophore is specified to be `EGFP`.
-    
+
     *When specifying the fluorophore as a string, microsim will load properties from
     [FPbase](https://www.fpbase.org/). Otherwise, you may directly create a
     [`Fluorophore`][microsim.schema.Fluorophore] object.*
@@ -90,6 +90,8 @@ fluorophores present at each voxel in the volume.
     PR](https://github.com/tlambert03/microsim/pulls)!
     We will help :slightly_smiling_face:
 
+## Illumination Flux
+
 ## Emission Flux
 
 - **value units**: photons / second
@@ -109,6 +111,35 @@ This conversion will depend on:
 - the pattern of illumination (particularly relevant for structured illumination)
 - the molecular brightness of the fluorophore (extinction coefficient and quantum yield).
 
+Where:
+
+- $I(\lambda)$:  Spectral irradiance of the excitation light ($\frac{W}{cm^2}$ per unit wavelength)
+- $\Phi_{\text{em}}(\lambda)$:  Photon flux density at each wavelength (photons per second per unit area per unit wavelength)
+- $\Phi_{\text{abs}}(\lambda)$: Rate of photon absorption at each wavelength
+- $\epsilon(\lambda)$: Molar extinction coefficient at each wavelength ($\text{M}^{-1} \text{cm}^{-1}$)
+- $h$ is Planck's constant ($J\cdot s$)
+- $c$ is the speed of light ($m/s$)
+
+1. Photon Flux Density at Each Wavelength
+
+$$
+\Phi_{\text{ex}} = \frac{I(\lambda)}{h c / \lambda)}
+$$
+
+2. Rate of Photon Absorption at Each Wavelength
+
+$$
+\Phi_{\text{abs}} = \Phi_{\text{ex}} \times \epsilon(\lambda)
+$$
+
+where:
+
+- $\Phi_{\text{em}}$ is the emission flux in photons / second
+- $P_{\text{ex}}$ is the excitation power in watts
+
+- $\lambda_{\text{ex}}$ is the excitation wavelength
+- $\epsilon(\lambda_{\text{ex}})$ is the extinction coefficient of the fluorophore at $\lambda_{\text{ex}}$
+
 The output of this stage is a 6D array with dimensions `(W, C, F, Z, Y, X)`
 with two new dimensions:
 
@@ -123,7 +154,7 @@ It's worth pointing out that we need to calculate the emission spectral flux for
 *every* combination of fluorophore and channel in order to be able to include
 bleedthrough and crosstalk effects in the simulation. For example `data[{'F': 0,
 'C': 1}]` would represent the emission flux of fluorophore 0 when excited by
-channel 1. This is why both F and C remain at this stage.  
+channel 1. This is why both F and C remain at this stage.
 
 !!! examples
 
@@ -286,3 +317,68 @@ will depend on the settings of the `detector` and the `output_space`.
     We don't yet model pixel-specific characterists of sCMOS cameras.  Ideally,
     we will generate a random "instance" of an sCMOS camera with noise, gain,
     and offset distribution pulled from a typical CMOS.
+
+## Calculation of the emission flux
+
+The number of photons emitted per second depends on
+
+1. $I(\lambda)$: the illumination light irradiance ($\frac{W}{cm^2}$)
+2. $\epsilon(\lambda)$: the extinction coefficient of the fluorophore at the excitation wavelength ($\text{M}^{-1} \text{cm}^{-1}$)
+3. $\eta$: the quantum yield of the fluorophore.
+
+and
+
+- $h$: Planck's constant ($6.626 \times 10^{-34} J \cdot s$)
+- $c$: the speed of light ($3 \times 10^8$ $m/s$)
+- $N_A$: Avogadro's number ($6.022 \times 10^{23} / \text{mol}$)
+- $\lambda$: the wavelength of the excitation photons
+
+### 1. Photon absorption rate
+
+The number of photons absorbed per second $\Phi_{\text{abs}}(\lambda)$
+is given by:
+
+$$
+\Phi_{\text{abs}}(\lambda) = \frac{I(\lambda) \cdot \sigma(\lambda)}{h c / \lambda}
+$$
+
+where the cross-sectional area $\sigma(\lambda)$ of the fluorophore is
+determined from the extinction coefficient $\epsilon(\lambda)$:
+
+$$
+\sigma(\lambda) = \frac{\epsilon(\lambda) \cdot 10^3}{N_A}
+$$
+
+### 2. Photon emission rate
+
+The number of photons emitted per second $\Phi_{\text{em}}(\lambda)$
+depends on the quantum yield of the fluorophore $\eta$:
+
+$$
+\Phi_{\text{em}}(\lambda) = \Phi_{\text{abs}}(\lambda) \cdot \eta
+$$
+
+### 3. General photon emission rate, non-monochromatic light
+
+When the excitation light is not monochromatic, the total number of photons
+emitted per second must be integrated over the range of excitation wavelengths.
+Combining all of the equations above, and taking wavelength into account, we get
+the total emitted photon flux $\Phi_{\text{em, total}}$:
+
+!!! info "Emission Photon Flux"
+
+    $$
+    \Large
+    \Phi_{\text{em, total}} = \eta \int_{\lambda_{\text{min}}}^{\lambda_{\text{max}}} \frac{I(\lambda) \cdot \epsilon(\lambda) \cdot 10^3 \cdot \lambda}{h c \cdot N_A} \, d\lambda
+    $$
+
+!!!tip
+
+    In the simulation, emitted photons are randomly assigned a wavelength based on
+    the emission spectrum of the fluorophore using [inverse transform
+    sampling](https://en.wikipedia.org/wiki/Inverse_transform_sampling).
+
+This equation is solved for every voxel in the ground truth volume, for every
+fluorophore, and for every unique excitation channel in the simulation. The
+result is a 6D array with dimensions `(C, F, Z, Y, X)` and values in units of
+photons per second.

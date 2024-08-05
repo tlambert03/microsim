@@ -127,7 +127,7 @@ def bin_spectrum(
         bins = generate_bins(
             x=wavelengths, y=intensities, num_bins=num_bins, strategy=binning_strategy
         )
-    sbins = sorted(set([bins.start for bins in bins] + [bins[-1].end]))
     data = xr.DataArray(intensities, dims=[Axis.W], coords={Axis.W: wavelengths})
+    sbins = sorted(set([bins.start for bins in bins] + [bins[-1].end]))
     binned_data = data.groupby_bins(data[Axis.W], bins=np.asarray(sbins)).sum()
     return binned_data.rename({f"{Axis.W}_bins": Axis.W})

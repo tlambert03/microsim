@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pint
+import xarray as xr
 from pydantic import field_validator, model_validator
 
 from microsim._field_types import Nanometers, NumpyNdarray
@@ -12,6 +13,8 @@ from ._base_model import SimBaseModel
 
 if TYPE_CHECKING:
     from microsim.fpbase import Spectrum as FPbaseSpectrum
+
+AXIS_W = "w"  # same as Axis.W, hack to avoid circular import
 
 
 class _AryRepr:
@@ -30,6 +33,9 @@ class Spectrum(SimBaseModel):
     intensity: NumpyNdarray  # normalized to 1
     scalar: float = 1  # scalar to multiply intensity by, such as EC or QY
 
+    def __hash__(self) -> int:
+        return id(self)
+
     def __eq__(self, other: Any) -> bool:
         if not isinstance(other, Spectrum):
             return False
@@ -41,6 +47,20 @@ class Spectrum(SimBaseModel):
 
     def __array__(self) -> np.ndarray:
         return np.column_stack((self.wavelength.magnitude, self.intensity))
+
+    def as_xarray(self) -> "xr.DataArray":
+        return xr.DataArray(
+            self.intensity,
+            coords={
+                AXIS_W: xr.DataArray(
+                    self.wavelength.magnitude,
+                    dims=[AXIS_W],
+                    attrs={"units": "nm"},
+                )
+            },
+            dims=[AXIS_W],
+            name="intensity",
+        )
 
     def __index__(self) -> int:
         return id(self)

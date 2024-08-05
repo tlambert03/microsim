@@ -39,11 +39,11 @@ class Axis(str, Enum):
 
     X = "x"
     Y = "y"
-    Z = "z"
-    C = "c"
-    T = "t"
-    F = "f"
-    W = "w"
+    Z = "z"  # Optical axis
+    C = "c"  # Channel
+    T = "t"  # Time
+    F = "f"  # Fluorophore
+    W = "w"  # Wavelength
 
     def __repr__(self) -> str:
         return f"<Axis.{self.name}>"
