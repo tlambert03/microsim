@@ -6,7 +6,7 @@ import numpy as np
 import pint
 from pydantic import field_validator, model_validator
 
-from microsim._field_types import Nanometers, NumpyNdarray
+from microsim._field_types import NumpyNdarray
 
 from ._base_model import SimBaseModel
 
@@ -26,7 +26,7 @@ class _AryRepr:
 
 
 class Spectrum(SimBaseModel):
-    wavelength: Nanometers
+    wavelength_nm: NumpyNdarray
     intensity: NumpyNdarray  # normalized to 1
     scalar: float = 1  # scalar to multiply intensity by, such as EC or QY
 
@@ -35,12 +35,12 @@ class Spectrum(SimBaseModel):
             return False
         return (
             np.allclose(self.intensity, other.intensity)
-            and np.allclose(self.wavelength.magnitude, other.wavelength.magnitude)
+            and np.allclose(self.wavelength_nm, other.wavelength_nm)
             and self.scalar == other.scalar
         )
 
     def __array__(self) -> np.ndarray:
-        return np.column_stack((self.wavelength.magnitude, self.intensity))
+        return np.column_stack((self.wavelength_nm, self.intensity))
 
     def __index__(self) -> int:
         return id(self)
@@ -49,7 +49,7 @@ class Spectrum(SimBaseModel):
         return self.model_copy(update={"intensity": 1 - self.intensity})
 
     def integral(self) -> float | pint.Quantity:
-        return np.trapz(self.intensity, self.wavelength.magnitude)  # type: ignore [no-any-return]
+        return np.trapz(self.intensity, self.wavelength_nm)  # type: ignore [no-any-return]
 
     def __mul__(self, other: "float | pint.Quantity | Spectrum") -> "Spectrum":
         if isinstance(other, Spectrum):
@@ -62,22 +62,20 @@ class Spectrum(SimBaseModel):
         return self.model_copy(update={"intensity": self.intensity / other})
 
     def _intensity_op(self, other: "Spectrum", op: np.ufunc) -> "Spectrum":
-        slc1, slc2 = get_overlapping_indices(
-            self.wavelength.magnitude, other.wavelength.magnitude
-        )
+        slc1, slc2 = get_overlapping_indices(self.wavelength_nm, other.wavelength_nm)
         intens1 = self.intensity[slc1]
         intens2 = other.intensity[slc2]
         return self.model_copy(
             update={
                 "intensity": op(intens1, intens2),
-                "wavelength": self.wavelength[slc1],  # type: ignore[index]
+                "wavelength": self.wavelength_nm[slc1],
             }
         )
 
     @classmethod
     def from_fpbase(cls, spectrum: "FPbaseSpectrum") -> "Spectrum":
         data = np.asarray(spectrum.data)
-        return cls(wavelength=data[:, 0], intensity=data[:, 1])
+        return cls(wavelength_nm=data[:, 0], intensity=data[:, 1])
 
     def __repr_args__(self) -> Iterable[tuple[str | None, Any]]:
         for _fname, _val in super().__repr_args__():
@@ -86,9 +84,9 @@ class Spectrum(SimBaseModel):
             yield _fname, _val
 
     @property
-    def peak_wavelength(self) -> Nanometers:
+    def peak_wavelength(self) -> float:
         """Wavelength corresponding to maximum intensity."""
-        return self.wavelength[np.argmax(self.intensity)]  # type: ignore
+        return float(self.wavelength_nm[np.argmax(self.intensity)])
 
     @property
     def max_intensity(self) -> pint.Quantity | float:
@@ -131,7 +129,7 @@ class Spectrum(SimBaseModel):
         fig = plt.figure(figsize=(12, 3))
         ax = fig.add_subplot(111)
 
-        ax.plot(self.wavelength.magnitude, self.intensity)
+        ax.plot(self.wavelength_nm, self.intensity)
         if show:
             plt.show()
 

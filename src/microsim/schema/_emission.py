@@ -59,19 +59,20 @@ def get_excitation_rate(
     if not (fluor_ex_spectrum := fluor.excitation_spectrum):
         raise NotImplementedError("Fluorophore has no excitation spectrum.")
 
-    if (ext_coeff := fluor.extinction_coefficient) is None:
-        ext_coeff = _ensure_quantity(55000, "cm^-1/M")
+    if (ec := fluor.extinction_coefficient) is None:
+        ec = 55000
         warnings.warn(
             "No extinction coefficient provided for fluorophore, "
             "using 55,000 M^-1 * cm^-1.",
             stacklevel=2,
         )
 
+    ext_coeff = _ensure_quantity(ec, "cm^-1/M")
     # TODO: derive light power from model
     irradiance = ex_filter_spectrum * _ensure_quantity(light_power, "W/cm^2")
     cross_section = fluor_ex_spectrum * ec_to_cross_section(ext_coeff)
     power_absorbed = cross_section * irradiance
-    excitation_rate = power_absorbed / energy_per_photon(power_absorbed.wavelength)
+    excitation_rate = power_absorbed / energy_per_photon(power_absorbed.wavelength_nm)
     return excitation_rate
 
     # TODO

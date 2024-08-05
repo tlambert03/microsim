@@ -5,9 +5,9 @@ from microsim.schema.optical_config.filter import Bandpass, Longpass
 DAPI = OpticalConfig(
     name="DAPI",
     filters=[
-        Bandpass(bandcenter=350, bandwidth=50, placement="EX"),
-        Longpass(cuton=400, placement="BS"),
-        Bandpass(bandcenter=460, bandwidth=50, placement="EM"),
+        Bandpass(bandcenter_nm=350, bandwidth_nm=50, placement="EX"),
+        Longpass(cuton_nm=400, placement="BS"),
+        Bandpass(bandcenter_nm=460, bandwidth_nm=50, placement="EM"),
     ],
 )
 
@@ -15,9 +15,9 @@ DAPI = OpticalConfig(
 ECFP = OpticalConfig(
     name="ECFP",
     filters=[
-        Bandpass(bandcenter=436, bandwidth=20, placement="EX"),
-        Longpass(cuton=455, placement="BS"),
-        Bandpass(bandcenter=480, bandwidth=40, placement="EM"),
+        Bandpass(bandcenter_nm=436, bandwidth_nm=20, placement="EX"),
+        Longpass(cuton_nm=455, placement="BS"),
+        Bandpass(bandcenter_nm=480, bandwidth_nm=40, placement="EM"),
     ],
 )
 
@@ -25,9 +25,9 @@ ECFP = OpticalConfig(
 FITC = OpticalConfig(
     name="FITC",
     filters=[
-        Bandpass(bandcenter=470, bandwidth=40, placement="EX"),
-        Longpass(cuton=495, placement="BS"),
-        Bandpass(bandcenter=525, bandwidth=50, placement="EM"),
+        Bandpass(bandcenter_nm=470, bandwidth_nm=40, placement="EX"),
+        Longpass(cuton_nm=495, placement="BS"),
+        Bandpass(bandcenter_nm=525, bandwidth_nm=50, placement="EM"),
     ],
 )
 
@@ -35,9 +35,9 @@ FITC = OpticalConfig(
 EYFP = OpticalConfig(
     name="EYFP",
     filters=[
-        Bandpass(bandcenter=500, bandwidth=20, placement="EX"),
-        Longpass(cuton=515, placement="BS"),
-        Bandpass(bandcenter=535, bandwidth=30, placement="EM"),
+        Bandpass(bandcenter_nm=500, bandwidth_nm=20, placement="EX"),
+        Longpass(cuton_nm=515, placement="BS"),
+        Bandpass(bandcenter_nm=535, bandwidth_nm=30, placement="EM"),
     ],
 )
 
@@ -45,9 +45,9 @@ EYFP = OpticalConfig(
 TRITC = OpticalConfig(
     name="TRITC",
     filters=[
-        Bandpass(bandcenter=545, bandwidth=25, placement="EX"),
-        Longpass(cuton=565, placement="BS"),
-        Bandpass(bandcenter=605, bandwidth=70, placement="EM"),
+        Bandpass(bandcenter_nm=545, bandwidth_nm=25, placement="EX"),
+        Longpass(cuton_nm=565, placement="BS"),
+        Bandpass(bandcenter_nm=605, bandwidth_nm=70, placement="EM"),
     ],
 )
 
@@ -55,9 +55,9 @@ TRITC = OpticalConfig(
 DSRED = OpticalConfig(
     name="DSRED",
     filters=[
-        Bandpass(bandcenter=545, bandwidth=30, placement="EX"),
-        Longpass(cuton=570, placement="BS"),
-        Bandpass(bandcenter=620, bandwidth=60, placement="EM"),
+        Bandpass(bandcenter_nm=545, bandwidth_nm=30, placement="EX"),
+        Longpass(cuton_nm=570, placement="BS"),
+        Bandpass(bandcenter_nm=620, bandwidth_nm=60, placement="EM"),
     ],
 )
 
@@ -65,9 +65,9 @@ DSRED = OpticalConfig(
 CY5 = OpticalConfig(
     name="CY5",
     filters=[
-        Bandpass(bandcenter=620, bandwidth=60, placement="EX"),
-        Longpass(cuton=660, placement="BS"),
-        Bandpass(bandcenter=700, bandwidth=75, placement="EM"),
+        Bandpass(bandcenter_nm=620, bandwidth_nm=60, placement="EX"),
+        Longpass(cuton_nm=660, placement="BS"),
+        Bandpass(bandcenter_nm=700, bandwidth_nm=75, placement="EM"),
     ],
 )
 
@@ -75,8 +75,8 @@ CY5 = OpticalConfig(
 CY7 = OpticalConfig(
     name="CY7",
     filters=[
-        Bandpass(bandcenter=710, bandwidth=75, placement="EX"),
-        Longpass(cuton=760, placement="BS"),
-        Bandpass(bandcenter=810, bandwidth=90, placement="EM"),
+        Bandpass(bandcenter_nm=710, bandwidth_nm=75, placement="EX"),
+        Longpass(cuton_nm=760, placement="BS"),
+        Bandpass(bandcenter_nm=810, bandwidth_nm=90, placement="EM"),
     ],
 )
