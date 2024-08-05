@@ -215,7 +215,7 @@ class Simulation(SimBaseModel):
         )
         return em_bins
 
-    def _emission_rates(self):
+    def _emission_rates(self) -> xr.DataArray:
         """Returns a (C, F) array of emission flux for each channel and fluorophore.
 
         Only depends on the fluorophores in the sample and the optical config.  Does
@@ -223,7 +223,7 @@ class Simulation(SimBaseModel):
 
         Values are in units of photons/s.
         """
-        fluorophors = [x.fluorophore for x in self.sample.labels]
+        fluorophors = [x.fluorophore for x in self.sample.labels if x.fluorophore]
         return xr.DataArray(
             [
                 [

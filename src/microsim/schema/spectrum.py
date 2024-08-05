@@ -51,7 +51,7 @@ class Spectrum(SimBaseModel):
             self.intensity,
             coords={
                 AXIS_W: xr.DataArray(
-                    self.wavelength.magnitude,
+                    self.wavelength,
                     dims=[AXIS_W],
                     attrs={"units": "nm"},
                 )
