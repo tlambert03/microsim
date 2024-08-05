@@ -1,8 +1,6 @@
 from typing import Annotated, Any, Literal
 
-import pint
 from annotated_types import Ge
-from pint import Quantity
 
 from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
 from microsim.psf import make_psf
@@ -23,7 +21,7 @@ class _PSFModality(SimBaseModel):
         objective_lens: ObjectiveLens,
         settings: Settings,
         xp: NumpyAPI,
-        em_wvl: Quantity | None = None,
+        em_wvl_nm: float | None = None,
     ) -> ArrayProtocol:
         # default implementation is a widefield PSF
         return make_psf(
@@ -32,7 +30,7 @@ class _PSFModality(SimBaseModel):
             objective=objective_lens,
             max_au_relative=settings.max_psf_radius_aus,
             xp=xp,
-            em_wvl=em_wvl,
+            em_wvl_nm=em_wvl_nm,
         )
 
     def render(
@@ -44,7 +42,6 @@ class _PSFModality(SimBaseModel):
         xp: NumpyAPI,
     ) -> xrDataArray:
         convolved: Any = 0
-        ureg = pint.application_registry.get()  # type: ignore
         for fluor_idx in range(truth.sizes[Axis.F]):
             convolved_fluor: Any = 0
             for bin_idx in range(truth.sizes[Axis.W]):
@@ -53,14 +50,13 @@ class _PSFModality(SimBaseModel):
                     # NOTE: there can be bins for which there is no data in one of the
                     #  fluorophores
                     continue
-                em_wvl = binned_flux[Axis.W].values.item().mid * ureg.nm
                 psf = self.psf(
                     truth.attrs["space"],
                     channel,
                     objective_lens,
                     settings,
                     xp,
-                    em_wvl=em_wvl,
+                    em_wvl_nm=binned_flux[Axis.W].values.item().mid,
                 )
                 convolved_fluor += xp.fftconvolve(
                     binned_flux.isel({Axis.C: 0}), psf, mode="same"
@@ -91,7 +87,7 @@ class Confocal(_PSFModality):
         objective_lens: ObjectiveLens,
         settings: Settings,
         xp: NumpyAPI,
-        em_wvl: Quantity | None = None,
+        em_wvl_nm: float | None = None,
     ) -> ArrayProtocol:
         return make_psf(
             space=space,
@@ -100,7 +96,7 @@ class Confocal(_PSFModality):
             pinhole_au=self.pinhole_au,
             max_au_relative=settings.max_psf_radius_aus,
             xp=xp,
-            em_wvl=em_wvl,
+            em_wvl_nm=em_wvl_nm,
         )
 
 

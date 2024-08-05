@@ -6,7 +6,6 @@ import pint_xarray  # noqa: F401
 import xarray as xr
 from pydantic import Field, model_validator
 
-from microsim._field_types import Watts, Watts_cm2
 from microsim.fpbase import SpectrumOwner
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.sample.fluorophore import Fluorophore
@@ -18,7 +17,7 @@ from .filter import Filter, Placement, SpectrumFilter
 class LightSource(SimBaseModel):
     name: str = ""
     spectrum: Spectrum
-    power: Watts | Watts_cm2 | None = None
+    power: float | None = None  # W/cm^2
 
     @classmethod
     def from_fpbase(cls, light: SpectrumOwner) -> "LightSource":
@@ -178,7 +177,7 @@ class OpticalConfig(SimBaseModel):
 
         legend = []
         for filt in self.filters:
-            ax.plot(filt.spectrum.wavelength.magnitude, filt.spectrum.intensity)
+            ax.plot(filt.spectrum.wavelength, filt.spectrum.intensity)
             legend.append(filt.name)
         if any(legend):
             ax.legend(legend)
