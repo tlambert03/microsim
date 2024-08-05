@@ -43,7 +43,7 @@ class _FilterBase(SimBaseModel):
 
     def center_wave(self) -> float:
         """Return the weighted mean wavelength of the filter."""
-        avg = np.average(self.spectrum.wavelength_nm, weights=self.spectrum.intensity)
+        avg = np.average(self.spectrum.wavelength, weights=self.spectrum.intensity)
         return float(avg)
 
     @classmethod
@@ -78,23 +78,23 @@ class _FilterBase(SimBaseModel):
 
 class Bandpass(_FilterBase):
     type: Literal["bandpass"] = "bandpass"
-    bandcenter_nm: float
-    bandwidth_nm: float
+    bandcenter: float  # nm
+    bandwidth: float  # nm
     transmission: Transmission = 1.0
 
     def center_wave(self) -> float:
-        return self.bandcenter_nm
+        return self.bandcenter
 
     def _get_spectrum(self) -> Spectrum:
-        min_wave = min(300, (self.bandcenter_nm - self.bandwidth_nm))
-        max_wave = max(800, (self.bandcenter_nm + self.bandwidth_nm))
+        min_wave = min(300, (self.bandcenter - self.bandwidth))
+        max_wave = max(800, (self.bandcenter + self.bandwidth))
         wavelength = np.arange(min_wave, max_wave, 1)
         return Spectrum(
-            wavelength_nm=wavelength,
+            wavelength=wavelength,
             intensity=bandpass(
                 wavelength,
-                center=self.bandcenter_nm,
-                bandwidth=self.bandwidth_nm,
+                center=self.bandcenter,
+                bandwidth=self.bandwidth,
                 transmission=self.transmission,
             ),
         )
@@ -102,7 +102,7 @@ class Bandpass(_FilterBase):
 
 class Shortpass(_FilterBase):
     type: Literal["shortpass"] = "shortpass"
-    cutoff_nm: float
+    cutoff: float  # nm
     slope: float | None = None
     transmission: Transmission = 1.0
     placement: Placement = Placement.EX_PATH
@@ -111,14 +111,14 @@ class Shortpass(_FilterBase):
         raise NotImplementedError("center wave is not defined for shortpass filters")
 
     def _get_spectrum(self) -> Spectrum:
-        min_wave = min(300, self.cutoff_nm - 50)
-        max_wave = max(800, self.cutoff_nm + 50)
+        min_wave = min(300, self.cutoff - 50)
+        max_wave = max(800, self.cutoff + 50)
         wavelength = np.arange(min_wave, max_wave, 1)
         return Spectrum(
-            wavelength_nm=wavelength,
+            wavelength=wavelength,
             intensity=sigmoid(
                 np.arange(300, 800, 1),
-                self.cutoff_nm,
+                self.cutoff,
                 slope=self.slope or 5,
                 up=False,
                 max=self.transmission,
@@ -128,7 +128,7 @@ class Shortpass(_FilterBase):
 
 class Longpass(_FilterBase):
     type: Literal["longpass"] = "longpass"
-    cuton_nm: float
+    cuton: float  # nm
     slope: float | None = None
     transmission: Transmission = 1.0
     placement: Placement = Placement.EM_PATH
@@ -137,14 +137,14 @@ class Longpass(_FilterBase):
         raise NotImplementedError("center wave is not defined for longpass filters")
 
     def _get_spectrum(self) -> Spectrum:
-        min_wave = min(300, self.cuton_nm - 50)
-        max_wave = max(800, self.cuton_nm + 50)
+        min_wave = min(300, self.cuton - 50)
+        max_wave = max(800, self.cuton + 50)
         wavelength = np.arange(min_wave, max_wave, 1)
         return Spectrum(
-            wavelength_nm=wavelength,
+            wavelength=wavelength,
             intensity=sigmoid(
                 np.arange(300, 800, 1),
-                self.cuton_nm,
+                self.cuton,
                 slope=self.slope or 5,
                 up=True,
                 max=self.transmission,

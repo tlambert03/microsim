@@ -72,7 +72,7 @@ def get_excitation_rate(
     irradiance = ex_filter_spectrum * _ensure_quantity(light_power, "W/cm^2")
     cross_section = fluor_ex_spectrum * ec_to_cross_section(ext_coeff)
     power_absorbed = cross_section * irradiance
-    excitation_rate = power_absorbed / energy_per_photon(power_absorbed.wavelength_nm)
+    excitation_rate = power_absorbed / energy_per_photon(power_absorbed.wavelength)
     return excitation_rate
 
     # TODO

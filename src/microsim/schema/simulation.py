@@ -210,7 +210,7 @@ class Simulation(SimBaseModel):
                 )
             else:
                 # get emission Spectrum for the given fluorophore
-                fluor_em_spectra.append(fluor.emission_spectrum.wavelength_nm)
+                fluor_em_spectra.append(fluor.emission_spectrum.wavelength)
 
         # Get the min and max wavelength over all the spectra
         min_wave = min([x.min() for x in fluor_em_spectra])
@@ -251,7 +251,7 @@ class Simulation(SimBaseModel):
         if not illum:
             # If illumination is not defined, we assume a white light source
             illum = Spectrum(
-                wavelength_nm=np.arange(
+                wavelength=np.arange(
                     self.settings.min_wavelength, self.settings.max_wavelength, 1
                 ),
                 intensity=np.ones(

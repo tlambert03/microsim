@@ -134,7 +134,7 @@ class OpticalConfig(SimBaseModel):
 
         legend = []
         for filt in self.filters:
-            ax.plot(filt.spectrum.wavelength_nm, filt.spectrum.intensity)
+            ax.plot(filt.spectrum.wavelength, filt.spectrum.intensity)
             legend.append(filt.name)
         if any(legend):
             ax.legend(legend)

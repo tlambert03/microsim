@@ -49,11 +49,11 @@ class Fluorophore(SimBaseModel):
 
         fig, ax = plt.subplots(figsize=(12, 3))
         ax.plot(
-            self.excitation_spectrum.wavelength_nm,
+            self.excitation_spectrum.wavelength,
             self.excitation_spectrum.intensity,
         )
         ax.plot(
-            self.emission_spectrum.wavelength_nm,
+            self.emission_spectrum.wavelength,
             self.emission_spectrum.intensity,
         )
         ax.set_xlabel("Wavelength (nm)")
