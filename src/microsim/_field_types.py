@@ -4,7 +4,6 @@ from inspect import signature
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Protocol
 
 import numpy as np
-from pint.facets.plain import PlainQuantity
 from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, functional_validators
 from pydantic_core import core_schema
 
@@ -147,12 +146,12 @@ NumpyNdarray = Annotated[np.ndarray, _NumpyNdarrayPydanticAnnotation]
 
 # these are all ultimately also numeric and/or array[numeric] types too
 
-Meters = Annotated[PlainQuantity, BeforeValidator(_validators.validate_meters)]
-Microns = Annotated[PlainQuantity, BeforeValidator(_validators.validate_microns)]
-Nanometers = Annotated[PlainQuantity, BeforeValidator(_validators.validate_nm)]
-ExtCoeff = Annotated[PlainQuantity, BeforeValidator(_validators.validate_ext_coeff)]
-Nanoseconds = Annotated[PlainQuantity, BeforeValidator(_validators.validate_ns)]
-Seconds = Annotated[PlainQuantity, BeforeValidator(_validators.validate_seconds)]
+# Meters = Annotated[PlainQuantity, BeforeValidator(_validators.validate_meters)]
+# Microns = Annotated[PlainQuantity, BeforeValidator(_validators.validate_microns)]
+# Nanometers = Annotated[PlainQuantity, BeforeValidator(_validators.validate_nm)]
+# ExtCoeff = Annotated[PlainQuantity, BeforeValidator(_validators.validate_ext_coeff)]
+# Nanoseconds = Annotated[PlainQuantity, BeforeValidator(_validators.validate_ns)]
+# Seconds = Annotated[PlainQuantity, BeforeValidator(_validators.validate_seconds)]
 
-Watts = Annotated[PlainQuantity, BeforeValidator(_validators.validate_watts)]
-Watts_cm2 = Annotated[PlainQuantity, BeforeValidator(_validators.validate_irradiance)]
+# Watts = Annotated[PlainQuantity, BeforeValidator(_validators.validate_watts)]
+# Watts_cm2 = Annotated[PlainQuantity, BeforeValidator(_validators.validate_irradiance)]

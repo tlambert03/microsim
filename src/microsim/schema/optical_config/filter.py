@@ -8,7 +8,6 @@ from annotated_types import Interval
 from pydantic import Field, computed_field
 
 from microsim import fpbase
-from microsim._field_types import Nanometers
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
 
@@ -42,11 +41,10 @@ class _FilterBase(SimBaseModel):
     def inverted(self) -> "Self":
         return self.model_copy(update={"spectrum": self.spectrum.inverted()})
 
-    def center_wave(self) -> Nanometers:
+    def center_wave(self) -> float:
         """Return the weighted mean wavelength of the filter."""
-        return np.average(  # type: ignore
-            self.spectrum.wavelength, weights=self.spectrum.intensity
-        )
+        avg = np.average(self.spectrum.wavelength, weights=self.spectrum.intensity)
+        return float(avg)
 
     @classmethod
     def from_fpbase(
@@ -80,23 +78,23 @@ class _FilterBase(SimBaseModel):
 
 class Bandpass(_FilterBase):
     type: Literal["bandpass"] = "bandpass"
-    bandcenter: Nanometers
-    bandwidth: Nanometers
+    bandcenter: float  # nm
+    bandwidth: float  # nm
     transmission: Transmission = 1.0
 
-    def center_wave(self) -> Nanometers:
+    def center_wave(self) -> float:
         return self.bandcenter
 
     def _get_spectrum(self) -> Spectrum:
-        min_wave = min(300, (self.bandcenter - self.bandwidth).magnitude)
-        max_wave = max(800, (self.bandcenter + self.bandwidth).magnitude)
+        min_wave = min(300, (self.bandcenter - self.bandwidth))
+        max_wave = max(800, (self.bandcenter + self.bandwidth))
         wavelength = np.arange(min_wave, max_wave, 1)
         return Spectrum(
             wavelength=wavelength,
             intensity=bandpass(
                 wavelength,
-                center=self.bandcenter.magnitude,
-                bandwidth=self.bandwidth.magnitude,
+                center=self.bandcenter,
+                bandwidth=self.bandwidth,
                 transmission=self.transmission,
             ),
         )
@@ -104,23 +102,23 @@ class Bandpass(_FilterBase):
 
 class Shortpass(_FilterBase):
     type: Literal["shortpass"] = "shortpass"
-    cutoff: Nanometers
+    cutoff: float  # nm
     slope: float | None = None
     transmission: Transmission = 1.0
     placement: Placement = Placement.EX_PATH
 
-    def center_wave(self) -> Nanometers:
+    def center_wave(self) -> float:
         raise NotImplementedError("center wave is not defined for shortpass filters")
 
     def _get_spectrum(self) -> Spectrum:
-        min_wave = min(300, self.cutoff.magnitude - 50)
-        max_wave = max(800, self.cutoff.magnitude + 50)
+        min_wave = min(300, self.cutoff - 50)
+        max_wave = max(800, self.cutoff + 50)
         wavelength = np.arange(min_wave, max_wave, 1)
         return Spectrum(
             wavelength=wavelength,
             intensity=sigmoid(
                 np.arange(300, 800, 1),
-                self.cutoff.magnitude,
+                self.cutoff,
                 slope=self.slope or 5,
                 up=False,
                 max=self.transmission,
@@ -130,23 +128,23 @@ class Shortpass(_FilterBase):
 
 class Longpass(_FilterBase):
     type: Literal["longpass"] = "longpass"
-    cuton: Nanometers
+    cuton: float  # nm
     slope: float | None = None
     transmission: Transmission = 1.0
     placement: Placement = Placement.EM_PATH
 
-    def center_wave(self) -> Nanometers:
+    def center_wave(self) -> float:
         raise NotImplementedError("center wave is not defined for longpass filters")
 
     def _get_spectrum(self) -> Spectrum:
-        min_wave = min(300, self.cuton.magnitude - 50)
-        max_wave = max(800, self.cuton.magnitude + 50)
+        min_wave = min(300, self.cuton - 50)
+        max_wave = max(800, self.cuton + 50)
         wavelength = np.arange(min_wave, max_wave, 1)
         return Spectrum(
             wavelength=wavelength,
             intensity=sigmoid(
                 np.arange(300, 800, 1),
-                self.cuton.magnitude,
+                self.cuton,
                 slope=self.slope or 5,
                 up=True,
                 max=self.transmission,

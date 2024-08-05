@@ -143,6 +143,7 @@ filterwarnings = [
     "error",
     "ignore:unclosed transport:ResourceWarning",             # only on py3.10... not sure why
     "ignore:Clipping negative intensity values:UserWarning", # when importing FPbase spectra
+    "ignore:__array__ implementation doesn't accept a copy keyword"
 ]
 
 # https://coverage.readthedocs.io/en/6.4/config.html

@@ -6,8 +6,6 @@ from urllib.request import Request, urlopen
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-from microsim._field_types import ExtCoeff, Nanometers, Nanoseconds
-
 __all__ = ["get_fluorophore", "get_microscope", "FPbaseFluorophore", "FPbaseMicroscope"]
 
 
@@ -42,12 +40,12 @@ class SpectrumOwner(BaseModel):
 
 class State(BaseModel):
     id: int
-    exMax: Nanometers
-    emMax: Nanometers
-    extCoeff: ExtCoeff | None = None
+    exMax: float  # nanometers
+    emMax: float  # nanometers
+    extCoeff: float | None = None  # M^-1 cm^-1
     qy: float | None = None
     spectra: list[Spectrum]
-    lifetime: Nanoseconds | None = None
+    lifetime: float | None = None  # ns
 
     @property
     def excitation_spectrum(self) -> Spectrum | None:
