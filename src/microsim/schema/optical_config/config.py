@@ -70,7 +70,11 @@ class OpticalConfig(SimBaseModel):
         wavelength_meters = watts_absorbed.coords["w"] * 1e-9
         joules_per_photon = h * c / wavelength_meters
         # 1/s
-        return watts_absorbed / joules_per_photon  # type: ignore [no-any-return]
+        pps = watts_absorbed / joules_per_photon  # type: ignore [no-any-return]
+        pps.name = "absorption_rate"
+        pps.attrs['long_name'] = "Absorption rate"
+        pps.attrs["units"] = "photons/s"
+        return pps
 
     @property
     def excitation(self) -> Filter | None:
