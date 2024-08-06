@@ -64,9 +64,9 @@ class OpticalConfig(SimBaseModel):
         abs_rate.name = "absorption_rate"
         abs_rate.attrs["long_name"] = "Absorption rate"
         abs_rate.attrs["units"] = "photons/s"
-        return abs_rate  # type: ignore [no-any-return]
+        return abs_rate
 
-    def emission_rate(self, fluorophore: Fluorophore) -> "xr.DataArray":
+    def total_emission_rate(self, fluorophore: Fluorophore) -> "xr.DataArray":
         """Return the emission rate of a fluorophore in this configuration.
 
         The emission rate is the number of photons emitted per second per
@@ -82,7 +82,30 @@ class OpticalConfig(SimBaseModel):
         em_rate.name = "emission_rate"
         em_rate.attrs["long_name"] = "Emission rate"
         em_rate.attrs["units"] = "photons/s"
-        return em_rate  # type: ignore [no-any-return]
+        return em_rate
+
+    def filtered_emission_rate(self, fluorophore: Fluorophore) -> "xr.DataArray":
+        """Return the emission rate of a fluorophore after passing through filters.
+
+        The emission rate is the number of photons emitted per second per
+        fluorophore, as a function of wavelength, after passing through the emission
+        path.
+
+        This is the complete picture of the treatment of a specific fluorophore with
+        this optical configuration.  It takes into account:
+
+            - the excitation spectrum and extinction coefficient of the fluorophore
+            - the excitation filter/beamsplitter and light source spectra
+            - the quantum yield and emission spectrum of the fluorophore
+            - the emission filter/beamsplitter spectra
+            - TODO: camera QE?
+        """
+        em_rate = self.total_emission_rate(fluorophore)
+        final = em_rate * self.emission.spectrum.as_xarray()
+        final.name = "filtered_emission_rate"
+        final.attrs["long_name"] = "Filtered Emission rate"
+        final.attrs["units"] = "photons/s"
+        return final
 
     @property
     def excitation(self) -> Filter | None:

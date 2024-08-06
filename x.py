@@ -9,25 +9,18 @@ sim = ms.Simulation(
     sample=ms.Sample(
         labels=[
             ms.FluorophoreDistribution(
-                distribution=ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1),
-                fluorophore="mStayGold",
+                distribution=ms.MatsLines(), fluorophore="mStayGold"
             ),
             ms.FluorophoreDistribution(
-                distribution=ms.MatsLines(density=0.1, length=1, azimuth=10, max_r=1),
-                fluorophore="mScarlet3",
+                distribution=ms.MatsLines(), fluorophore="mScarlet3"
             ),
         ]
     ),
     channels=[
         ms.OpticalConfig.from_fpbase("wKqWbgApvguSNDSRZNSfpN", "Widefield Green"),
         ms.OpticalConfig.from_fpbase("wKqWbgApvguSNDSRZNSfpN", "Widefield Red"),
-        # ms.OpticalConfig(
-        #     name="488nm",
-        #     lights=[ms.LightSource.laser(wavelength=488)],
-        # ),
     ],
     modality=ms.Confocal(),
-    settings=ms.Settings(random_seed=100, max_psf_radius_aus=4),
     detector=ms.CameraCCD(qe=0.82, read_noise=2, bit_depth=12),
 )
 
@@ -73,7 +66,7 @@ def plot_summary(sim: ms.Simulation) -> None:
                     ax=ab_ax[ch_idx], label=f"{fluor.name} ({tot:.2f} phot/s tot)"
                 )
 
-                em_rate = oc.emission_rate(fluor)
+                em_rate = oc.total_emission_rate(fluor)
                 em_rate.plot(
                     ax=ab_ax[ch_idx],
                     label=f"{fluor.name} emission",
@@ -94,20 +87,26 @@ def plot_summary(sim: ms.Simulation) -> None:
             )
 
         # detector
-        if sim.detector and isinstance(qe := sim.detector.qe, ms.Spectrum):
-            em_ax[ch_idx].plot(
-                qe.wavelength, qe.intensity, label=f"{f.name}", alpha=0.4
-            )
+        if sim.detector and (qe := sim.detector.qe) is not None:
+            if isinstance(qe, ms.Spectrum):
+                em_ax[ch_idx].plot(
+                    qe.wavelength, qe.intensity, label=f"{f.name}", alpha=0.4
+                )
+            else:
+                em_ax[ch_idx].axhline(
+                    qe, color="gray", linestyle="--", alpha=0.4, label="QE"
+                )
 
         # combined emission/collection
         if ch_em := oc.emission:
             emspec = ch_em.spectrum.as_xarray()
+            emspec = emspec * qe
             emspec.plot(ax=em_ax[ch_idx], label="emission", color="k")
 
             for lbl in sim.sample.labels:
                 if fluor := lbl.fluorophore:
-                    em_rate = oc.emission_rate(fluor)
-                    combined = em_rate * emspec
+                    combined = oc.filtered_emission_rate(fluor)
+                    combined = combined * qe
                     tot = combined.sum()
                     combined.plot(
                         ax=f_ax[ch_idx],
