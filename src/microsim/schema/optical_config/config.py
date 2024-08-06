@@ -30,7 +30,10 @@ class LightSource(SimBaseModel):
     def laser(cls, wavelength: float, power: float | None = None) -> "LightSource":
         return cls(
             name=f"{wavelength}nm Laser",
-            spectrum=Spectrum(wavelength=[wavelength], intensity=[1]),
+            spectrum=Spectrum(
+                wavelength=[wavelength - 1, wavelength, wavelength + 1],
+                intensity=[0, 1, 0],
+            ),
             power=power,
         )
 
@@ -49,23 +52,37 @@ class OpticalConfig(SimBaseModel):
         """Return the absorption rate of a fluorophore in this configuration.
 
         The absorption rate is the number of photons absorbed per second per
-        fluorophore.
+        fluorophore, as a function of wavelength.
         """
-        # get irradiance scaled to power
-        irrad = self.irradiance  # W/cm^2
-        # absorption cross section in cm^2
-        cross_section = fluorophore.absorption_cross_section
-        # calculate excitation rate (this takes care of finding overlapping wavelengths)
-        watts_absorbed = irrad * cross_section
-        wavelength_meters = cast("xr.DataArray", watts_absorbed.coords["w"] * 1e-9)
-        joules_per_photon = h * c / wavelength_meters
-        abs_rate = watts_absorbed / joules_per_photon  # 1/s
+        illum_flux_density = self.illumination_flux_density  # photons/cm^2/s
+        cross_section = fluorophore.absorption_cross_section  # cm^2/fluorophore
+
+        # absorption rate in photons/s/fluorophore
+        abs_rate = illum_flux_density * cross_section
 
         # add metadata
         abs_rate.name = "absorption_rate"
         abs_rate.attrs["long_name"] = "Absorption rate"
-        abs_rate.attrs["units"] = "photons/s/fluorophore"
+        abs_rate.attrs["units"] = "photons/s"
         return abs_rate  # type: ignore [no-any-return]
+
+    def emission_rate(self, fluorophore: Fluorophore) -> "xr.DataArray":
+        """Return the emission rate of a fluorophore in this configuration.
+
+        The emission rate is the number of photons emitted per second per
+        fluorophore, as a function of wavelength.
+        """
+        tot_absorption_rate = self.absorption_rate(fluorophore).sum()
+
+        em_rate = fluorophore.emission_spectrum.as_xarray()
+        # norm area to 1
+        em_rate = em_rate / em_rate.sum()
+        # multiply by quantum yield and total absorption rate
+        em_rate = em_rate * fluorophore.quantum_yield * tot_absorption_rate
+        em_rate.name = "emission_rate"
+        em_rate.attrs["long_name"] = "Emission rate"
+        em_rate.attrs["units"] = "photons/s"
+        return em_rate  # type: ignore [no-any-return]
 
     @property
     def excitation(self) -> Filter | None:
@@ -107,6 +124,21 @@ class OpticalConfig(SimBaseModel):
         irrad.attrs["long_name"] = "Irradiance"
         irrad.attrs["units"] = "W/cm^2"
         return irrad
+
+    @property
+    def illumination_flux_density(self) -> "xr.DataArray":
+        # get irradiance scaled to power
+        irrad = self.irradiance  # W/cm^2
+        # convert W/cm^2 to photons/cm^2/s using E = h * c / λ
+        wavelength_meters = cast("xr.DataArray", irrad.coords["w"] * 1e-9)
+        joules_per_photon = h * c / wavelength_meters
+        illum_flux_density = irrad / joules_per_photon  # photons/cm^2/s
+
+        illum_flux_density.name = "illum_flux_density"
+        illum_flux_density.attrs["long_name"] = "Illuminance Flux Density"
+        illum_flux_density.attrs["units"] = "photons/cm^2/s"
+
+        return illum_flux_density
 
     @property
     def emission(self) -> Filter | None:

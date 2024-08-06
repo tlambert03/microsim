@@ -31,7 +31,7 @@ class Fluorophore(SimBaseModel):
         ec *= self.extinction_coefficient
         out = log(10) * 1e3 * ec / Avogadro  # cm^2
         out.attrs["units"] = "cm^2"
-        out.attrs["long_name"] = "Absorption cross section"
+        out.attrs["long_name"] = "Absorption cross-section"
         out.name = "cross_section"
         return out
 

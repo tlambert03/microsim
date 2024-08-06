@@ -9,6 +9,7 @@ from scipy import stats
 from microsim._data_array import DataArray, xrDataArray
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
+from microsim.schema.spectrum import Spectrum
 
 PositiveFloat = Annotated[float, Ge(0)]
 PositiveInt = Annotated[int, Ge(0)]
@@ -16,7 +17,7 @@ PositiveInt = Annotated[int, Ge(0)]
 
 class Camera(SimBaseModel):
     read_noise: PositiveFloat = 6  # as function of readout rate?
-    qe: Annotated[float, Interval(ge=0, le=1)] = 1  # TODO: spectrum
+    qe: Annotated[float, Interval(ge=0, le=1)] | Spectrum = 1  # TODO: spectrum
     full_well: int = 18_000
     # TODO: serial register fullwell?
     dark_current: PositiveFloat = Field(0.001, description="e/pix/sec")
