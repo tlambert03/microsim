@@ -1,6 +1,9 @@
+from math import log
 from typing import Any
 
+import xarray as xr
 from pydantic import model_validator
+from scipy.constants import Avogadro
 
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
@@ -14,6 +17,23 @@ class Fluorophore(SimBaseModel):
     extinction_coefficient: float | None = None  # M^-1 cm^-1
     quantum_yield: float | None = None
     lifetime_ns: float | None = None
+
+    def __hash__(self) -> int:
+        return id(self)
+
+    @property
+    def absorption_cross_section(self) -> xr.DataArray:
+        """Return the absorption cross section in cm^2."""
+        ec = self.excitation_spectrum.as_xarray()  # 1/cm/M
+        # normalize to peak of 1
+        ec /= ec.max()
+        # multiply by extinction coefficient
+        ec *= self.extinction_coefficient
+        out = log(10) * 1e3 * ec / Avogadro  # cm^2
+        out.attrs["units"] = "cm^2"
+        out.attrs["long_name"] = "Absorption cross section"
+        out.name = "cross_section"
+        return out
 
     @classmethod
     def from_fpbase(cls, name: str) -> "Fluorophore":
@@ -62,3 +82,11 @@ class Fluorophore(SimBaseModel):
         ax.legend(["Excitation", "Emission"])
         if show:
             plt.show()
+
+    def all_spectra(self) -> "xr.DataArray":
+        da: xr.DataArray = xr.concat(
+            [self.excitation_spectrum.as_xarray(), self.emission_spectrum.as_xarray()],
+            dim="spectra",
+        )
+        da.coords.update({"spectra": [f"{self.name} {name}" for name in ["ex", "em"]]})
+        return da

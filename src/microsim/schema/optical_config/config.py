@@ -1,8 +1,10 @@
 import inspect
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, Any
+from typing import Any, cast
 
+import xarray as xr
 from pydantic import Field, model_validator
+from scipy.constants import c, h
 
 from microsim.fpbase import SpectrumOwner
 from microsim.schema._base_model import SimBaseModel
@@ -10,9 +12,6 @@ from microsim.schema.sample.fluorophore import Fluorophore
 from microsim.schema.spectrum import Spectrum
 
 from .filter import Filter, Placement, SpectrumFilter
-
-if TYPE_CHECKING:
-    import xarray as xr
 
 
 class LightSource(SimBaseModel):
@@ -27,6 +26,14 @@ class LightSource(SimBaseModel):
     def plot(self, show: bool = True) -> None:
         self.spectrum.plot(show=show)
 
+    @classmethod
+    def laser(cls, wavelength: float, power: float | None = None) -> "LightSource":
+        return cls(
+            name=f"{wavelength}nm Laser",
+            spectrum=Spectrum(wavelength=[wavelength], intensity=[1]),
+            power=power,
+        )
+
 
 class OpticalConfig(SimBaseModel):
     name: str = ""
@@ -38,43 +45,27 @@ class OpticalConfig(SimBaseModel):
     # it could also go on Simulation itself as a function of space.
     power: float | None = None  # total power of all lights after filters
 
-    def absorption_rate(self, fluorophore: Fluorophore | Spectrum) -> "xr.DataArray":
+    def absorption_rate(self, fluorophore: Fluorophore) -> "xr.DataArray":
         """Return the absorption rate of a fluorophore in this configuration.
 
         The absorption rate is the number of photons absorbed per second per
         fluorophore.
         """
-        from scipy.constants import Avogadro, c, h
-
-        if (illum := self.illumination) is None:
-            raise ValueError("No illumination spectrum defined.")
-
-        # get cross section
-        if isinstance(fluorophore, Fluorophore):
-            fluorophore = fluorophore.excitation_spectrum
-        elif not isinstance(fluorophore, Spectrum):  # pragma: no cover
-            raise TypeError("fluorophore must be a Fluorophore or Spectrum")
-        ec = fluorophore.as_xarray()  # 1/cm/M
-        cross_section = 1e3 * ec / Avogadro  # cm^2
-
         # get irradiance scaled to power
-        irrad = illum.as_xarray()  # W/cm^2
-        # normalize area under curve to 1
-        irrad = irrad / irrad.sum()
-        # scale to power
-        if self.power is not None:
-            irrad = irrad * self.power
-
-        # calculate excitation rate
-        watts_absorbed = irrad * cross_section  # includes only overlapping wavelengths
-        wavelength_meters = watts_absorbed.coords["w"] * 1e-9
+        irrad = self.irradiance  # W/cm^2
+        # absorption cross section in cm^2
+        cross_section = fluorophore.absorption_cross_section
+        # calculate excitation rate (this takes care of finding overlapping wavelengths)
+        watts_absorbed = irrad * cross_section
+        wavelength_meters = cast("xr.DataArray", watts_absorbed.coords["w"] * 1e-9)
         joules_per_photon = h * c / wavelength_meters
-        # 1/s
-        pps = watts_absorbed / joules_per_photon  # type: ignore [no-any-return]
-        pps.name = "absorption_rate"
-        pps.attrs['long_name'] = "Absorption rate"
-        pps.attrs["units"] = "photons/s"
-        return pps
+        abs_rate = watts_absorbed / joules_per_photon  # 1/s
+
+        # add metadata
+        abs_rate.name = "absorption_rate"
+        abs_rate.attrs["long_name"] = "Absorption rate"
+        abs_rate.attrs["units"] = "photons/s/fluorophore"
+        return abs_rate  # type: ignore [no-any-return]
 
     @property
     def excitation(self) -> Filter | None:
@@ -100,6 +91,22 @@ class OpticalConfig(SimBaseModel):
                 return illum_spect * exc.spectrum
             return illum_spect
         return exc.spectrum if exc else None
+
+    @property
+    def irradiance(self) -> "xr.DataArray":
+        if (illum := self.illumination) is None:
+            raise ValueError("This Optical Config has no illumination spectrum.")
+        # get irradiance scaled to power
+        irrad = illum.as_xarray()  # W/cm^2
+        # normalize area under curve to 1
+        irrad = irrad / irrad.sum()
+        # scale to power
+        # if self.power is not None:
+        # irrad = irrad * self.power
+        irrad.name = "irradiance"
+        irrad.attrs["long_name"] = "Irradiance"
+        irrad.attrs["units"] = "W/cm^2"
+        return irrad
 
     @property
     def emission(self) -> Filter | None:
@@ -188,6 +195,18 @@ class OpticalConfig(SimBaseModel):
         if show:
             plt.show()
 
+    def all_spectra(self) -> "xr.DataArray":
+        data, coords = [], []
+        for filt in self.filters:
+            data.append(filt.spectrum.as_xarray())
+            coords.append(f"{filt.name} ({filt.placement.name})")
+        for light in self.lights:
+            data.append(light.spectrum.as_xarray())
+            coords.append(light.name)
+        da: xr.DataArray = xr.concat(data, dim="spectra")
+        da.coords.update({"spectra": coords})
+        return da
+
     # WARNING: dark magic ahead
     # This is a hack to make OpticalConfig hashable and comparable, but only
     # when used in the context of a pandas DataFrame or xarray DataArray coordinate.
@@ -203,3 +222,6 @@ class OpticalConfig(SimBaseModel):
         if "pandas" in frame.filename and frame.function == "get_loc":
             return hash(self.name) == hash(value)
         return super().__eq__(value)
+
+    def __str__(self):
+        return self.name

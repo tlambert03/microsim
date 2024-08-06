@@ -9,8 +9,6 @@ import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
-from microsim.interval_creation import Bin, bin_spectrum, generate_bins
-from microsim.schema._emission import get_emission_events
 from microsim.util import microsim_cache
 
 from ._base_model import SimBaseModel
@@ -149,7 +147,7 @@ class Simulation(SimBaseModel):
 
             # concat along the F axis
             truth = xr.concat(label_data, dim=pd.Index(self.sample.labels, name=Axis.F))
-            truth.attrs.update(unit="counts")
+            truth.attrs.update(units="fluorophores", long_name="Ground Truth")
             self._ground_truth = truth
         return self._ground_truth
 
@@ -170,97 +168,48 @@ class Simulation(SimBaseModel):
             truth_cache = truth_cache / f"seed{seed}"
         return truth_cache
 
-    def _get_wavelength_bins(self) -> list[Bin]:
-        """Create wavelength bins depending on flurophores emission spectra.
-
-        Bins placement is based on the fluorophores emission spectra in the ground
-        truth sample. If fluorophores are not defined, bins are created in the range
-        identified by [`settings.min_wavelength`-`settings.max_wavelength`].
-
-        NOTE: We assume binning to be independent of the excitation/emission filters
-        applied, so we only consider the emission spectra of the fluorophores.
-        Why? Because the excitation filters are applied to the light source, and
-        emission filters are after illumination of fluorophores, for which we need
-        matching bins.
-        """
-        fluorophores = [x.fluorophore for x in self.sample.labels]
-        if len(fluorophores) == 0:
-            # we have no fluorophores to calculate
-            raise ValueError("No fluorophores in the current sample!")
-
-        # Get emission spectra for all the fluorophores
-        fluor_em_spectra: list[np.ndarray] = []
-        for fluor in fluorophores:
-            if fluor is None:
-                fluor_em_spectra.append(
-                    np.array(
-                        [self.settings.min_wavelength, self.settings.max_wavelength]
-                    )
-                )
-            else:
-                # get emission Spectrum for the given fluorophore
-                fluor_em_spectra.append(fluor.emission_spectrum.wavelength)
-
-        # Get the min and max wavelength over all the spectra
-        min_wave = min([x.min() for x in fluor_em_spectra])
-        max_wave = max([x.max() for x in fluor_em_spectra])
-
-        # Create the same bins for all the spectra
-        wave_range = np.arange(min_wave, max_wave, 1)
-        em_bins = generate_bins(
-            x=wave_range,
-            y=None,
-            num_bins=self.settings.num_wavelength_bins,
-            strategy=self.settings.binning_strategy,
-        )
-        return em_bins
-
-    def _emission_rates(self) -> xr.DataArray:
+    def _absorption_rates(self) -> xr.DataArray:
         """Returns a (C, F) array of emission flux for each channel and fluorophore.
 
         Only depends on the fluorophores in the sample and the optical config.  Does
         not yet take into consideration the distribution of fluorophores in the sample.
 
+        This integrates the absorption rate over the excitationm spectrum and multiplies
+        by quantum yield, returning the effective total photon emission rate for each
+        fluorophore in each channel.
+
         Values are in units of photons/s.
         """
-        fluorophors = [x.fluorophore for x in self.sample.labels if x.fluorophore]
-        return xr.DataArray(
-            [
-                [
-                    ch.absorption_rate(f).sum().pint.magnitude.item()
-                    * (f.quantum_yield or 1)
-                    for f in fluorophors
-                ]
-                for ch in self.channels
-            ],
-            name="em_rate",
-            coords={Axis.C: self.channels, Axis.F: fluorophors},
-            attrs={"unit": "photons/s"},
+        labels = []
+        for fd in self.sample.labels:
+            fluor = fd.fluorophore
+            data = xr.concat(
+                [ch.absorption_rate(fluor) for ch in self.channels],
+                dim=Axis.C,
+                fill_value=0,
+            )
+            labels.append(data)
+        out = cast("xr.DataArray", xr.concat(labels, dim=Axis.F, fill_value=0))
+        out.coords.update(
+            {
+                Axis.C: [c.name for c in self.channels],
+                Axis.F: [f.fluorophore.name for f in self.sample.labels],
+            }
         )
+        out.name = "absorption_rate"
+        out.attrs.update(
+            units="photons/s/fluorophore/W/cm^2", long_name="Absorption Rate"
+        )
+        return out
 
-    # def irradiance(self, channel_idx: int = 0) -> xr.DataArray:
-    #     """
-    #     Return the illumination data as an array of shape (W, C, Z, Y, X).
+    def emission_flux(self, truth: "xr.DataArray | None" = None) -> xr.DataArray:
+        """Return the spatial emission in photons per second.
 
-    #     NOTE: we assume this happens before the excitation filters are applied.
-
-    #     NOTE: for the moment we assume the light source to be the same over all
-    #     the spatial dimensions. Only dimension is the wavelength.
-    #     """
-    #     wave_bins = self._get_wavelength_bins()
-    #     binned_illum = xr.concat(
-    #         [
-    #             bin_spectrum(spectrum=c.illumination, bins=wave_bins)
-    #             for c in self.channels
-    #         ],
-    #         dim=pd.Index(self.channels, name=Axis.C),
-    #     )
-    #     binned_illum = binned_illum.expand_dims([Axis.Z, Axis.Y, Axis.X])
-    #     return binned_illum.transpose(Axis.W, Axis.C, Axis.Z, Axis.Y, Axis.X)
-
-    def emission_flux(
-        self, truth: "xr.DataArray | None" = None, *, channel_idx: int = 0
-    ) -> xr.DataArray:
+        This multiplies the per-fluorophore emission rates by the ground truth data to
+        get the total emission flux for each voxel in the ground truth. The return
+        array has dimensions (C, F, Z, Y, X).  The units are photons/s, which are not
+        yet separated into emission wavelengths.
+        """
         if truth is None:
             truth = self.ground_truth()
         elif not isinstance(truth, xr.DataArray):
@@ -269,50 +218,73 @@ class Simulation(SimBaseModel):
         if Axis.F not in truth.coords:
             # we have no fluorophores to calculate
             return truth
+        flux = self._absorption_rates() * truth
+        flux.attrs.update(unit="photon/sec", long_name="Emission Flux")
+        # (C, F, Z, Y, X)
+        return flux
 
-        channel = self.channels[channel_idx]  # TODO
-        emission_flux_arr = []
-        for f_idx, fluor_dist in enumerate(truth.coords[Axis.F].values):
-            fluor = cast(FluorophoreDistribution, fluor_dist).fluorophore
-            fluor_counts = truth[{Axis.F: f_idx}]
-            fluor_counts = fluor_counts.expand_dims(
-                [Axis.W, Axis.C, Axis.F], axis=[0, 1, 2]
-            )
-            if fluor is None:
-                # TODO
-                # what here?  should we pick a default fluor?
-                default_bin = [
-                    pd.Interval(
-                        left=self.settings.min_wavelength,
-                        right=self.settings.max_wavelength,
-                    )
-                ]
-                fluor_counts = fluor_counts.assign_coords(w=default_bin)
-                emission_flux_arr.append(fluor_counts)
-            else:
-                em_spectrum = get_emission_events(channel, fluor)
-                binned_events = bin_spectrum(
-                    spectrum=em_spectrum,
-                    bins=None,  # TODO: use the same bins as illumination?
-                    num_bins=self.emission_bins,  # TODO: same num_bins as illumination?
-                    binning_strategy="equal_area",  # to be consistent with PR#35
-                )
-                # TODO: This is not stochastic.
-                # every pixel ideally could have a different binned_events.
+    # def emission_flux(
+    #     self, truth: "xr.DataArray | None" = None, *, channel_idx: int = 0
+    # ) -> xr.DataArray:
+    #     if truth is None:
+    #         truth = self.ground_truth()
+    #     elif not isinstance(truth, xr.DataArray):
+    #         raise ValueError("truth must be a DataArray")
 
-                fluor_counts = xr.concat(
-                    [fluor_counts * x.values.item() for x in binned_events],
-                    dim=Axis.W,
-                )
-                fluor_counts = fluor_counts.assign_coords(
-                    w=binned_events[Axis.W].values
-                )
-            # (W, C, F, Z, Y, X)
-            emission_flux_arr.append(fluor_counts)
+    #     if Axis.F not in truth.coords:
+    #         # we have no fluorophores to calculate
+    #         return truth
 
-        emission_flux_data = xr.concat(emission_flux_arr, dim=Axis.F)
-        emission_flux_data.attrs.update(unit="photon/sec")
-        return emission_flux_data
+    #     channel = self.channels[channel_idx]  # TODO
+    #     emission_flux_arr = []
+    #     for f_idx, fluor_dist in enumerate(truth.coords[Axis.F].values):
+    #         fluor = cast(FluorophoreDistribution, fluor_dist).fluorophore
+    #         fluor_counts = truth[{Axis.F: f_idx}]
+    #         fluor_counts = fluor_counts.expand_dims(
+    #             [Axis.W, Axis.C, Axis.F], axis=[0, 1, 2]
+    #         )
+    #         if fluor is None:
+    #             # TODO
+    #             # what here?  should we pick a default fluor?
+    #             default_bin = [
+    #                 pd.Interval(
+    #                     left=self.settings.min_wavelength,
+    #                     right=self.settings.max_wavelength,
+    #                 )
+    #             ]
+    #             fluor_counts = fluor_counts.assign_coords(w=default_bin)
+    #             emission_flux_arr.append(fluor_counts)
+    #         else:
+    #             em_spectrum = get_emission_events(channel, fluor)
+    #             binned_events = bin_spectrum(
+    #                 spectrum=em_spectrum,
+    #                 bins=None,  # TODO: use the same bins as illumination?
+    #                 num_bins=self.emission_bins,  # TODO: same num_bins as illumination?
+    #                 binning_strategy="equal_area",  # to be consistent with PR#35
+    #             )
+    #             # TODO: This is not stochastic.
+    #             # every pixel ideally could have a different binned_events.
+
+    #             fluor_counts = xr.concat(
+    #                 [fluor_counts * x.values.item() for x in binned_events],
+    #                 dim=Axis.W,
+    #             )
+    #             fluor_counts = fluor_counts.assign_coords(
+    #                 w=binned_events[Axis.W].values
+    #             )
+    #         # (W, C, F, Z, Y, X)
+    #         emission_flux_arr.append(fluor_counts)
+
+    #     emission_flux_data = xr.concat(emission_flux_arr, dim=Axis.F)
+    #     emission_flux_data.attrs.update(unit="photon/sec")
+    #     return emission_flux_data
+
+    def filtered_emission_flux(self) -> xr.DataArray:
+        """Return the emission flux filtered by the emission filter.
+
+        (W, C, F, Z, Y, X)
+        """
+        self.emission_flux()
 
     def optical_image(
         self, emission_flux: xr.DataArray | None = None, *, channel_idx: int = 0

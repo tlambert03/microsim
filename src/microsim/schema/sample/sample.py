@@ -19,6 +19,9 @@ class FluorophoreDistribution(SimBaseModel):
     distribution: Distribution = Field(...)
     fluorophore: Fluorophore | None = None
 
+    def __hash__(self) -> int:
+        return id(self)
+
     def cache_path(self) -> tuple[str, ...] | None:
         if hasattr(self.distribution, "cache_path"):
             return self.distribution.cache_path()
@@ -39,6 +42,9 @@ class FluorophoreDistribution(SimBaseModel):
     @classmethod
     def from_array(cls, array: ArrayProtocol) -> "FluorophoreDistribution":
         return cls(distribution=FixedArrayTruth(array=array))
+
+    def __str__(self) -> str:
+        return f"{self.fluorophore.name} - {self.distribution.__class__.__name__}"
 
 
 class Sample(SimBaseModel):

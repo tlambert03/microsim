@@ -14,8 +14,6 @@ from ._base_model import SimBaseModel
 if TYPE_CHECKING:
     from microsim.fpbase import Spectrum as FPbaseSpectrum
 
-AXIS_W = "w"  # same as Axis.W, hack to avoid circular import
-
 
 class _AryRepr:
     def __init__(self, obj: np.ndarray) -> None:
@@ -47,16 +45,18 @@ class Spectrum(SimBaseModel):
         return np.column_stack((self.wavelength, self.intensity))
 
     def as_xarray(self) -> "xr.DataArray":
+        from .dimensions import Axis
+
         return xr.DataArray(
             self.intensity,
             coords={
-                AXIS_W: xr.DataArray(
+                Axis.W: xr.DataArray(
                     self.wavelength,
-                    dims=[AXIS_W],
+                    dims=[Axis.W],
                     attrs={"units": "nm"},
                 )
             },
-            dims=[AXIS_W],
+            dims=[Axis.W],
             name="intensity",
         )
 
