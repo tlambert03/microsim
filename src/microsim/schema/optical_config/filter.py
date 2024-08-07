@@ -164,16 +164,16 @@ Filter = Bandpass | Shortpass | Longpass | SpectrumFilter
 
 
 def sigmoid(
-    x: Any, cutoff: float, slope: float = 1, max: float = 1, up: bool = True
+    wavelength: Any, cutoff: float, slope: float = 1, max: float = 1, up: bool = True
 ) -> Any:
     if up:
         slope = -slope
     with np.errstate(over="ignore"):
-        return max / (1 + np.exp(slope * (x - cutoff)))
+        return max / (1 + np.exp(slope * (wavelength - cutoff)))
 
 
 def bandpass(
-    x: Any,
+    wavelength: Any,
     center: float | Sequence[float],
     bandwidth: float | Sequence[float],
     slope: float = 5,
@@ -187,13 +187,13 @@ def bandpass(
             bandwidth = [bandwidth] * len(center)
 
         segments = [
-            bandpass(x, c, b, slope=slope, transmission=transmission)
+            bandpass(wavelength, c, b, slope=slope, transmission=transmission)
             for c, b in zip(center, bandwidth, strict=False)
         ]
         return np.prod(segments, axis=0)
     elif isinstance(bandwidth, Sequence):
         raise ValueError("center and bandwidth must have the same shape")
 
-    left = sigmoid(x, center - bandwidth / 2, slope=slope)
-    right = sigmoid(x, center + bandwidth / 2, slope=slope, up=False)
+    left = sigmoid(wavelength, center - bandwidth / 2, slope=slope)
+    right = sigmoid(wavelength, center + bandwidth / 2, slope=slope, up=False)
     return left * right * transmission

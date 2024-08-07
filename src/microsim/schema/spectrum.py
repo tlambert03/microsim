@@ -29,6 +29,36 @@ class Spectrum(SimBaseModel):
     intensity: NumpyNdarray  # normalized to 1
     scalar: float = 1  # scalar to multiply intensity by, such as EC or QY
 
+    @field_validator("intensity", mode="after")
+    @classmethod
+    def _validate_intensity(cls, value: np.ndarray) -> np.ndarray:
+        if not np.all(value >= 0):
+            warnings.warn(
+                "Clipping negative intensity values in spectrum to 0", stacklevel=2
+            )
+            value = np.clip(value, 0, None)
+        # if not 0.9 <= np.max(value) <= 1:
+        #     warnings.warn("Normalize intensity to 1", stacklevel=2)
+        #     value = value / np.max(value)
+        return value
+
+    @model_validator(mode="before")
+    def _cast_spectrum(cls, value: Any) -> Any:
+        if isinstance(value, list | tuple):
+            data = np.asarray(value)
+            if not data.ndim == 2:
+                raise ValueError("Spectrum data must be 2D")
+            if not data.shape[1] == 2:
+                raise ValueError("Spectrum data must have two columns")
+            return {"wavelength": data[:, 0], "intensity": data[:, 1]}
+        if isinstance(value, dict):
+            if "wavelength" in value and "intensity" in value:
+                if not len(value["wavelength"]) == len(value["intensity"]):
+                    raise ValueError(
+                        "Wavelength and intensity must have the same length"
+                    )
+        return value
+
     def __hash__(self) -> int:
         return id(self)
 
@@ -76,6 +106,13 @@ class Spectrum(SimBaseModel):
             return self._intensity_op(other, np.multiply)
         return self.model_copy(update={"intensity": self.intensity * other})
 
+    def __add__(self, other: "float | pint.Quantity | Spectrum") -> "Spectrum":
+        if isinstance(other, pint.Quantity):
+            other = other.magnitude
+        if isinstance(other, Spectrum):
+            return self._intensity_op(other, np.add)
+        return self.model_copy(update={"intensity": self.intensity + other})
+
     def __truediv__(self, other: "float | pint.Quantity | Spectrum") -> "Spectrum":
         if isinstance(other, pint.Quantity):
             other = other.magnitude
@@ -84,13 +121,14 @@ class Spectrum(SimBaseModel):
         return self.model_copy(update={"intensity": self.intensity / other})
 
     def _intensity_op(self, other: "Spectrum", op: np.ufunc) -> "Spectrum":
-        slc1, slc2 = get_overlapping_indices(self.wavelength, other.wavelength)
-        intens1 = self.intensity[slc1]
-        intens2 = other.intensity[slc2]
+        selfx, otherx = xr.align(self.as_xarray(), other.as_xarray(), join="outer")
+        selfx = selfx.fillna(0)
+        otherx = otherx.fillna(0)
+        new = op(selfx, otherx)
         return self.model_copy(
             update={
-                "intensity": op(intens1, intens2),
-                "wavelength": self.wavelength[slc1],
+                "intensity": new,
+                "wavelength": new.coords["w"].values,
             }
         )
 
@@ -114,36 +152,6 @@ class Spectrum(SimBaseModel):
     def max_intensity(self) -> float:
         """Maximum intensity."""
         return np.max(self.intensity)  # type: ignore [no-any-return]
-
-    @field_validator("intensity", mode="after")
-    @classmethod
-    def _validate_intensity(cls, value: np.ndarray) -> np.ndarray:
-        if not np.all(value >= 0):
-            warnings.warn(
-                "Clipping negative intensity values in spectrum to 0", stacklevel=2
-            )
-            value = np.clip(value, 0, None)
-        if not 0.9 <= np.max(value) <= 1:
-            warnings.warn("Normalize intensity to 1", stacklevel=2)
-            value = value / np.max(value)
-        return value
-
-    @model_validator(mode="before")
-    def _cast_spectrum(cls, value: Any) -> Any:
-        if isinstance(value, list | tuple):
-            data = np.asarray(value)
-            if not data.ndim == 2:
-                raise ValueError("Spectrum data must be 2D")
-            if not data.shape[1] == 2:
-                raise ValueError("Spectrum data must have two columns")
-            return {"wavelength": data[:, 0], "intensity": data[:, 1]}
-        if isinstance(value, dict):
-            if "wavelength" in value and "intensity" in value:
-                if not len(value["wavelength"]) == len(value["intensity"]):
-                    raise ValueError(
-                        "Wavelength and intensity must have the same length"
-                    )
-        return value
 
     def plot(self, show: bool = True) -> None:
         import matplotlib.pyplot as plt

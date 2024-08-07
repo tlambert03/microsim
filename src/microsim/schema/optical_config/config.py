@@ -42,6 +42,7 @@ class OpticalConfig(SimBaseModel):
     name: str = ""
     filters: list[Filter] = Field(default_factory=list)
     lights: list[LightSource] = Field(default_factory=list)
+
     # seemingly duplicate of power in LightSource
     # but it depends on where the power is being measured
     # TODO: it's tough deciding where power should go...
@@ -84,7 +85,9 @@ class OpticalConfig(SimBaseModel):
         em_rate.attrs["units"] = "photons/s"
         return em_rate
 
-    def filtered_emission_rate(self, fluorophore: Fluorophore) -> "xr.DataArray":
+    def filtered_emission_rate(
+        self, fluorophore: Fluorophore, detector_qe: float | Spectrum | None = None
+    ) -> "xr.DataArray":
         """Return the emission rate of a fluorophore after passing through filters.
 
         The emission rate is the number of photons emitted per second per
@@ -101,7 +104,11 @@ class OpticalConfig(SimBaseModel):
             - TODO: camera QE?
         """
         em_rate = self.total_emission_rate(fluorophore)
-        final = em_rate * self.emission.spectrum.as_xarray()
+        em_spectrum = self.emission.spectrum
+        if detector_qe is not None:
+            em_spectrum = em_spectrum * detector_qe
+
+        final = em_rate * em_spectrum.as_xarray()
         final.name = "filtered_emission_rate"
         final.attrs["long_name"] = "Filtered Emission rate"
         final.attrs["units"] = "photons/s"
@@ -126,7 +133,7 @@ class OpticalConfig(SimBaseModel):
             illum_spect = l0.spectrum
             if rest:
                 for light in rest:
-                    illum_spect = illum_spect * light.spectrum
+                    illum_spect = illum_spect + light.spectrum
             if exc:
                 return illum_spect * exc.spectrum
             return illum_spect
