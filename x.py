@@ -53,10 +53,13 @@ sim = ms.Simulation(
     sample=ms.Sample(
         labels=[
             ms.FluorophoreDistribution(
-                distribution=ms.MatsLines(), fluorophore="mStayGold"
+                distribution=ms.MatsLines(), fluorophore="mEGFP"
             ),
             ms.FluorophoreDistribution(
-                distribution=ms.MatsLines(), fluorophore="mScarlet3"
+                distribution=ms.MatsLines(), fluorophore="mVenus"
+            ),
+            ms.FluorophoreDistribution(
+                distribution=ms.MatsLines(), fluorophore="mCherry"
             ),
         ]
     ),
@@ -64,7 +67,7 @@ sim = ms.Simulation(
         ms.OpticalConfig.from_fpbase("wKqWbgApvguSNDSRZNSfpN", "Widefield Green"),
         ms.OpticalConfig.from_fpbase("wKqWbgApvguSNDSRZNSfpN", "Widefield Red"),
     ],
-    # channels=spectral_detector(16, 400, 700, [488, 561]),
+    # channels=spectral_detector(8, 480, 600, [488, 515, 561]),
     modality=ms.Confocal(),
     detector=ICX285,
 )
@@ -189,4 +192,42 @@ def plot_summary(
     plt.show()
 
 
-plot_summary(sim)
+# plot_summary(sim)
+
+import xarray as xr
+
+
+def bin_spectrum_in_region(
+    spectrum: xr.DataArray, num_bins: int, intensity_threshold: float = 0.01
+) -> xr.DataArray:
+    # Extract the coordinates (wavelengths) and values (intensities)
+    wavelengths = spectrum.w
+    intensities = spectrum.values
+
+    # Filter the spectrum to include only the region of interest (where intensity is significant)
+    mask = intensities > intensity_threshold
+    filtered_wavelengths = wavelengths[mask]
+    filtered_intensities = intensities[mask]
+
+    # Use groupby_bins to bin the data within the filtered region
+    filtered_spectrum = xr.DataArray(
+        filtered_intensities,
+        coords={"w": filtered_wavelengths},
+        dims="w",
+    )
+    binned = filtered_spectrum.groupby_bins("w", bins=num_bins)
+
+    # Calculate the sum of intensities for each bin
+    binned_sum = binned.sum(dim="w")
+
+    # Calculate the centroid wavelength for each bin
+    centroids = binned.map(lambda x: (x.w * x).sum() / x.sum())
+
+    # Create a new DataArray with the summed intensities and centroid wavelengths
+    binned_spectrum = xr.DataArray(
+        data=binned_sum.values,
+        coords={"w": centroids.values},
+        dims="w",
+    )
+
+    return binned_spectrum

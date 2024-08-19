@@ -8,6 +8,7 @@ from scipy.constants import c, h
 
 from microsim.fpbase import SpectrumOwner
 from microsim.schema._base_model import SimBaseModel
+from microsim.schema.dimensions import Axis
 from microsim.schema.sample.fluorophore import Fluorophore
 from microsim.schema.spectrum import Spectrum
 
@@ -61,6 +62,9 @@ class OpticalConfig(SimBaseModel):
         # absorption rate in photons/s/fluorophore
         abs_rate = illum_flux_density * cross_section
 
+        # add singleton coordinates for fluorophore and self
+        abs_rate = abs_rate.expand_dims({Axis.F: [fluorophore], Axis.C: [self]})
+
         # add metadata
         abs_rate.name = "absorption_rate"
         abs_rate.attrs["long_name"] = "Absorption rate"
@@ -74,12 +78,13 @@ class OpticalConfig(SimBaseModel):
         fluorophore, as a function of wavelength.
         """
         tot_absorption_rate = self.absorption_rate(fluorophore).sum()
-
         em_rate = fluorophore.emission_spectrum.as_xarray()
         # norm area to 1
         em_rate = em_rate / em_rate.sum()
         # multiply by quantum yield and total absorption rate
         em_rate = em_rate * fluorophore.quantum_yield * tot_absorption_rate
+        # add singleton coordinates for fluorophore and self
+        em_rate = em_rate.expand_dims({Axis.F: [fluorophore], Axis.C: [self]})
         em_rate.name = "emission_rate"
         em_rate.attrs["long_name"] = "Emission rate"
         em_rate.attrs["units"] = "photons/s"
@@ -92,7 +97,7 @@ class OpticalConfig(SimBaseModel):
 
         The emission rate is the number of photons emitted per second per
         fluorophore, as a function of wavelength, after passing through the emission
-        path.
+        path. (It's a vector with a single axis W, and singleton dimensions F and C)
 
         This is the complete picture of the treatment of a specific fluorophore with
         this optical configuration.  It takes into account:
@@ -103,12 +108,11 @@ class OpticalConfig(SimBaseModel):
             - the emission filter/beamsplitter spectra
             - TODO: camera QE?
         """
-        em_rate = self.total_emission_rate(fluorophore)
         em_spectrum = self.emission.spectrum
         if detector_qe is not None:
             em_spectrum = em_spectrum * detector_qe
 
-        final = em_rate * em_spectrum.as_xarray()
+        final = self.total_emission_rate(fluorophore) * em_spectrum.as_xarray()
         final.name = "filtered_emission_rate"
         final.attrs["long_name"] = "Filtered Emission rate"
         final.attrs["units"] = "photons/s"

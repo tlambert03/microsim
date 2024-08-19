@@ -90,3 +90,6 @@ class Fluorophore(SimBaseModel):
         )
         da.coords.update({"spectra": [f"{self.name} {name}" for name in ["ex", "em"]]})
         return da
+
+    def __str__(self) -> str:
+        return self.name

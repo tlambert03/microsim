@@ -18,8 +18,7 @@
 from enum import Enum
 from typing import NamedTuple
 
-from .optical_config import OpticalConfig
-from .sample import FluorophoreDistribution
+# from .sample import FluorophoreDistribution
 
 
 class AxisInfo(NamedTuple):
@@ -84,7 +83,7 @@ _AXES_INFO = [
     AxisInfo(
         name="Channel",
         key=Axis.C.value,
-        category_type=OpticalConfig,
+        category_type="OpticalConfig",
         description=(
             "Channel axis in the final image. "
             "Represents different optical configurations used to acquire the image. "
@@ -95,7 +94,7 @@ _AXES_INFO = [
     AxisInfo(
         name="Fluorophore",
         key=Axis.F.value,
-        category_type=FluorophoreDistribution,
+        category_type="FluorophoreDistribution",
         description=(
             "A fluorophore (aka 'label') axis. "
             "Represents different fluorophore species in the sample. "
