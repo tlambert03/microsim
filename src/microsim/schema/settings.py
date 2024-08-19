@@ -54,6 +54,14 @@ class Settings(SimBaseModel, BaseSettings):
             "multiple fluorophores."
         ),
     )
+    bins_per_emission_channel: int = Field(
+        1,
+        description="Number of wavelengths to use (per channel) when simulating the "
+        "optical image. By default, a single centroid wavelength is used to approximate"
+        "the emission wavelength.  Increasing this will make the simulation more "
+        "realistic, by superposing multiple different PSFs, but will also increase "
+        "memory usage and time.",
+    )
     num_wavelength_bins: int = Field(
         32,
         description=(
