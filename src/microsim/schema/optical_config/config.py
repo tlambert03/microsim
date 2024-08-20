@@ -152,8 +152,8 @@ class OpticalConfig(SimBaseModel):
         # normalize area under curve to 1
         irrad = irrad / irrad.sum()
         # scale to power
-        # if self.power is not None:
-        # irrad = irrad * self.power
+        if self.power is not None:
+            irrad = irrad * self.power
         irrad.name = "irradiance"
         irrad.attrs["long_name"] = "Irradiance"
         irrad.attrs["units"] = "W/cm^2"

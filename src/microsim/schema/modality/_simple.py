@@ -48,14 +48,14 @@ class _PSFModality(SimBaseModel):
     ) -> xrDataArray:
         channels = []
         for ch in em_rates.coords[Axis.C].values:
-            logging.info(f"Rendering channel {ch}")
+            logging.info(f"Rendering channel {ch} -----------------")
             fluors = []
             for fluor in em_rates.coords[Axis.F].values:
-                logging.info(f" ... fluor {fluor}")
+                logging.info(f">> fluor {fluor}")
                 em_spectrum = em_rates.sel({Axis.C: ch, Axis.F: fluor})
                 binned = bin_spectrum(
                     em_spectrum,
-                    bins=3,  # TODO
+                    bins=settings.bins_per_emission_channel,  # TODO
                     threshold_percentage=1,
                 )
 
@@ -65,7 +65,7 @@ class _PSFModality(SimBaseModel):
                 ):
                     if xp.isnan(em_rate) or em_rate == 0 or xp.isnan(em_wvl_nm):
                         continue
-                    logging.info(f"   ... @ {em_wvl_nm} nm")
+                    logging.info(f">>>> @ {em_wvl_nm} nm")
                     binned_flux = truth.sel({Axis.F: fluor}) * em_rate
                     psf = self.psf(
                         truth.attrs["space"],

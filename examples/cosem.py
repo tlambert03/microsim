@@ -17,14 +17,17 @@ sim = ms.Simulation(
             ),
             ms.FluorophoreDistribution(
                 distribution=ms.CosemLabel(dataset="jrc_hela-3", label="mito-mem_pred"),
-                fluorophore="mCherry",
+                fluorophore="mVenus",
             ),
         ]
     ),
-    channels=[lib.FITC, lib.DSRED],
+    channels=[
+        lib.FITC.model_copy(update={"power": 100}),
+        lib.EYFP.model_copy(update={"power": 10}),
+    ],
     modality=ms.Widefield(),
     detector=ms.CameraCCD(qe=0.82, read_noise=6),
     settings=ms.Settings(max_psf_radius_aus=2),
 )
-
-ndview(sim.digital_image())
+sim.plot()
+# ndview(sim.digital_image())
