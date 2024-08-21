@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
@@ -59,6 +58,7 @@ class Simulation(SimBaseModel):
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC])
     # TODO: channels should also include `lights: list[LightSource]`
     detector: Detector | None = None
+    exposure_time_ms: float = 100
     settings: Settings = Field(default_factory=Settings)
     output_path: OutPath | None = None
 
@@ -95,22 +95,6 @@ class Simulation(SimBaseModel):
     @property
     def _xp(self) -> "NumpyAPI":
         return self.settings.backend_module()
-
-    def run(self, channels: int | Sequence[int] | None = None) -> xr.DataArray:
-        """Run the simulation and return the result.
-
-        This will also write a file to disk if `output` is set.
-        """
-        # truth = self.ground_truth()
-        # if channels is None:
-        #     channels = tuple(range(len(self.channels)))
-        # elif isinstance(channels, int):
-        #     channels = (channels,)
-        # emission_flux = self.emission_flux(truth)
-        optical_image = self.optical_image()
-        image = self.digital_image(optical_image)
-        self._write(image)
-        return image
 
     def ground_truth(self) -> xr.DataArray:
         """Return the ground truth data.
@@ -190,43 +174,110 @@ class Simulation(SimBaseModel):
             fill_value=0,
         ).transpose(Axis.C, Axis.F, Axis.W)
 
-    def optical_image(self) -> xr.DataArray:
-        result = self.modality.render(
-            self.ground_truth(),  # (F, Z, Y, X)
-            self.filtered_emission_rates(),  # (C, F, W)
-            objective_lens=self.objective_lens,
-            settings=self.settings,
-            xp=self._xp,
-        ).sum(Axis.F)
-
-        # Co-ordinates: (C, Z, Y, X)
-        return result
-
-    def emission_flux(self, truth: "xr.DataArray | None" = None) -> xr.DataArray:
+    def total_emission_flux(self) -> xr.DataArray:
         """Return the spatial emission in photons per second (after filters).
+
+        This is the ground truth data multiplied by the filtered emission rates, *prior*
+        to convolution with the PSF.
 
         This multiplies the per-fluorophore emission rates by the ground truth data to
         get the total emission flux for each voxel in the ground truth. The return
         array has dimensions (C, F, Z, Y, X).  The units are photons/s.
 
-        Note, this integrates over all wavelengths (for reasons of memory efficiency).
-        For finer control over the emission spectrum, you may wish to directly combine
-        `filtered_emission_rates` with the ground truth data as needed.
-        """
-        if truth is None:
-            truth = self.ground_truth()
-        elif not isinstance(truth, xr.DataArray):
-            raise ValueError("truth must be a DataArray")
+        Note, this integrates over all wavelengths. For finer control over the emission
+        spectrum, you may wish to directly combine `filtered_emission_rates` with the
+        ground truth data as needed.
 
+        This function is *NOT* used by `run()`. It is provided as a convenience for
+        debugging and analysis. See also `optical_image_per_fluor`, which is similar to
+        this function, but returns the image *after* convolution with the PSF.  That
+        function may return a different result than simply convolving this function's
+        output with a single PSF, as it more accurately models multi-wavelength
+        emission spectra (as superposition of multiple PSFs).
+        """
+        truth = self.ground_truth()
         if Axis.F not in truth.coords:
             # we have no fluorophores to calculate
             return truth
+
         # total photons/s emitted by each fluorophore in each channel
-        em_rates = self.filtered_emission_rates().sum(Axis.W)
-        total_flux = em_rates * truth
+        total_flux = self.filtered_emission_rates().sum(Axis.W) * truth
         total_flux.attrs.update(unit="photon/sec", long_name="Emission Flux")
+
         # (C, F, Z, Y, X)
         return total_flux
+
+    def optical_image_per_fluor(self) -> xr.DataArray:
+        """Return the optical image for each channel/fluorophore combination.
+
+        This is the emission from each fluorophore in each channel, after filtering by
+        the optical configuration and convolution with the PSF.
+
+        The return array has dimensions (C, F, Z, Y, X).  The units are photons/s.
+        """
+        # (C, F, Z, Y, X)
+        return self.modality.render(
+            self.ground_truth(),  # (F, Z, Y, X)
+            self.filtered_emission_rates(),  # (C, F, W)
+            objective_lens=self.objective_lens,
+            settings=self.settings,
+            xp=self._xp,
+        )
+
+    def optical_image(self) -> xr.DataArray:
+        """Return the optical image as delivered to the detector.
+
+        This is the same as `optical_image_per_fluor`, but sums the contributions of all
+        fluorophores in each channel (which a detector would not know). The return
+        array has dimensions (C, Z, Y, X).  The units are photons/s.
+        """
+        # (C, Z, Y, X)
+        return self.optical_image_per_fluor().sum(Axis.F)
+
+    def digital_image(
+        self,
+        optical_image: xr.DataArray | None = None,
+        *,
+        exposure_ms: float | None = None,  # defaults to model exposure time
+        with_detector_noise: bool = True,
+    ) -> xr.DataArray:
+        """Return the digital image as captured by the detector.
+
+        This down-scales the optical image to the output space, and simulates the
+        detector response.  The return array has dimensions (C, Z, Y, X).  The units
+        are gray values, based on the bit-depth of the detector.  If there is no
+        detector or `with_detector_noise` is False, the units are simply photons.
+        """
+        if optical_image is None:
+            optical_image = self.optical_image()
+        image = optical_image
+
+        # downscale to output space
+        # TODO: consider how we would integrate detector pixel size
+        # rather than a user-sepicified output space
+        if self.output_space is not None:
+            image = self.output_space.rescale(image)
+
+        # simulate detector
+        if exposure_ms is None:
+            exposure_ms = self.exposure_time_ms
+        if self.detector is not None and with_detector_noise:
+            image = self.detector.render(image, exposure_ms=exposure_ms, xp=self._xp)
+            image.attrs.update(unit="gray values")
+        else:
+            image = image * (exposure_ms / 1000)
+            image.attrs.update(unit="photons")
+
+        # (C, Z, Y, X)
+        return image
+
+    def run(self) -> xr.DataArray:
+        """Run the complete simulation and return the result.
+
+        This will also write a file to disk if `output` is set.
+        """
+        self._write(image := self.digital_image())
+        return image
 
     def _truth_cache_path(
         self,
@@ -244,34 +295,6 @@ class Simulation(SimBaseModel):
         if label.distribution.is_random():
             truth_cache = truth_cache / f"seed{seed}"
         return truth_cache
-
-    def digital_image(
-        self,
-        optical_image: xr.DataArray | None = None,
-        *,
-        photons_pp_ps_max: int = 10000,
-        exposure_ms: float = 100,
-        with_detector_noise: bool = True,
-    ) -> xr.DataArray:
-        if optical_image is None:
-            optical_image = self.optical_image()
-        image = optical_image
-        # TODO:Multi-fluorophore setup: combine information present in all wavelength
-        # intervals.
-        if self.output_space is not None:
-            image = self.output_space.rescale(image)
-        if self.detector is not None and with_detector_noise:
-            im_max = self._xp.max(image.data)
-            if not np.any(im_max):
-                photon_flux = image
-            else:
-                photon_flux = image * photons_pp_ps_max / im_max
-            gray_values = self.detector.render(
-                photon_flux, exposure_ms=exposure_ms, xp=self._xp
-            )
-            image = gray_values
-        image.attrs.update(unit="gray values")
-        return image
 
     def _write(self, result: xr.DataArray) -> None:
         if not self.output_path:
@@ -291,10 +314,12 @@ class Simulation(SimBaseModel):
             tf.imwrite(self.output_path, np.asanyarray(result))
 
     def plot(self, transpose: bool = False, legend: bool = True) -> None:
-        plot_summary(self, transpose=transpose, legend=legend)
+        plot_simulation_summary(self, transpose=transpose, legend=legend)
 
 
-def plot_summary(sim: Simulation, transpose: bool = False, legend: bool = True) -> None:
+def plot_simulation_summary(
+    sim: Simulation, transpose: bool = False, legend: bool = True
+) -> None:
     import matplotlib.pyplot as plt
 
     nrows = 5
@@ -412,6 +437,8 @@ def plot_summary(sim: Simulation, transpose: bool = False, legend: bool = True) 
         f_ax[ch_idx].set_ylabel("[photons/s]")
         f_ax[ch_idx].set_title("")
 
-    fp_ax[0].set_xlim(400, 750)  # shared x-axis
+    # make sure lims are at least 400-750
+    a, b = fp_ax[0].get_xlim()
+    fp_ax[0].set_xlim(min(a, 450), max(b, 750))  # shared x-axis
     plt.tight_layout()
     plt.show()

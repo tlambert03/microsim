@@ -1,5 +1,6 @@
 import json
 from collections.abc import Mapping
+from difflib import get_close_matches
 from functools import cache
 from typing import Any, Literal
 from urllib.request import Request, urlopen
@@ -183,7 +184,8 @@ def get_microscope(id: str = "i6WL2W") -> FPbaseMicroscope:
 
 
 @cache
-def fluorophore_ids() -> dict:
+def fluorophore_ids() -> dict[str, dict[str, str]]:
+    """Return a lookup table of fluorophore {name: {id: ..., type: ...}}."""
     resp = _fpbase_query("{ dyes { id name slug } proteins { id name slug } }")
     data: dict[str, list[dict[str, str]]] = json.loads(resp)["data"]
     lookup: dict[str, dict[str, str]] = {}
@@ -197,11 +199,16 @@ def fluorophore_ids() -> dict:
 
 
 @cache
-def get_fluorophore(id: str) -> FPbaseFluorophore:
+def get_fluorophore(name: str) -> FPbaseFluorophore:
+    _ids = fluorophore_ids()
     try:
-        fluor_info = fluorophore_ids()[id.lower()]
+        fluor_info = _ids[name.lower()]
     except KeyError as e:
-        raise ValueError(f"Fluorophore {id!r} not found") from e
+        if closest := get_close_matches(name, _ids, n=1, cutoff=0.5):
+            suggest = f"Did you mean {closest[0]!r}?"
+        else:
+            suggest = ""
+        raise ValueError(f"Fluorophore {name!r} not found.{suggest}") from e
 
     if fluor_info["type"] == "d":
         return get_dye_by_id(fluor_info["id"])

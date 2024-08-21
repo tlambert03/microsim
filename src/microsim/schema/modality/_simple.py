@@ -1,11 +1,8 @@
 import logging
-from math import isnan
 import warnings
 from typing import Annotated, Any, Literal
 
 import numpy as np
-import pandas as pd
-import xarray as xr
 from annotated_types import Ge
 
 from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
@@ -29,8 +26,13 @@ class _PSFModality(SimBaseModel):
         em_wvl_nm: float | None = None,
     ) -> ArrayProtocol:
         # default implementation is a widefield PSF
+        nz, _ny, nx = space.shape
+        dz, _dy, dx = space.scale
         return make_psf(
-            space=space,
+            nz=nz,
+            nx=nx,
+            dx=dx,
+            dz=dz,
             objective=objective_lens,
             ex_wvl_nm=ex_wvl_nm,
             em_wvl_nm=em_wvl_nm,
@@ -46,19 +48,34 @@ class _PSFModality(SimBaseModel):
         settings: Settings,
         xp: NumpyAPI,
     ) -> xrDataArray:
+        """Render a 3D image of the truth for F fluorophores, in C channels."""
+        # for every channel in the emission rates...
         channels = []
         for ch in em_rates.coords[Axis.C].values:
             logging.info(f"Rendering channel {ch} -----------------")
+
+            # for every fluorophore in the sample...
             fluors = []
             for fluor in em_rates.coords[Axis.F].values:
                 logging.info(f">> fluor {fluor}")
+                f_truth = truth.sel({Axis.F: fluor})
+
+                # discretize the emission spectrum for this specific ch/fluor pair
                 em_spectrum = em_rates.sel({Axis.C: ch, Axis.F: fluor})
+                if not (em_spectrum > 1e-12).any():
+                    # no emission at all for this fluorophore in this channel
+                    fluors.append(xp.zeros_like(f_truth))
+                    continue
+
                 binned = bin_spectrum(
                     em_spectrum,
-                    bins=settings.bins_per_emission_channel,  # TODO
-                    threshold_percentage=1,
+                    bins=settings.spectral_bins_per_emission_channel,
+                    threshold_percentage=settings.spectral_bin_threshold_percentage,
                 )
 
+                # Create a full PSF-convoled image for each emission wavelength bin
+                # and sum them together.  (More bins create a more realistic
+                # superposition of wavelength-specific PSFs, at the cost of time).
                 fluor_sum: Any = 0
                 for em_rate, em_wvl_nm in zip(
                     binned, binned[Axis.W].values, strict=True
@@ -66,7 +83,11 @@ class _PSFModality(SimBaseModel):
                     if xp.isnan(em_rate) or em_rate == 0 or xp.isnan(em_wvl_nm):
                         continue
                     logging.info(f">>>> @ {em_wvl_nm} nm")
-                    binned_flux = truth.sel({Axis.F: fluor}) * em_rate
+
+                    # multiply the truth (fluorophore distribution) by the emission rate
+                    # this gives us a (Z, Y, X) array of photons/sec
+                    binned_flux = f_truth * em_rate
+                    # create the PSF for this emission wavelength
                     psf = self.psf(
                         truth.attrs["space"],
                         objective_lens=objective_lens,
@@ -76,6 +97,8 @@ class _PSFModality(SimBaseModel):
                     )
                     fluor_sum += xp.fftconvolve(binned_flux, psf, mode="same")
                 fluors.append(fluor_sum)
+
+            # stack the fluorophores together to create the channel
             channels.append(xp.stack(fluors, axis=0))
 
         return DataArray(
@@ -109,8 +132,13 @@ class Confocal(_PSFModality):
         ex_wvl_nm: float | None = None,
         em_wvl_nm: float | None = None,
     ) -> ArrayProtocol:
+        nz, _ny, nx = space.shape
+        dz, _dy, dx = space.scale
         return make_psf(
-            space=space,
+            nz=nz,
+            nx=nx,
+            dx=dx,
+            dz=dz,
             objective=objective_lens,
             em_wvl_nm=em_wvl_nm,
             ex_wvl_nm=ex_wvl_nm,
@@ -165,7 +193,10 @@ def bin_spectrum(
         bins = np.linspace(w_min, w_max, num_bins + 1)
 
     # Use groupby_bins to bin the data within the filtered region
-    binned = masked.groupby_bins(Axis.W, bins=bins)
+    try:
+        binned = masked.groupby_bins(Axis.W, bins=bins)
+    except ValueError as e:
+        breakpoint()
 
     # Create a new DataArray with the summed intensities and centroid wavelengths
     binned_spectrum = binned.sum(Axis.W)

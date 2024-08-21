@@ -1,4 +1,4 @@
-from typing import Any, get_args
+from typing import Any, Callable, get_args
 
 from pydantic import Field, model_validator
 
@@ -18,6 +18,11 @@ DistributionTypes = get_args(Distribution)
 class FluorophoreDistribution(SimBaseModel):
     distribution: Distribution = Field(...)
     fluorophore: Fluorophore | None = None
+    # either a scalar that will be multiplied by the distribution
+    # (e.g. to increase/decrease concentration of fluorophore)
+    # or a function that will be applied to the distribution
+    # (e.g. to add noise, labeling randomness/inefficiency, etc...)
+    density_scaler: float | Callable[[xrDataArray], xrDataArray] | None = None
 
     def __hash__(self) -> int:
         return id(self)
@@ -28,7 +33,12 @@ class FluorophoreDistribution(SimBaseModel):
         return None
 
     def render(self, space: xrDataArray, xp: NumpyAPI | None = None) -> xrDataArray:
-        return self.distribution.render(space, xp)
+        dist = self.distribution.render(space, xp)
+        if isinstance(self.density_scaler, float):
+            return dist * self.density_scaler
+        elif callable(self.density_scaler):
+            return self.density_scaler(dist)
+        return dist
 
     @model_validator(mode="before")
     def _vmodel(cls, value: Any) -> Any:

@@ -117,7 +117,7 @@ class Shortpass(_FilterBase):
         return Spectrum(
             wavelength=wavelength,
             intensity=sigmoid(
-                np.arange(300, 800, 1),
+                wavelength,
                 self.cutoff,
                 slope=self.slope or 5,
                 up=False,
@@ -143,7 +143,7 @@ class Longpass(_FilterBase):
         return Spectrum(
             wavelength=wavelength,
             intensity=sigmoid(
-                np.arange(300, 800, 1),
+                wavelength,
                 self.cuton,
                 slope=self.slope or 5,
                 up=True,

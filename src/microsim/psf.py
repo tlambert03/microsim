@@ -362,7 +362,10 @@ def _pinhole_mask(
 
 
 def make_psf(
-    space: SpaceProtocol,
+    nz: int,
+    nx: int,
+    dx: float,
+    dz: float,
     objective: ObjectiveLens,
     ex_wvl_nm: float | None = None,
     em_wvl_nm: float | None = None,
@@ -370,9 +373,6 @@ def make_psf(
     max_au_relative: float | None = None,
     xp: NumpyAPI | None = None,
 ) -> ArrayProtocol:
-    nz, _ny, nx = space.shape
-    dz, _dy, dx = space.scale
-
     if ex_wvl_nm is None:
         if em_wvl_nm is None:
             raise ValueError(

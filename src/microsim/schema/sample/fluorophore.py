@@ -39,10 +39,7 @@ class Fluorophore(SimBaseModel):
     def from_fpbase(cls, name: str) -> "Fluorophore":
         from microsim.fpbase import get_fluorophore
 
-        try:
-            fpbase_fluor = get_fluorophore(name)
-        except Exception as e:
-            raise ValueError(f"Unable to load fluorophore {name!r} from FPbase") from e
+        fpbase_fluor = get_fluorophore(name)
 
         if (state := fpbase_fluor.default_state) is None:
             raise ValueError(f"Fluorophore {name!r} has ")

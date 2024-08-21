@@ -54,6 +54,7 @@ class Spectrum(SimBaseModel):
         if isinstance(value, dict):
             if "wavelength" in value and "intensity" in value:
                 if not len(value["wavelength"]) == len(value["intensity"]):
+                    breakpoint()
                     raise ValueError(
                         "Wavelength and intensity must have the same length"
                     )
