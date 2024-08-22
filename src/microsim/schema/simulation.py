@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -159,7 +160,7 @@ class Simulation(SimBaseModel):
         >>> plt.show()
         """
         qe = self.detector.qe if self.detector else None
-        fluors = [lbl.fluorophore for lbl in self.sample.labels]
+        fluors = list({lbl.fluorophore: None for lbl in self.sample.labels})
         nested_rates: list[list[xr.DataArray]] = [
             [oc.filtered_emission_rate(f, detector_qe=qe) for f in fluors]
             for oc in self.channels
@@ -231,8 +232,8 @@ class Simulation(SimBaseModel):
         fluorophores in each channel (which a detector would not know). The return
         array has dimensions (C, Z, Y, X).  The units are photons/s.
         """
-        # (C, Z, Y, X)
-        return self.optical_image_per_fluor().sum(Axis.F)
+        oipf = self.optical_image_per_fluor()
+        return oipf.sum(Axis.F)  # (C, Z, Y, X)
 
     def digital_image(
         self,
@@ -392,6 +393,7 @@ def plot_simulation_summary(
             )
 
         # detector
+        qe = 1
         if (detector := sim.detector) and (qe := detector.qe) is not None:
             kwargs = {
                 "color": "gray",
@@ -418,12 +420,14 @@ def plot_simulation_summary(
                     )
 
         if legend:
-            fp_ax[ch_idx].legend(loc="upper right")
-            ex_ax2.legend(loc="upper right")
-            ab_ax[ch_idx].legend(loc="upper right")
-            f_ax[ch_idx].legend()
-            em_ax[ch_idx].legend()
-            # oc_ax[ch_idx].legend(loc="right")
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                fp_ax[ch_idx].legend(loc="upper right")
+                ex_ax2.legend(loc="upper right")
+                ab_ax[ch_idx].legend(loc="upper right")
+                f_ax[ch_idx].legend()
+                em_ax[ch_idx].legend()
+                # oc_ax[ch_idx].legend(loc="right")
 
         # LABELS --------------------------------------
         ex_ax[ch_idx].set_title(oc.name)

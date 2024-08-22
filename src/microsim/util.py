@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from calendar import c
 import itertools
 import shutil
 import warnings
@@ -250,12 +251,13 @@ def tiled_convolve(
 # convenience function we'll use a couple times
 def ortho_plot(
     img: ArrayProtocol,
-    gamma: float = 0.5,
+    gamma: float = 1,
     mip: bool = False,
     cmap: str | list[str] | None = None,
     *,
     title: str | None = None,
     show: bool = True,
+    figsize: tuple[float, float] = (10, 10),
 ) -> None:
     """Plot XY and XZ slices of a 3D array."""
     import matplotlib.pyplot as plt
@@ -269,7 +271,7 @@ def ortho_plot(
     cmap = [cmap] if isinstance(cmap, str) else cmap
     if img.ndim == 3:
         channels = [img]
-        cm_list = cmap if cmap is not None else ["gray"]
+        cm_list = cmap if cmap is not None else ["white"]
     elif img.ndim == 4:
         channels = list(img)
         colors = ["green", "magenta", "cyan", "yellow", "red", "blue"]
@@ -278,42 +280,82 @@ def ortho_plot(
         raise ValueError("Input must be a 3D or 4D array")
 
     # Initialize RGB images for xy and xz
-    xy_rgb = np.zeros((channels[0].shape[1], channels[0].shape[2], 3))
-    xz_rgb = np.zeros((channels[0].shape[0], channels[0].shape[2], 3))
+    nz, ny, nx = channels[0].shape
+    midz, midy, midx = nz // 2, ny // 2, nx // 2
+    xy_rgb = np.zeros((ny, nx, 3))
+    xz_rgb = np.zeros((nz, nx, 3))
+    yz_rgb = np.zeros((nz, ny, 3))
 
-    fig, ax = plt.subplots(ncols=2, figsize=(10, 5))
     for img, cmap in zip(channels, cm_list, strict=False):
-        xy = np.max(img, axis=0) if mip else img[img.shape[0] // 2]
-        xz = np.max(img, axis=1) if mip else img[:, img.shape[1] // 2]
+        xy = np.max(img, axis=0) if mip else img[midz // 2]
+        xz = np.max(img, axis=1) if mip else img[:, midy // 2]
+        yz = np.max(img, axis=2) if mip else img[:, :, midx // 2]
 
         # Normalize the images to the range [0, 1]
-        xy = (xy - xy.min()) / (xy.max() - xy.min())
-        xz = (xz - xz.min()) / (xz.max() - xz.min())
+        mi, ma = np.percentile(xy, (0.1, 99.9))
+        xy = (xy - mi) / (ma - mi)
+        xz = (xz - mi) / (ma - mi)
+        yz = (yz - mi) / (ma - mi)
 
         # Apply gamma correction
         xy = np.power(xy, 1 / gamma)
         xz = np.power(xz, 1 / gamma)
+        yz = np.power(yz, 1 / gamma)
 
         # Convert the grayscale images to RGB using the specified colormap
         cm = LinearSegmentedColormap.from_list("_cmap", ["black", cmap])
         xy_rgb += cm(xy)[..., :3]  # Exclude alpha channel
         xz_rgb += cm(xz)[..., :3]  # Exclude alpha channel
+        yz_rgb += cm(yz)[..., :3]  # Exclude alpha channel
 
     # Clip the values to the range [0, 1]
     xy_rgb = np.clip(xy_rgb, 0, 1)
     xz_rgb = np.clip(xz_rgb, 0, 1)
+    yz_rgb = np.clip(yz_rgb, 0, 1)
 
-    ax[0].imshow(xy_rgb)
-    ax[1].imshow(xz_rgb)
-    ax[0].set_title("XY slice")
-    ax[1].set_title("XZ slice")
-    try:
-        fig.set_layout_engine("tight")
-    except AttributeError:
-        fig.set_tight_layout(True)
+    fig = plt.figure(figsize=figsize)
+    gs = fig.add_gridspec(
+        2,
+        2,
+        width_ratios=(nx, nz),
+        height_ratios=(ny, nz),
+        left=0.1,
+        right=0.9,
+        bottom=0.1,
+        top=0.9,
+        wspace=0.01,
+        hspace=0.01,
+    )
+    ax_xy = fig.add_subplot(gs[0, 0])
+    ax_yz = fig.add_subplot(gs[0, 1], sharey=ax_xy)
+    ax_xz = fig.add_subplot(gs[1, 0], sharex=ax_xy)
+
+    ax_xy.imshow(xy_rgb, interpolation="none")
+    ax_xy.set_title("XY")
+    ax_xy.get_xaxis().set_visible(False)
+
+    # ax_yz.imshow(np.rot90(yz_rgb), interpolation="none")
+    ax_yz.imshow(np.flipud(np.rot90(yz_rgb)), interpolation="none")
+    ax_yz.set_title("YZ")
+    ax_yz.get_yaxis().set_visible(False)
+
+    ax_xz.imshow(xz_rgb, interpolation="none")
+    ax_xz.set_title("XZ", y=0, loc="left", color="gray")
+
+    if not mip:
+        # Assuming 'mid_x' is the index where the YZ slice is taken
+        ax_xy.axvline(x=midx, color="yellow", linestyle="--", alpha=0.4)
+        ax_xy.axhline(y=midy, color="yellow", linestyle="--", alpha=0.4)
+
+    # Remove spines to make the plot tighter
+    for ax in [ax_xy, ax_yz, ax_xz]:
+        ax.spines["top"].set_visible(False)
+        ax.spines["right"].set_visible(False)
+        ax.spines["bottom"].set_visible(False)
+        ax.spines["left"].set_visible(False)
 
     if title:
-        fig.suptitle(title)
+        fig.suptitle(title, fontsize=16)
     if show:
         plt.show()
 

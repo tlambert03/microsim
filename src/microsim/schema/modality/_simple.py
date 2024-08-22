@@ -56,12 +56,17 @@ class _PSFModality(SimBaseModel):
 
             # for every fluorophore in the sample...
             fluors = []
-            for fluor in em_rates.coords[Axis.F].values:
+            for f_idx, fluor in enumerate(truth.coords[Axis.F].values):
                 logging.info(f">> fluor {fluor}")
-                f_truth = truth.sel({Axis.F: fluor})
+                f_truth = truth.isel({Axis.F: f_idx})
 
                 # discretize the emission spectrum for this specific ch/fluor pair
                 em_spectrum = em_rates.sel({Axis.C: ch, Axis.F: fluor})
+                # if we happen to have 2 spectra for the same fluorophore
+                # in the same channel, just take the first one (shouldn't happen)
+                if Axis.F in em_spectrum.dims:  # pragma: no cover
+                    em_spectrum = em_spectrum.isel({Axis.F: 0})
+
                 if not (em_spectrum > 1e-12).any():
                     # no emission at all for this fluorophore in this channel
                     fluors.append(xp.zeros_like(f_truth))
@@ -193,10 +198,7 @@ def bin_spectrum(
         bins = np.linspace(w_min, w_max, num_bins + 1)
 
     # Use groupby_bins to bin the data within the filtered region
-    try:
-        binned = masked.groupby_bins(Axis.W, bins=bins)
-    except ValueError as e:
-        breakpoint()
+    binned = masked.groupby_bins(Axis.W, bins=bins)
 
     # Create a new DataArray with the summed intensities and centroid wavelengths
     binned_spectrum = binned.sum(Axis.W)

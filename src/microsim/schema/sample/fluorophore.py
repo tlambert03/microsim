@@ -1,12 +1,17 @@
 from math import log
+from re import S
 from typing import Any
 
+import numpy as np
 import xarray as xr
 from pydantic import model_validator
 from scipy.constants import Avogadro
 
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
+
+
+
 
 
 class Fluorophore(SimBaseModel):
@@ -26,7 +31,7 @@ class Fluorophore(SimBaseModel):
         """Return the absorption cross section in cm^2."""
         ec = self.excitation_spectrum.as_xarray()  # 1/cm/M
         # normalize to peak of 1
-        ec /= ec.max()
+        ec = ec / ec.max()
         # multiply by extinction coefficient
         ec *= self.extinction_coefficient
         out = log(10) * 1e3 * ec / Avogadro  # cm^2

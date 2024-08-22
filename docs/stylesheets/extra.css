@@ -52,3 +52,18 @@ a.autorefs-external::after {
 a.autorefs-external:hover::after {
   background-color: var(--md-accent-fg-color);
 }
+
+
+/* Remove In [] from jupyter notebook */
+.jupyter-wrapper .jp-CodeCell .jp-Cell-inputWrapper .jp-InputPrompt,
+.jupyter-wrapper .jp-CodeCell .jp-Cell-outputWrapper .jp-OutputPrompt {
+  display: none !important;
+}
+
+.jupyter-wrapper .jp-CodeCell .jp-Cell-outputWrapper .jp-RenderedText[data-mime-type="application/vnd.jupyter.stderr"] {
+  display: none !important;
+}
+
+.jupyter-wrapper .jp-Cell-inputWrapper {
+  padding-bottom: 1rem !important;
+}

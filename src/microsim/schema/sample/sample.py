@@ -1,5 +1,7 @@
-from typing import Any, Callable, get_args
+from collections.abc import Callable
+from typing import Any, get_args
 
+import numpy as np
 from pydantic import Field, model_validator
 
 from microsim._data_array import ArrayProtocol, xrDataArray
@@ -9,15 +11,26 @@ from microsim.schema.backend import NumpyAPI
 from ._distributions.cosem import CosemLabel
 from ._distributions.direct import FixedArrayTruth
 from ._distributions.matslines import MatsLines
-from .fluorophore import Fluorophore
+from .fluorophore import Fluorophore, Spectrum
 
 Distribution = MatsLines | CosemLabel | FixedArrayTruth
 DistributionTypes = get_args(Distribution)
 
 
+waves = np.arange(300, 800, 1)
+MOCK_FLUOR = Fluorophore(
+    name="mockFluorophore",
+    excitation_spectrum=Spectrum(wavelength=waves, intensity=np.ones_like(waves)),
+    emission_spectrum=Spectrum(wavelength=waves, intensity=np.ones_like(waves)),
+    extinction_coefficient=50_000,
+    quantum_yield=1,
+    lifetime_ns=1,
+)
+
+
 class FluorophoreDistribution(SimBaseModel):
     distribution: Distribution = Field(...)
-    fluorophore: Fluorophore | None = None
+    fluorophore: Fluorophore = MOCK_FLUOR
     # either a scalar that will be multiplied by the distribution
     # (e.g. to increase/decrease concentration of fluorophore)
     # or a function that will be applied to the distribution
@@ -59,3 +72,9 @@ class FluorophoreDistribution(SimBaseModel):
 
 class Sample(SimBaseModel):
     labels: list[FluorophoreDistribution]
+
+    @model_validator(mode="before")
+    def _validate_labels(cls, value: Any) -> Any:
+        if isinstance(value, list | tuple):
+            return {"labels": list(value)}
+        return value
