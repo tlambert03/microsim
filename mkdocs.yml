@@ -63,7 +63,10 @@ plugins:
         remove_all_outputs_tags: [remove_output]
         remove_input_tags: [remove_input]
         remove_cell_tags: [remove_cell]
-          
+      execute: true
+      include_requirejs: true
+      custom_mathjax_url: "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS_CHTML-full,Safe"
+
 extra_css:
   - stylesheets/extra.css
 
