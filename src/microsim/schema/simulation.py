@@ -1,7 +1,7 @@
 import logging
+import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
-import warnings
 
 import numpy as np
 import pandas as pd

@@ -1,6 +1,6 @@
 import inspect
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import xarray as xr
 from pydantic import Field, model_validator
@@ -13,6 +13,9 @@ from microsim.schema.sample.fluorophore import Fluorophore
 from microsim.schema.spectrum import Spectrum
 
 from .filter import Filter, Placement, SpectrumFilter
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
 
 
 class LightSource(SimBaseModel):
@@ -291,3 +294,79 @@ class OpticalConfig(SimBaseModel):
 
     def __str__(self):
         return self.name
+
+    def plot_excitation(self, ax: "Axes | None" = None) -> None:
+        # combined illumination
+        lines = []
+        labels = ["combined flux"]
+
+        # plot the combined illumination spectrum
+        full = self.illumination_flux_density
+        lines.extend(full.plot.line(ax=ax, color="k", linewidth=2))
+
+        # plot individual filters
+        ax0 = cast("Axes", lines[0].axes)
+        ax2 = ax0.twinx()
+        for f in self.filters:
+            if f.placement == Placement.EM_PATH:
+                continue
+
+            spect = f.spectrum
+            if f.placement == Placement.BS:
+                spect = spect.inverted()
+            lines.extend(spect.plot(ax=ax2, alpha=0.6))
+            labels.append(f.name)
+
+        # light sources
+        for light in self.lights:
+            lines.extend(light.spectrum.plot(ax=ax2, alpha=0.6))
+            labels.append(light.name)
+
+        # formatting
+        ax2.set_ylabel("")
+        ax2.yaxis.set_ticks_position("none")
+        ax2.set_yticklabels([])
+        ax2.set_xlim(400, 700)
+        ax0.set_title(self.name)
+        ax0.legend(
+            lines,
+            labels,
+            ncols=2,
+            fontsize="small",
+            loc="lower right",
+            bbox_to_anchor=(1, 1.1),
+        )
+
+    def plot_emission(
+        self, ax: "Axes | None" = None, detector_qe: float | Spectrum | None = None
+    ) -> None:
+        # combined illumination
+
+        # plot the combined illumination spectrum
+        # full = self.emission.spectrum
+        # lines.extend(full.plot.line(ax=ax, color="k", linewidth=2))
+
+        # plot individual filters
+        alpha = 0.5
+        for f in self.filters:
+            if f.placement == Placement.EX_PATH:
+                continue
+
+            spect = f.spectrum
+            if f.placement == Placement.BS_INV:
+                spect = spect.inverted()
+            spect.plot(ax=ax, alpha=alpha, label=f.name)
+
+        kwargs = {"color": "gray", "label": "QE", "linestyle": "--", "alpha": alpha}
+        if isinstance(detector_qe, Spectrum):
+            detector_qe.plot(ax=ax, **kwargs)
+        elif isinstance(detector_qe, int | float):
+            ax.axhline(detector_qe, **kwargs)
+
+        # combined
+        em_spectrum = self.emission.spectrum.as_xarray()
+        if detector_qe is not None:
+            em_spectrum = em_spectrum * detector_qe
+        em_spectrum.plot(ax=ax, color="k", linewidth=2, label="combined")
+        ax.legend()
+        ax.set_xlim(400, 800)

@@ -65,8 +65,8 @@ sim = ms.Simulation(
         ]
     ),
     channels=[
-        ms.OpticalConfig.from_fpbase("wKqWbgApvguSNDSRZNSfpN", "Widefield Green"),
-        ms.OpticalConfig.from_fpbase("wKqWbgApvguSNDSRZNSfpN", "Widefield Red"),
+        ms.OpticalConfig.from_fpbase("wKqWbg", "Widefield Green"),
+        ms.OpticalConfig.from_fpbase("wKqWbg", "Widefield Red"),
     ],
     # channels=spectral_detector(8, 480, 600, [488, 515, 561]),
     modality=ms.Confocal(),
@@ -75,6 +75,6 @@ sim = ms.Simulation(
 
 
 
-# plot_summary(sim)
+sim.plot()
 
-import xarray as xr
+# import xarray as xr

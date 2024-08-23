@@ -154,15 +154,9 @@ class Spectrum(SimBaseModel):
         """Maximum intensity."""
         return np.max(self.intensity)  # type: ignore [no-any-return]
 
-    def plot(self, show: bool = True) -> None:
-        import matplotlib.pyplot as plt
-
-        fig = plt.figure(figsize=(12, 3))
-        ax = fig.add_subplot(111)
-
-        ax.plot(self.wavelength, self.intensity)
-        if show:
-            plt.show()
+    @property
+    def plot(self) -> None:
+        return self.as_xarray().plot
 
 
 def get_overlapping_indices(ary1: np.ndarray, ary2: np.ndarray) -> tuple[slice, slice]:
