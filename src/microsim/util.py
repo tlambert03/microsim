@@ -257,7 +257,7 @@ def ortho_plot(
     *,
     title: str | None = None,
     show: bool = True,
-    figsize: tuple[float, float] = (10, 10),
+    figsize: tuple[float, float] = (8, 8),
 ) -> None:
     """Plot XY and XZ slices of a 3D array."""
     import matplotlib.pyplot as plt
