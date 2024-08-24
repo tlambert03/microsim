@@ -20,8 +20,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from microsim._data_array import ArrayProtocol
-    from microsim.schema.optical_config import OpticalConfig
-    from microsim.schema.space import SpaceProtocol
 
 
 def simpson(

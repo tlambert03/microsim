@@ -1,9 +1,7 @@
-import warnings
 from collections.abc import Sequence
 from itertools import pairwise
 
 import numpy as np
-from matplotlib import pyplot as plt
 
 from microsim import schema as ms
 from microsim.schema.detectors._camera import ICX285
@@ -72,7 +70,6 @@ sim = ms.Simulation(
     modality=ms.Confocal(),
     detector=ICX285,
 )
-
 
 
 sim.plot()

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import logging
 import warnings
 from contextlib import nullcontext, suppress
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
-import logging
+
 import numpy as np
 import numpy.typing as npt
 

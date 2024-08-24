@@ -1,17 +1,12 @@
 from math import log
-from re import S
 from typing import Any
 
-import numpy as np
 import xarray as xr
 from pydantic import model_validator
 from scipy.constants import Avogadro
 
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
-
-
-
 
 
 class Fluorophore(SimBaseModel):
