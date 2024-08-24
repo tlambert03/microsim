@@ -370,3 +370,4 @@ class OpticalConfig(SimBaseModel):
         em_spectrum.plot(ax=ax, color="k", linewidth=2, label="combined")
         ax.legend()
         ax.set_xlim(400, 800)
+        ax.set_xlabel("transmission [%]")

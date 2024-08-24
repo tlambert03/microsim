@@ -251,7 +251,7 @@ class Simulation(SimBaseModel):
         """
         if optical_image is None:
             optical_image = self.optical_image()
-        image = optical_image
+        image = optical_image  # (C, Z, Y, X)
 
         # downscale to output space
         # TODO: consider how we would integrate detector pixel size

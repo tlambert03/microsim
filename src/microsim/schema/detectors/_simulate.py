@@ -49,8 +49,11 @@ def simulate_camera(
 
     # sample poisson noise
     if add_poisson:
+        # FIXME: commenting this out since we also apply it in filtered_emission...
+        # need to reconcile this
+        # incident_photons = incident_photons * camera.qe
         detected_photons = xp.poisson_rvs(
-            incident_photons * camera.qe, shape=incident_photons.shape
+            incident_photons, shape=incident_photons.shape
         )
 
     # dark current
