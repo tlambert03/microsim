@@ -257,6 +257,7 @@ def ortho_plot(
     title: str | None = None,
     show: bool = True,
     figsize: tuple[float, float] = (8, 8),
+    z: int | None = None,
 ) -> None:
     """Plot XY and XZ slices of a 3D array."""
     import matplotlib.pyplot as plt
@@ -280,15 +281,16 @@ def ortho_plot(
 
     # Initialize RGB images for xy and xz
     nz, ny, nx = channels[0].shape
-    midz, midy, midx = nz // 2, ny // 2, nx // 2
+    midz = nz // 2 if z is None else z
+    midy, midx = ny // 2, nx // 2
     xy_rgb = np.zeros((ny, nx, 3))
     xz_rgb = np.zeros((nz, nx, 3))
     yz_rgb = np.zeros((nz, ny, 3))
 
     for img, cmap in zip(channels, cm_list, strict=False):
-        xy = np.max(img, axis=0) if mip else img[midz // 2]
-        xz = np.max(img, axis=1) if mip else img[:, midy // 2]
-        yz = np.max(img, axis=2) if mip else img[:, :, midx // 2]
+        xy = np.max(img, axis=0) if mip else img[midz]
+        xz = np.max(img, axis=1) if mip else img[:, midy]
+        yz = np.max(img, axis=2) if mip else img[:, :, midx]
 
         # Normalize the images to the range [0, 1]
         mi, ma = np.percentile(xy, (0.1, 99.9))
@@ -343,8 +345,12 @@ def ortho_plot(
 
     if not mip:
         # Assuming 'mid_x' is the index where the YZ slice is taken
-        ax_xy.axvline(x=midx, color="yellow", linestyle="--", alpha=0.4)
-        ax_xy.axhline(y=midy, color="yellow", linestyle="--", alpha=0.4)
+        ax_xy.axvline(x=midx, color="yellow", linestyle="--", linewidth=1, alpha=0.3)
+        ax_xy.axhline(y=midy, color="yellow", linestyle="--", linewidth=1, alpha=0.3)
+        ax_xz.axvline(x=midx, color="yellow", linestyle="--", linewidth=1, alpha=0.3)
+        ax_xz.axhline(y=midz, color="yellow", linestyle="--", linewidth=1, alpha=0.3)
+        ax_yz.axvline(x=midz, color="yellow", linestyle="--", linewidth=1, alpha=0.3)
+        ax_yz.axhline(y=midy, color="yellow", linestyle="--", linewidth=1, alpha=0.3)
 
     # Remove spines to make the plot tighter
     for ax in [ax_xy, ax_yz, ax_xz]:
