@@ -6,7 +6,7 @@ def pindist(t: float, t0: float, w: float, distance: float) -> float:
     # general function to minimize when finding the next "time" point to lay a
     # pinhole when traversing an archimedean spiral of width w, while looking
     # for a pinhole spacing of `distance`...
-    # this is just the euclidean distance bewteen the pinhole at time t and
+    # this is just the euclidean distance between the pinhole at time t and
     # time t0, minus the desired pinhole distance
     x = w * t * np.cos(t) - w * t0 * np.cos(t0)
     y = w * t * np.sin(t) - w * t0 * np.sin(t0)

@@ -152,7 +152,7 @@ class SIMIllum2D(BaseModel):
         Returns
         -------
         NDArray
-            tranformation matrix
+            transformation matrix
         """
         scale = xp.eye(4)
         scale[2, 2] = 0  # flatten the z dimension to the 2D plane
