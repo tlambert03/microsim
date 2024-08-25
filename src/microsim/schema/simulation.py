@@ -200,7 +200,7 @@ class Simulation(SimBaseModel):
             raise ValueError("No fluorophores in the current sample!")
 
         # Get emission spectra for all the fluorophores
-        fluor_em_spectra = []
+        fluor_em_spectra: list[np.ndarray] = []
         for fluor in fluorophores:
             if fluor is None:
                 fluor_em_spectra.append(
@@ -210,7 +210,7 @@ class Simulation(SimBaseModel):
                 )
             else:
                 # get emission Spectrum for the given fluorophore
-                fluor_em_spectra.append(fluor.emission_spectrum.wavelength.magnitude)
+                fluor_em_spectra.append(fluor.emission_spectrum.wavelength)
 
         # Get the min and max wavelength over all the spectra
         min_wave = min([x.min() for x in fluor_em_spectra])

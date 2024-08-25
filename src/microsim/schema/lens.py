@@ -3,8 +3,6 @@ from typing import Any, TypedDict
 import numpy as np
 from pydantic import Field, model_validator
 
-from microsim._field_types import Microns
-
 from ._base_model import SimBaseModel
 
 
@@ -28,12 +26,9 @@ class ObjectiveLens(SimBaseModel):
     immersion_medium_ri: float = 1.515  # immersion medium RI experimental value (ni)
     immersion_medium_ri_spec: float = 1.515  # immersion medium RI design value (ni0)
     specimen_ri: float = 1.47  # specimen refractive index (ns)
-    # um, working distance, design value (ti0)
-    working_distance: Microns = 150.0  # type: ignore
-    # um, coverslip thickness (tg)
-    coverslip_thickness: Microns = 170.0  # type: ignore
-    # um, coverslip thickness design (tg0)
-    coverslip_thickness_spec: Microns = 170.0  # type: ignore
+    working_distance_um: float = 150.0  # um, working distance, design value (ti0)
+    coverslip_thickness_um: float = 170.0  # um, coverslip thickness (tg)
+    coverslip_thickness_spec_um: float = 170.0  # um, coverslip thickness design (tg0)
 
     magnification: float = Field(1, description="magnification of objective lens.")
 
@@ -54,9 +49,9 @@ class ObjectiveLens(SimBaseModel):
                 self.immersion_medium_ri,
                 self.immersion_medium_ri_spec,
                 self.specimen_ri,
-                self.working_distance,
-                self.coverslip_thickness,
-                self.coverslip_thickness_spec,
+                self.working_distance_um,
+                self.coverslip_thickness_um,
+                self.coverslip_thickness_spec_um,
                 self.magnification,
             )
         )
@@ -91,15 +86,15 @@ class ObjectiveLens(SimBaseModel):
 
     @property
     def tg(self) -> float:
-        return float(self.coverslip_thickness.to("meters").magnitude)
+        return self.coverslip_thickness_um * 1e-6  # convert to meters
 
     @property
     def tg0(self) -> float:
-        return float(self.coverslip_thickness_spec.to("meters").magnitude)
+        return self.coverslip_thickness_spec_um * 1e-6  # convert to meters
 
     @property
     def ti0(self) -> float:
-        return float(self.working_distance.to("meters").magnitude)
+        return self.working_distance_um * 1e-6  # convert to meters
 
     @property
     def ng0(self) -> float:
