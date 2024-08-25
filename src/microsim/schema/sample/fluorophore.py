@@ -24,11 +24,13 @@ class Fluorophore(SimBaseModel):
     @property
     def absorption_cross_section(self) -> xr.DataArray:
         """Return the absorption cross section in cm^2."""
+        if self.extinction_coefficient is None:
+            raise ValueError("Extinction coefficient is not set.")
         ec = self.excitation_spectrum.as_xarray()  # 1/cm/M
         # normalize to peak of 1
         ec = ec / ec.max()
         # multiply by extinction coefficient
-        ec *= self.extinction_coefficient
+        ec = ec * self.extinction_coefficient
         out = log(10) * 1e3 * ec / Avogadro  # cm^2
         out.attrs["units"] = "cm^2"
         out.attrs["long_name"] = "Absorption cross-section"

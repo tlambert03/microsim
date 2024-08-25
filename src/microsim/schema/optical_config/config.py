@@ -85,7 +85,7 @@ class OpticalConfig(SimBaseModel):
         # norm area to 1
         em_rate = em_rate / em_rate.sum()
         # multiply by quantum yield and total absorption rate
-        em_rate = em_rate * fluorophore.quantum_yield * tot_absorption_rate
+        em_rate = em_rate * (fluorophore.quantum_yield or 1) * tot_absorption_rate
         # add singleton coordinates for fluorophore and self
         em_rate = em_rate.expand_dims({Axis.F: [fluorophore], Axis.C: [self]})
         em_rate.name = "emission_rate"

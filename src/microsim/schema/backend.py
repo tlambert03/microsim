@@ -143,7 +143,7 @@ class NumpyAPI:
         return hash(type(self)) + hash(self._random_seed)
 
     def __eq__(self, other: Any) -> bool:
-        return type(self) == type(other)
+        return type(self) is type(other)
 
 
 class JaxAPI(NumpyAPI):
