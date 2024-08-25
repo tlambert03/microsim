@@ -283,6 +283,6 @@ will depend on the settings of the `detector` and the `output_space`.
 
 !!! note "TODO"
 
-    We don't yet model pixel-specific characterists of sCMOS cameras.  Ideally,
+    We don't yet model pixel-specific characteristics of sCMOS cameras.  Ideally,
     we will generate a random "instance" of an sCMOS camera with noise, gain,
     and offset distribution pulled from a typical CMOS.

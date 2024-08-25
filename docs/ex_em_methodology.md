@@ -5,7 +5,7 @@ This document outlines the mechanism of how the excitation and emission of the f
   The task is to estimate the number of photons absorbed by the fluorophores for each `1nm` wavelength interval. For this, following steps are followed:
 
 1. Compute the irradiance for every `1nm` wavelength interval of the light source. `irradiance = ex_filter_spectrum * light_power`.  
-2. Calculate the absorption cross section given the extinction coefficient. See [section below](#absorption-cross-section) for more details. This is inturn used to calculate the absorbtion cross section for every `1nm` wavelength interval of the fluorophore excitation spectrum.
+2. Calculate the absorption cross section given the extinction coefficient. See [section below](#absorption-cross-section) for more details. This is inturn used to calculate the absorption cross section for every `1nm` wavelength interval of the fluorophore excitation spectrum.
 3. Now that we have the abrobption cross section and irradiance, we calculate the power absorbed by the fluorophores for every `1nm` wavelength interval.
 4. Finally, we compute the absorbed photon count by simply dividing the power absorbed by the energy of a single photon.
 
