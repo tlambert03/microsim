@@ -6,7 +6,7 @@ import numpy as np
 import pint
 from pydantic import field_validator, model_validator
 
-from microsim._field_types import Nanometers, NumpyNdarray
+from microsim._field_types import NumpyNdarray
 
 from ._base_model import SimBaseModel
 
@@ -15,18 +15,16 @@ if TYPE_CHECKING:
 
 
 class _AryRepr:
-    def __init__(self, obj: np.ndarray | pint.Quantity) -> None:
+    def __init__(self, obj: np.ndarray) -> None:
         self.dtype = obj.dtype
         self.shape = obj.shape
-        self.units = getattr(obj, "units", None)
 
     def __repr__(self) -> str:
-        unit = f" units={self.units}" if self.units else ""
-        return f"ndarray<shape={self.shape} dtype={self.dtype}{unit}>"
+        return f"ndarray<shape={self.shape} dtype={self.dtype}>"
 
 
 class Spectrum(SimBaseModel):
-    wavelength: Nanometers
+    wavelength: NumpyNdarray  # nanometers
     intensity: NumpyNdarray  # normalized to 1
     scalar: float = 1  # scalar to multiply intensity by, such as EC or QY
 
@@ -35,12 +33,12 @@ class Spectrum(SimBaseModel):
             return False
         return (
             np.allclose(self.intensity, other.intensity)
-            and np.allclose(self.wavelength.magnitude, other.wavelength.magnitude)
+            and np.allclose(self.wavelength, other.wavelength)
             and self.scalar == other.scalar
         )
 
     def __array__(self) -> np.ndarray:
-        return np.column_stack((self.wavelength.magnitude, self.intensity))
+        return np.column_stack((self.wavelength, self.intensity))
 
     def __index__(self) -> int:
         return id(self)
@@ -48,29 +46,31 @@ class Spectrum(SimBaseModel):
     def inverted(self) -> "Spectrum":
         return self.model_copy(update={"intensity": 1 - self.intensity})
 
-    def integral(self) -> float | pint.Quantity:
-        return np.trapz(self.intensity, self.wavelength.magnitude)  # type: ignore [no-any-return]
+    def integral(self) -> float:
+        return np.trapz(self.intensity, self.wavelength)  # type: ignore [no-any-return]
 
     def __mul__(self, other: "float | pint.Quantity | Spectrum") -> "Spectrum":
+        if isinstance(other, pint.Quantity):
+            other = other.magnitude
         if isinstance(other, Spectrum):
             return self._intensity_op(other, np.multiply)
         return self.model_copy(update={"intensity": self.intensity * other})
 
     def __truediv__(self, other: "float | pint.Quantity | Spectrum") -> "Spectrum":
+        if isinstance(other, pint.Quantity):
+            other = other.magnitude
         if isinstance(other, Spectrum):
             return self._intensity_op(other, np.true_divide)
         return self.model_copy(update={"intensity": self.intensity / other})
 
     def _intensity_op(self, other: "Spectrum", op: np.ufunc) -> "Spectrum":
-        slc1, slc2 = get_overlapping_indices(
-            self.wavelength.magnitude, other.wavelength.magnitude
-        )
+        slc1, slc2 = get_overlapping_indices(self.wavelength, other.wavelength)
         intens1 = self.intensity[slc1]
         intens2 = other.intensity[slc2]
         return self.model_copy(
             update={
                 "intensity": op(intens1, intens2),
-                "wavelength": self.wavelength[slc1],  # type: ignore[index]
+                "wavelength": self.wavelength[slc1],
             }
         )
 
@@ -81,19 +81,19 @@ class Spectrum(SimBaseModel):
 
     def __repr_args__(self) -> Iterable[tuple[str | None, Any]]:
         for _fname, _val in super().__repr_args__():
-            if isinstance(_val, pint.Quantity | np.ndarray):
+            if isinstance(_val, np.ndarray):
                 _val = _AryRepr(_val)
             yield _fname, _val
 
     @property
-    def peak_wavelength(self) -> Nanometers:
+    def peak_wavelength(self) -> float:
         """Wavelength corresponding to maximum intensity."""
-        return self.wavelength[np.argmax(self.intensity)]  # type: ignore
+        return float(self.wavelength[np.argmax(self.intensity)])
 
     @property
-    def max_intensity(self) -> pint.Quantity | float:
+    def max_intensity(self) -> float:
         """Maximum intensity."""
-        return np.max(self.intensity)  # type: ignore
+        return np.max(self.intensity)  # type: ignore [no-any-return]
 
     @field_validator("intensity", mode="after")
     @classmethod
@@ -131,7 +131,7 @@ class Spectrum(SimBaseModel):
         fig = plt.figure(figsize=(12, 3))
         ax = fig.add_subplot(111)
 
-        ax.plot(self.wavelength.magnitude, self.intensity)
+        ax.plot(self.wavelength, self.intensity)
         if show:
             plt.show()
 
