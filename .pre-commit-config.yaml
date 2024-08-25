@@ -20,7 +20,7 @@ repos:
     rev: v1.10.1
     hooks:
       - id: mypy
-        files: "^src/microsim/schema/.*\\.py$"
+        files: "^src/"
         additional_dependencies:
           - numpy<2.0
           - pydantic
