@@ -54,10 +54,11 @@ class OpticalConfig(SimBaseModel):
     power: float | None = None  # total power of all lights after filters
 
     def absorption_rate(self, fluorophore: Fluorophore) -> "xr.DataArray":
-        """Return the absorption rate of a fluorophore in this configuration.
+        """Return the absorption rate of a fluorophore with this configuration.
 
         The absorption rate is the number of photons absorbed per second per
-        fluorophore, as a function of wavelength.
+        fluorophore, as a function of wavelength. It's a vector with a single axis W,
+        and singleton dimensions F and C.
         """
         illum_flux_density = self.illumination_flux_density  # photons/cm^2/s
         cross_section = fluorophore.absorption_cross_section  # cm^2/fluorophore
@@ -75,10 +76,11 @@ class OpticalConfig(SimBaseModel):
         return abs_rate
 
     def total_emission_rate(self, fluorophore: Fluorophore) -> "xr.DataArray":
-        """Return the emission rate of a fluorophore in this configuration.
+        """Return the emission rate of a fluorophore with this configuration.
 
-        The emission rate is the number of photons emitted per second per
-        fluorophore, as a function of wavelength.
+        The emission rate is the total number of photons emitted per second per
+        fluorophore, as a function of wavelength, prior to any filtering in the emission
+        path. It's a vector with a single axis W, and singleton dimensions F and C
         """
         tot_absorption_rate = self.absorption_rate(fluorophore).sum()
         em_rate = fluorophore.emission_spectrum.as_xarray()
@@ -96,11 +98,12 @@ class OpticalConfig(SimBaseModel):
     def filtered_emission_rate(
         self, fluorophore: Fluorophore, detector_qe: float | Spectrum | None = None
     ) -> "xr.DataArray":
-        """Return the emission rate of a fluorophore after passing through filters.
+        """Return the emission rate of a fluorophore with this config, after filters.
 
         The emission rate is the number of photons emitted per second per
-        fluorophore, as a function of wavelength, after passing through the emission
-        path. (It's a vector with a single axis W, and singleton dimensions F and C)
+        fluorophore, as a function of wavelength, after being excited by this optical
+        config, then passing through the emission path of this config. It's a vector
+        with a single axis W, and singleton dimensions F and C.
 
         This is the complete picture of the treatment of a specific fluorophore with
         this optical configuration.  It takes into account:
@@ -138,6 +141,11 @@ class OpticalConfig(SimBaseModel):
 
     @property
     def illumination(self) -> Spectrum | None:
+        """Return the combined illumination spectrum.
+
+        This represents the spectrum of light source and all of the filters in the
+        excitation path. If there are multiple light sources, they are combined.
+        """
         exc = self.excitation
         if self.lights:
             l0, *rest = self.lights
@@ -152,6 +160,12 @@ class OpticalConfig(SimBaseModel):
 
     @property
     def irradiance(self) -> "xr.DataArray":
+        """Return the illumination irradiance in W/cm^2.
+
+        This scales the illumination spectrum to power. It is a measure of the power per
+        unit area of the excitation path of this optical configuration, in W/cm^2, as
+        a function of wavelength.
+        """
         if (illum := self.illumination) is None:
             raise ValueError("This Optical Config has no illumination spectrum.")
         # get irradiance scaled to power
@@ -168,6 +182,12 @@ class OpticalConfig(SimBaseModel):
 
     @property
     def illumination_flux_density(self) -> "xr.DataArray":
+        """Return the illumination flux density in photons/cm^2/s.
+
+        This is a measure of the number of photons per unit area per second in the
+        excitation path of this optical configuration.
+        It converts irradiance (W/cm^2) to photons/cm^2/s using the energy of a photon.
+        """
         # get irradiance scaled to power
         irrad = self.irradiance  # W/cm^2
         # convert W/cm^2 to photons/cm^2/s using E = h * c / λ
