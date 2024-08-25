@@ -56,7 +56,7 @@ in the simulation.
 
 Samples define the distribution and properties of fluorophores in
 the simulation.  A `Sample` is a set of `labels`, each of which
-is a combiniation of a `Fluorophore` and a `FluorophoreDistribution`.
+is a combination of a `Fluorophore` and a `FluorophoreDistribution`.
 
 The `FluorophoreDistribution` is the primary object that determines
 what the sample will look like.

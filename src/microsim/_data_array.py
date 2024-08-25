@@ -79,23 +79,23 @@ def from_cache(path: Path, xp: NumpyAPI | None = None) -> xrDataArray:
 def to_cache(da: xrDataArray, path: Path, dtype: npt.DTypeLike | None = None) -> None:
     path.mkdir(parents=True, exist_ok=True)
     da = da.copy(deep=False)
-    da.attrs = _serializeable_attrs(da.attrs)
+    da.attrs = _serializable_attrs(da.attrs)
     if hasattr(da.data, "get"):
         da.data = da.data.get()
     da.to_zarr(path, mode="w")
 
 
-def _serializeable_attrs(attrs: Any) -> Any:
+def _serializable_attrs(attrs: Any) -> Any:
     """Make attrs serializable by json, including BaseModels."""
     if isinstance(attrs, dict):
-        return {key: _serializeable_attrs(value) for key, value in attrs.items()}
+        return {key: _serializable_attrs(value) for key, value in attrs.items()}
     elif isinstance(attrs, BaseModel):
         cls = type(attrs)
         data = attrs.model_dump(mode="json", exclude_unset=True)
         data["model_type"] = cls.__module__ + "." + cls.__name__
         return data
     elif isinstance(attrs, list | tuple):  # pragma: no cover
-        return [_serializeable_attrs(item) for item in attrs]
+        return [_serializable_attrs(item) for item in attrs]
     else:
         return attrs  # pragma: no cover
 

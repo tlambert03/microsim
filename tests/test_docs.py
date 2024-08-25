@@ -44,7 +44,7 @@ def test_docs(doc: Path, tmp_path: Path) -> None:
 
 
 def _fill_in_stages(lines: list[str]) -> list[str]:
-    # complete Simluation definition in stages.md
+    # complete Simulation definition in stages.md
     # this is just to allow the Simulation object to be instantiated...
     # as a smoke test to make sure our examples still work
     if not any(x.lstrip().startswith("sample") for x in lines):
