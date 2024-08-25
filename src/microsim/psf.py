@@ -320,9 +320,9 @@ def make_confocal_psf(
         eff_em_psf = xp._array_assign(eff_em_psf, i, plane)
 
     # The final PSF is the excitation PSF multiplied by the effective emission PSF.
-    out = xp.asarray(ex_psf) * eff_em_psf  # type: ignore
+    out = xp.asarray(ex_psf) * eff_em_psf
     out = _norm_psf(out, normalize, xp)
-    return out
+    return out  # type: ignore [no-any-return]
 
 
 def _norm_psf(

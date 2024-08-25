@@ -18,14 +18,12 @@
 from enum import Enum
 from typing import NamedTuple
 
-# from .sample import FluorophoreDistribution
-
 
 class AxisInfo(NamedTuple):
     name: str
     key: str
     dimensionality: str | None = None
-    category_type: type | None = None
+    category_type: type | str | None = None
     description: str | None = None
 
     @property

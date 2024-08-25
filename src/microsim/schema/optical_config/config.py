@@ -28,7 +28,7 @@ class LightSource(SimBaseModel):
         return cls(name=light.name, spectrum=Spectrum.from_fpbase(light.spectrum))
 
     def plot(self, show: bool = True) -> None:
-        self.spectrum.plot(show=show)
+        self.spectrum.plot(show=show)  # type: ignore [call-arg]
 
     @classmethod
     def laser(cls, wavelength: float, power: float | None = None) -> "LightSource":
@@ -109,13 +109,17 @@ class OpticalConfig(SimBaseModel):
             - the excitation filter/beamsplitter and light source spectra
             - the quantum yield and emission spectrum of the fluorophore
             - the emission filter/beamsplitter spectra
-            - TODO: camera QE?
+            - camera QE, if passed
         """
-        em_spectrum = self.emission.spectrum
-        if detector_qe is not None:
-            em_spectrum = em_spectrum * detector_qe
+        if self.emission is None:
+            em_array: xr.DataArray | float = 1.0
+        else:
+            em_spectrum = self.emission.spectrum
+            if detector_qe is not None:
+                em_spectrum = em_spectrum * detector_qe
+            em_array = em_spectrum.as_xarray()
 
-        final = self.total_emission_rate(fluorophore) * em_spectrum.as_xarray()
+        final = self.total_emission_rate(fluorophore) * em_array
         final.name = "filtered_emission_rate"
         final.attrs["long_name"] = "Filtered Emission rate"
         final.attrs["units"] = "photons/s"
@@ -175,7 +179,7 @@ class OpticalConfig(SimBaseModel):
         illum_flux_density.attrs["long_name"] = "Illuminance Flux Density"
         illum_flux_density.attrs["units"] = "photons/cm^2/s"
 
-        return illum_flux_density
+        return cast("xr.DataArray", illum_flux_density)
 
     @property
     def emission(self) -> Filter | None:
@@ -292,7 +296,7 @@ class OpticalConfig(SimBaseModel):
             return hash(self.name) == hash(value)
         return super().__eq__(value)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
     def plot_excitation(self, ax: "Axes | None" = None) -> None:
@@ -314,12 +318,12 @@ class OpticalConfig(SimBaseModel):
             spect = f.spectrum
             if f.placement == Placement.BS:
                 spect = spect.inverted()
-            lines.extend(spect.plot(ax=ax2, alpha=0.6))
+            lines.extend(spect.plot(ax=ax2, alpha=0.6))  # type: ignore [call-arg]
             labels.append(f.name)
 
         # light sources
         for light in self.lights:
-            lines.extend(light.spectrum.plot(ax=ax2, alpha=0.6))
+            lines.extend(light.spectrum.plot(ax=ax2, alpha=0.6))  # type: ignore [call-arg]
             labels.append(light.name)
 
         # formatting
@@ -355,19 +359,21 @@ class OpticalConfig(SimBaseModel):
             spect = f.spectrum
             if f.placement == Placement.BS_INV:
                 spect = spect.inverted()
-            spect.plot(ax=ax, alpha=alpha, label=f.name)
+            [line] = spect.plot(ax=ax, alpha=alpha, label=f.name)  # type: ignore [call-arg]
 
+        ax = cast("Axes", line.axes)
         kwargs = {"color": "gray", "label": "QE", "linestyle": "--", "alpha": alpha}
         if isinstance(detector_qe, Spectrum):
-            detector_qe.plot(ax=ax, **kwargs)
+            detector_qe.plot(ax=ax, **kwargs)  # type: ignore
         elif isinstance(detector_qe, int | float):
             ax.axhline(detector_qe, **kwargs)
 
         # combined
-        em_spectrum = self.emission.spectrum.as_xarray()
-        if detector_qe is not None:
-            em_spectrum = em_spectrum * detector_qe
-        em_spectrum.plot(ax=ax, color="k", linewidth=2, label="combined")
+        if (emission := self.emission) is not None:
+            em_spectrum = emission.spectrum.as_xarray()
+            if detector_qe is not None:
+                em_spectrum = em_spectrum * detector_qe
+            em_spectrum.plot.line(ax=ax, color="k", linewidth=2, label="combined")
         ax.legend()
         ax.set_xlim(400, 800)
         ax.set_xlabel("transmission [%]")

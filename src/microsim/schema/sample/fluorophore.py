@@ -1,5 +1,5 @@
 from math import log
-from typing import Any
+from typing import Any, cast
 
 import xarray as xr
 from pydantic import model_validator
@@ -33,7 +33,7 @@ class Fluorophore(SimBaseModel):
         out.attrs["units"] = "cm^2"
         out.attrs["long_name"] = "Absorption cross-section"
         out.name = "cross_section"
-        return out
+        return cast("xr.DataArray", out)
 
     @classmethod
     def from_fpbase(cls, name: str) -> "Fluorophore":

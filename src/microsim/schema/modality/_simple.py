@@ -85,7 +85,7 @@ class _PSFModality(SimBaseModel):
                 for em_rate, em_wvl_nm in zip(
                     binned, binned[Axis.W].values, strict=True
                 ):
-                    if xp.isnan(em_rate) or em_rate == 0 or xp.isnan(em_wvl_nm):
+                    if em_rate.isnull().any() or em_rate == 0 or xp.isnan(em_wvl_nm):
                         continue
                     logging.info(f">>>> @ {em_wvl_nm} nm")
 

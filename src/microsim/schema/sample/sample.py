@@ -7,11 +7,12 @@ from pydantic import Field, model_validator
 from microsim._data_array import ArrayProtocol, xrDataArray
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
+from microsim.schema.spectrum import Spectrum
 
 from ._distributions.cosem import CosemLabel
 from ._distributions.direct import FixedArrayTruth
 from ._distributions.matslines import MatsLines
-from .fluorophore import Fluorophore, Spectrum
+from .fluorophore import Fluorophore
 
 Distribution = MatsLines | CosemLabel | FixedArrayTruth
 DistributionTypes = get_args(Distribution)

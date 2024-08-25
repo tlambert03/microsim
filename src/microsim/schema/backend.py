@@ -115,8 +115,11 @@ class NumpyAPI:
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
     ) -> ArrT:
+        a_shape = getattr(a, "shape", None)
+        b_shape = getattr(b, "shape", None)
+        a_dtype = getattr(a, "dtype", None)
         logging.info(
-            f"{type(self).__name__}.fftconvolve {a.shape=} {b.shape=} {a.dtype=}"
+            f"{type(self).__name__}.fftconvolve {a_shape=} {b_shape=} {a_dtype=}"
         )
         return self.signal.fftconvolve(a, b, mode=mode)  # type: ignore
 

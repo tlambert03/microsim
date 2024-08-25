@@ -72,8 +72,8 @@ class _FilterBase(SimBaseModel):
             transmission=Spectrum.from_fpbase(filter),
         )
 
-    def plot(self, show: bool = True) -> None:
-        self.spectrum.plot(show=show)
+    def plot(self) -> None:
+        self.spectrum.plot()  # type: ignore [call-arg]
 
 
 class Bandpass(_FilterBase):

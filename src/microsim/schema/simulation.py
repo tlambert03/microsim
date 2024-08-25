@@ -167,7 +167,7 @@ class Simulation(SimBaseModel):
         ]
 
         # combine xarray objects along the C and F axes, with outer join on W
-        return xr.combine_nested(
+        return xr.combine_nested(  # type: ignore [return-value]  # typing is wrong here
             nested_rates,
             concat_dim=[Axis.C, Axis.F],
             combine_attrs="override",
@@ -203,7 +203,7 @@ class Simulation(SimBaseModel):
 
         # total photons/s emitted by each fluorophore in each channel
         total_flux = self.filtered_emission_rates().sum(Axis.W) * truth
-        total_flux.attrs.update(unit="photon/sec", long_name="Emission Flux")
+        total_flux.attrs.update(units="photon/sec", long_name="Emission Flux")
 
         # (C, F, Z, Y, X)
         return total_flux
@@ -264,10 +264,10 @@ class Simulation(SimBaseModel):
             exposure_ms = self.exposure_time_ms
         if self.detector is not None and with_detector_noise:
             image = self.detector.render(image, exposure_ms=exposure_ms, xp=self._xp)
-            image.attrs.update(unit="gray values")
+            image.attrs.update(units="gray values")
         else:
             image = image * (exposure_ms / 1000)
-            image.attrs.update(unit="photons")
+            image.attrs.update(units="photons")
 
         # (C, Z, Y, X)
         return image
@@ -302,8 +302,7 @@ class Simulation(SimBaseModel):
             return
         if hasattr(result.data, "get"):
             result = result.copy(data=result.data.get(), deep=False)
-        result.attrs["microsim.Simulation"] = self.model_dump_json()
-        result.attrs.pop("space", None)
+        result.attrs = {"microsim.Simulation": self.model_dump_json()}
         result.coords[Axis.C] = [c.name for c in result.coords[Axis.C].values]
         if self.output_path.suffix == ".zarr":
             result.to_zarr(self.output_path, mode="w")
@@ -393,7 +392,7 @@ def plot_simulation_summary(
             )
 
         # detector
-        qe = 1
+        qe: float | Spectrum = 1.0
         if (detector := sim.detector) and (qe := detector.qe) is not None:
             kwargs = {
                 "color": "gray",
