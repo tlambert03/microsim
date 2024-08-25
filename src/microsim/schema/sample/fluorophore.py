@@ -83,6 +83,7 @@ class Fluorophore(SimBaseModel):
             plt.show()
 
     def all_spectra(self) -> "xr.DataArray":
+        """Return a DataArray with both excitation and emission spectra."""
         da: xr.DataArray = xr.concat(
             [self.excitation_spectrum.as_xarray(), self.emission_spectrum.as_xarray()],
             dim="spectra",

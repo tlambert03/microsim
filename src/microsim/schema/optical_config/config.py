@@ -269,6 +269,7 @@ class OpticalConfig(SimBaseModel):
             plt.show()
 
     def all_spectra(self) -> "xr.DataArray":
+        """Return a DataArray with all spectra in this configuration."""
         data, coords = [], []
         for filt in self.filters:
             data.append(filt.spectrum.as_xarray())
@@ -300,6 +301,7 @@ class OpticalConfig(SimBaseModel):
         return self.name
 
     def plot_excitation(self, ax: "Axes | None" = None) -> None:
+        """Plot all components of the excitation path."""
         # combined illumination
         lines = []
         labels = ["combined flux"]
@@ -344,12 +346,7 @@ class OpticalConfig(SimBaseModel):
     def plot_emission(
         self, ax: "Axes | None" = None, detector_qe: float | Spectrum | None = None
     ) -> None:
-        # combined illumination
-
-        # plot the combined illumination spectrum
-        # full = self.emission.spectrum
-        # lines.extend(full.plot.line(ax=ax, color="k", linewidth=2))
-
+        """Plot all components of the emission path."""
         # plot individual filters
         alpha = 0.5
         for f in self.filters:
