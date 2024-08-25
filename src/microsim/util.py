@@ -386,24 +386,6 @@ def ndview(ary: Any, cmap: Any | None = None) -> None:
 ArrayType = TypeVar("ArrayType", bound=ArrayProtocol)
 
 
-def downsample(
-    array: ArrayType,
-    factor: int | Sequence[int],
-    method: Callable[
-        [ArrayType, Sequence[int] | int | None, npt.DTypeLike], ArrayType
-    ] = np.sum,
-    dtype: npt.DTypeLike | None = None,
-) -> ArrayType:
-    binfactor = (factor,) * array.ndim if isinstance(factor, int) else factor
-    new_shape = []
-    for s, b in zip(array.shape, binfactor, strict=False):
-        new_shape.extend([s // b, b])
-    reshaped = cast("ArrayType", np.reshape(array, new_shape))
-    for d in range(array.ndim):
-        reshaped = method(reshaped, -1 * (d + 1), dtype)
-    return reshaped
-
-
 def bin_window(
     array: npt.NDArray,
     window: int | Sequence[int],
@@ -454,7 +436,7 @@ def http_get(url: str, params: dict | None = None) -> bytes:
         url += "?" + parse.urlencode(params)
 
     with request.urlopen(url) as response:
-        if not 200 <= response.getcode() < 300:
+        if not 200 <= response.getcode() < 300:  # pragma: no cover
             raise HTTPError(
                 url, response.getcode(), "HTTP request failed", response.headers, None
             )
