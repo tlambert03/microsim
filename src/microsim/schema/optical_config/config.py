@@ -53,7 +53,7 @@ class OpticalConfig(SimBaseModel):
     # it could also go on Simulation itself as a function of space.
     power: float | None = None  # total power of all lights after filters
 
-    def absorption_rate(self, fluorophore: Fluorophore) -> "xr.DataArray":
+    def absorption_rate(self, fluorophore: Fluorophore) -> xr.DataArray:
         """Return the absorption rate of a fluorophore with this configuration.
 
         The absorption rate is the number of photons absorbed per second per
@@ -75,7 +75,7 @@ class OpticalConfig(SimBaseModel):
         abs_rate.attrs["units"] = "photons/s"
         return abs_rate
 
-    def total_emission_rate(self, fluorophore: Fluorophore) -> "xr.DataArray":
+    def total_emission_rate(self, fluorophore: Fluorophore) -> xr.DataArray:
         """Return the emission rate of a fluorophore with this configuration.
 
         The emission rate is the total number of photons emitted per second per
@@ -97,7 +97,7 @@ class OpticalConfig(SimBaseModel):
 
     def filtered_emission_rate(
         self, fluorophore: Fluorophore, detector_qe: float | Spectrum | None = None
-    ) -> "xr.DataArray":
+    ) -> xr.DataArray:
         """Return the emission rate of a fluorophore with this config, after filters.
 
         The emission rate is the number of photons emitted per second per
@@ -159,7 +159,7 @@ class OpticalConfig(SimBaseModel):
         return exc.spectrum if exc else None
 
     @property
-    def irradiance(self) -> "xr.DataArray":
+    def irradiance(self) -> xr.DataArray:
         """Return the illumination irradiance in W/cm^2.
 
         This scales the illumination spectrum to power. It is a measure of the power per
@@ -181,7 +181,7 @@ class OpticalConfig(SimBaseModel):
         return irrad
 
     @property
-    def illumination_flux_density(self) -> "xr.DataArray":
+    def illumination_flux_density(self) -> xr.DataArray:
         """Return the illumination flux density in photons/cm^2/s.
 
         This is a measure of the number of photons per unit area per second in the
@@ -288,7 +288,7 @@ class OpticalConfig(SimBaseModel):
         if show:
             plt.show()
 
-    def all_spectra(self) -> "xr.DataArray":
+    def all_spectra(self) -> xr.DataArray:
         """Return a DataArray with all spectra in this configuration."""
         data, coords = [], []
         for filt in self.filters:
