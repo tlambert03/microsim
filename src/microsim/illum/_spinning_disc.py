@@ -10,7 +10,7 @@ def pindist(t: float, t0: float, w: float, distance: float) -> float:
     # time t0, minus the desired pinhole distance
     x = w * t * np.cos(t) - w * t0 * np.cos(t0)
     y = w * t * np.sin(t) - w * t0 * np.sin(t0)
-    return x**2 + y**2 - distance**2
+    return x**2 + y**2 - distance**2  # type: ignore [no-any-return]
 
 
 def pinhole_coords(

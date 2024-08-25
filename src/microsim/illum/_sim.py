@@ -54,7 +54,7 @@ class SIMIllum2D(BaseModel):
         wvl: float = 0.488,
     ) -> np.ndarray:
         """Return single axial SIM illumination plane."""
-        return structillum_2d(
+        return structillum_2d(  # type: ignore [no-any-return]
             nz=nz + 1,
             nx=nx,
             dz=dz,

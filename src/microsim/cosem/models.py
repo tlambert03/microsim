@@ -201,7 +201,7 @@ class CosemDataset(BaseModel):
     images: list[CosemImage]
     created_at: datetime.datetime
 
-    @computed_field(repr=False)  # type: ignore [misc]
+    @computed_field(repr=False)  # type: ignore [prop-decorator]
     @property
     def views(self) -> list["CosemView"]:
         """Return list of all views in the dataset."""

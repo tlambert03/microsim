@@ -70,7 +70,7 @@ class JaxFFTBackend(FFTBackend):
         self.device = jax.devices(device)[0] if device else None
 
     def fft_module(self) -> ModuleType:
-        return self.jax.numpy.fft
+        return self.jax.numpy.fft  # type: ignore [no-any-return]
 
     def convert(self, value: Any, type: type) -> Any:
         result = self.jax.numpy.asarray(value)
@@ -89,7 +89,7 @@ class TorchFFTBackend(FFTBackend):
         self.device = device
 
     def fft_module(self) -> ModuleType:
-        return self.torch.fft
+        return self.torch.fft  # type: ignore [no-any-return]
 
     def convert(self, value: Any, type: type) -> Any:
         if self.device == "mps" and value.dtype.itemsize > 4:
