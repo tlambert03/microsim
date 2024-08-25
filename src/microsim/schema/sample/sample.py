@@ -18,11 +18,15 @@ Distribution = MatsLines | CosemLabel | FixedArrayTruth
 DistributionTypes = get_args(Distribution)
 
 
-waves = np.arange(300, 800, 1)
+# This is a placeholder fluorophore for when no fluorophore is specified
+# it has broad excitation and emission spectra, high extinction coefficient.
+# it's recommended to use a real fluorophore instead, but this is useful for
+# quick testing and demonstration purposes.
+_w = np.arange(300, 800, 1)
 MOCK_FLUOR = Fluorophore(
     name="mockFluorophore",
-    excitation_spectrum=Spectrum(wavelength=waves, intensity=np.ones_like(waves)),
-    emission_spectrum=Spectrum(wavelength=waves, intensity=np.ones_like(waves)),
+    excitation_spectrum=Spectrum(wavelength=_w, intensity=np.ones_like(_w)),
+    emission_spectrum=Spectrum(wavelength=_w, intensity=np.ones_like(_w)),
     extinction_coefficient=50_000,
     quantum_yield=1,
     lifetime_ns=1,
@@ -36,7 +40,7 @@ class FluorophoreDistribution(SimBaseModel):
     # (e.g. to increase/decrease concentration of fluorophore)
     # or a function that will be applied to the distribution
     # (e.g. to add noise, labeling randomness/inefficiency, etc...)
-    density_scaler: float | Callable[[xrDataArray], xrDataArray] | None = None
+    concentration: float | Callable[[xrDataArray], xrDataArray] | None = None
 
     def __hash__(self) -> int:
         return id(self)
@@ -47,11 +51,12 @@ class FluorophoreDistribution(SimBaseModel):
         return None
 
     def render(self, space: xrDataArray, xp: NumpyAPI | None = None) -> xrDataArray:
+        """Render the fluorophore distribution into the given space."""
         dist = self.distribution.render(space, xp)
-        if isinstance(self.density_scaler, float):
-            return dist * self.density_scaler
-        elif callable(self.density_scaler):
-            return self.density_scaler(dist)
+        if isinstance(self.concentration, float):
+            return dist * self.concentration
+        elif callable(self.concentration):
+            return self.concentration(dist)
         return dist
 
     @model_validator(mode="before")
@@ -65,9 +70,11 @@ class FluorophoreDistribution(SimBaseModel):
 
     @classmethod
     def from_array(cls, array: ArrayProtocol) -> "FluorophoreDistribution":
+        """Create a FluorophoreDistribution from a fixed array."""
         return cls(distribution=FixedArrayTruth(array=array))
 
     def __str__(self) -> str:
+        """Return a string representation of the fluorophore distribution."""
         return f"{self.fluorophore.name} - {self.distribution.__class__.__name__}"
 
 
