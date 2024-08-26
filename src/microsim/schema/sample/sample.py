@@ -53,7 +53,7 @@ class FluorophoreDistribution(SimBaseModel):
     def render(self, space: xrDataArray, xp: NumpyAPI | None = None) -> xrDataArray:
         """Render the fluorophore distribution into the given space."""
         dist = self.distribution.render(space, xp)
-        if isinstance(self.concentration, float):
+        if isinstance(self.concentration, float | int):
             return dist * self.concentration
         elif callable(self.concentration):
             return self.concentration(dist)

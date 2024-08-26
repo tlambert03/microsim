@@ -329,13 +329,14 @@ def _norm_psf(
     psf: np.ndarray, normalize: bool | Literal["sum", "max"], xp: NumpyAPI
 ) -> np.ndarray:
     if normalize:
-        if isinstance(normalize, str):
-            if normalize == "max":
-                psf /= xp.max(psf)
-            if normalize == "sum":
-                psf /= xp.sum(psf)
-        else:
+        if isinstance(normalize, bool):
+            normalize = "sum"
+        if normalize == "max":
+            psf /= xp.max(psf)
+        elif normalize == "sum":
             psf /= xp.sum(psf)
+        else:  # pragma: no cover
+            raise ValueError("normalize must be 'sum' or 'max'")
     return psf
 
 
@@ -359,6 +360,7 @@ def _pinhole_mask(
     return (r <= pinhole_px).astype(int)  # type: ignore
 
 
+@cache
 def make_psf(
     nz: int,
     nx: int,
@@ -379,35 +381,9 @@ def make_psf(
         ex_wvl_nm = em_wvl_nm
     if em_wvl_nm is None:
         em_wvl_nm = ex_wvl_nm
+    ex_wvl_um = ex_wvl_nm * 1e-3  # nm to um
+    em_wvl_um = em_wvl_nm * 1e-3  # nm to um
 
-    return cached_psf(
-        nz=nz,
-        nx=nx,
-        dx=dx,
-        dz=dz,
-        ex_wvl_um=ex_wvl_nm * 1e-3,  # nm to um
-        em_wvl_um=em_wvl_nm * 1e-3,  # nm to um
-        objective=_cast_objective(objective),
-        pinhole_au=pinhole_au,
-        max_au_relative=max_au_relative,
-        xp=NumpyAPI.create(xp),
-    )
-
-
-# variant of make_psf that only accepts hashable arguments
-@cache
-def cached_psf(
-    nz: int,
-    nx: int,
-    dx: float,
-    dz: float,
-    ex_wvl_um: float,
-    em_wvl_um: float,
-    objective: ObjectiveLens,
-    pinhole_au: float | None,
-    max_au_relative: float | None,
-    xp: NumpyAPI,
-) -> ArrayProtocol:
     # now restrict nx to no more than max_au_relative
     if max_au_relative is not None:
         airy_radius = 0.61 * ex_wvl_um / objective.numerical_aperture

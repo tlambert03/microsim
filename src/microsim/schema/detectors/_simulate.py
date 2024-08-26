@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 def simulate_camera(
     camera: Camera,
     image: xrDataArray,
-    exposure_ms: float = 100,
+    exposure_ms: float | xrDataArray = 100,
     binning: int = 1,
     add_poisson: bool = True,
     xp: NumpyAPI | None = None,
@@ -26,7 +26,7 @@ def simulate_camera(
         camera objects
     image : DataArray
         array where each element represents photons / second
-    exposure_ms : float
+    exposure_ms : float | DataArray
         exposure time in milliseconds
     binning: int
         camera binning
@@ -57,10 +57,11 @@ def simulate_camera(
         )
 
     # dark current
-    thermal_electrons = xp.poisson_rvs(
-        camera.dark_current * exposure_s + camera.clock_induced_charge,
-        shape=detected_photons.shape,
-    )
+    avg_dark_e = camera.dark_current * exposure_s + camera.clock_induced_charge
+    if not isinstance(avg_dark_e, float):
+        new_shape = avg_dark_e.shape + (1,) * (detected_photons.ndim - 1)
+        avg_dark_e = xp.asarray(avg_dark_e).reshape(new_shape)
+    thermal_electrons = xp.poisson_rvs(avg_dark_e, shape=detected_photons.shape)
     total_electrons = detected_photons + thermal_electrons
 
     # cap total electrons to full-well-capacity

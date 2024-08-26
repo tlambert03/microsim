@@ -59,7 +59,7 @@ class Simulation(SimBaseModel):
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC])
     # TODO: channels should also include `lights: list[LightSource]`
     detector: Detector | None = None
-    exposure_time_ms: float = 100
+    exposure_ms: float = 100
     settings: Settings = Field(default_factory=Settings)
     output_path: OutPath | None = None
 
@@ -261,12 +261,23 @@ class Simulation(SimBaseModel):
 
         # simulate detector
         if exposure_ms is None:
-            exposure_ms = self.exposure_time_ms
+            _cfg_exposures = {ch: ch.exposure_ms for ch in self.channels}
+            ch_exposures = xr.DataArray(
+                [
+                    _cfg_exposures.get(ch) or self.exposure_ms
+                    for ch in image.coords[Axis.C].values
+                ],
+                dims=Axis.C,
+                coords={Axis.C: image.coords[Axis.C]},
+            )
+        else:
+            ch_exposures = exposure_ms
+
         if self.detector is not None and with_detector_noise:
-            image = self.detector.render(image, exposure_ms=exposure_ms, xp=self._xp)
+            image = self.detector.render(image, exposure_ms=ch_exposures, xp=self._xp)
             image.attrs.update(units="gray values")
         else:
-            image = image * (exposure_ms / 1000)
+            image = image * (ch_exposures / 1000)
             image.attrs.update(units="photons")
 
         # (C, Z, Y, X)
@@ -288,11 +299,14 @@ class Simulation(SimBaseModel):
     ) -> Path | None:
         if not (lbl_path := label.cache_path()):
             return None
+        if callable(label.concentration):
+            return None
 
         truth_cache = Path(microsim_cache("ground_truth"), *lbl_path)
         shape = f'shape{"_".join(str(x) for x in truth_space.shape)}'
         scale = f'scale{"_".join(str(x) for x in truth_space.scale)}'
-        truth_cache = truth_cache / shape / scale
+        conc = f"conc{label.concentration}"
+        truth_cache = truth_cache / shape / scale / conc
         if label.distribution.is_random():
             truth_cache = truth_cache / f"seed{seed}"
         return truth_cache

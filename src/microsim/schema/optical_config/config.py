@@ -8,6 +8,7 @@ from scipy.constants import c, h
 
 from microsim.fpbase import SpectrumOwner
 from microsim.schema._base_model import SimBaseModel
+from microsim.schema.detectors import Detector
 from microsim.schema.dimensions import Axis
 from microsim.schema.sample.fluorophore import Fluorophore
 from microsim.schema.spectrum import Spectrum
@@ -46,6 +47,8 @@ class OpticalConfig(SimBaseModel):
     name: str = ""
     filters: list[Filter] = Field(default_factory=list)
     lights: list[LightSource] = Field(default_factory=list)
+    detector: Detector | None = None
+    exposure_ms: float | None = None
 
     # seemingly duplicate of power in LightSource
     # but it depends on where the power is being measured
@@ -118,6 +121,8 @@ class OpticalConfig(SimBaseModel):
             em_array: xr.DataArray | float = 1.0
         else:
             em_spectrum = self.emission.spectrum
+            if detector_qe is None and self.detector is not None:
+                detector_qe = self.detector.qe
             if detector_qe is not None:
                 em_spectrum = em_spectrum * detector_qe
             em_array = em_spectrum.as_xarray()

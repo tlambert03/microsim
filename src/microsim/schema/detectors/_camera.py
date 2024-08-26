@@ -43,7 +43,7 @@ class Camera(SimBaseModel):
     def render(
         self,
         image: xrDataArray,
-        exposure_ms: float = 100,
+        exposure_ms: float | xrDataArray = 100,
         binning: int = 1,
         add_poisson: bool = True,
         xp: NumpyAPI | None = None,
