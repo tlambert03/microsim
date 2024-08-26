@@ -262,7 +262,7 @@ class Simulation(SimBaseModel):
         # simulate detector
         if exposure_ms is None:
             _cfg_exposures = {ch: ch.exposure_ms for ch in self.channels}
-            ch_exposures = xr.DataArray(
+            ch_exposures: float | xr.DataArray = xr.DataArray(
                 [
                     _cfg_exposures.get(ch) or self.exposure_ms
                     for ch in image.coords[Axis.C].values
