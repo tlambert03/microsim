@@ -175,8 +175,8 @@ class Simulation(SimBaseModel):
             fill_value=0,
         ).transpose(Axis.C, Axis.F, Axis.W)
 
-    def total_emission_flux(self) -> xr.DataArray:
-        """Return the spatial emission in photons per second (after filters).
+    def emission_flux(self) -> xr.DataArray:
+        """Return the spatial emission in photons per second (after emission filters).
 
         This is the ground truth data multiplied by the filtered emission rates, *prior*
         to convolution with the PSF.
