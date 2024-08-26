@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.detectors import Camera, CameraCMOS, CameraEMCCD
 from microsim.util import bin_window
@@ -60,7 +62,7 @@ def simulate_camera(
     avg_dark_e = camera.dark_current * exposure_s + camera.clock_induced_charge
     if not isinstance(avg_dark_e, float):
         new_shape = avg_dark_e.shape + (1,) * (detected_photons.ndim - 1)
-        avg_dark_e = xp.asarray(avg_dark_e).reshape(new_shape)  # type: ignore [assignment]
+        avg_dark_e = np.asarray(avg_dark_e).reshape(new_shape)
     thermal_electrons = xp.poisson_rvs(avg_dark_e, shape=detected_photons.shape)
     total_electrons = detected_photons + thermal_electrons
 
