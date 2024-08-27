@@ -94,14 +94,17 @@ class _PSFModality(SimBaseModel):
                         continue
 
                     logging.info(f">>>> PSF @ {em_wvl_nm} nm")
-                    psf = self.psf(
-                        truth.attrs["space"],
-                        objective_lens=objective_lens,
-                        em_wvl_nm=em_wvl_nm,
-                        settings=settings,
-                        xp=xp,
+                    psf = (
+                        self.psf(
+                            truth.attrs["space"],
+                            objective_lens=objective_lens,
+                            em_wvl_nm=em_wvl_nm,
+                            settings=settings,
+                            xp=xp,
+                        )
+                        * em_rate.item()
                     )
-                    summed_psf += psf * em_rate
+                    summed_psf += psf
                 fluor_sum = xp.fftconvolve(f_truth, summed_psf, mode="same")
                 fluors.append(fluor_sum)
 
