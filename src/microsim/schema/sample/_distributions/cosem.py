@@ -37,6 +37,7 @@ class CosemLabel(_BaseDistribution):
     label: str
     # position None implies crop to center
     position: tuple[float, float, float] | None = None
+    prediction_threshold: float = 40
 
     def cache_path(self) -> tuple[str, ...] | None:
         if self.position:
@@ -124,4 +125,10 @@ class CosemLabel(_BaseDistribution):
                 (0, s - e) for s, e in zip(space.shape, extracted.shape, strict=False)
             )
             extracted = xp.pad(extracted, pad, mode="constant")
-        return space + extracted
+
+        output = space + extracted
+        if self.cosem_image.content_type == "prediction":
+            # set everything below a threshold to zero
+            output = output.where(output >= self.prediction_threshold, 0)
+
+        return output
