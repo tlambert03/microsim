@@ -78,21 +78,22 @@ class _PSFModality(SimBaseModel):
                     threshold_percentage=settings.spectral_bin_threshold_percentage,
                 )
 
-                # Create a full PSF-convoled image for each emission wavelength bin
-                # and sum them together.  (More bins create a more realistic
-                # superposition of wavelength-specific PSFs, at the cost of time).
-                fluor_sum: Any = 0
+                # Create a weighted sum of PSFs based on the emission spectrum
+                # This takes advantage of the distributive property of convolution
+                # (a * b) * c = a * (b * c)
+                # We create a PSF for each emission wavelength, multiply it by the
+                # emission rate at that wavelength, and sum them all together, prior
+                # to convolving with the truth.
+                # This creates a more realistic PSF for the fluorophore, as it
+                # accounts for the emission spectrum.
+                summed_psf: Any = 0
                 for em_rate, em_wvl_nm in zip(
                     binned, binned[Axis.W].values, strict=True
                 ):
                     if em_rate.isnull().any() or em_rate == 0 or xp.isnan(em_wvl_nm):
                         continue
-                    logging.info(f">>>> @ {em_wvl_nm} nm")
 
-                    # multiply the truth (fluorophore distribution) by the emission rate
-                    # this gives us a (Z, Y, X) array of photons/sec
-                    binned_flux = f_truth * em_rate
-                    # create the PSF for this emission wavelength
+                    logging.info(f">>>> PSF @ {em_wvl_nm} nm")
                     psf = self.psf(
                         truth.attrs["space"],
                         objective_lens=objective_lens,
@@ -100,7 +101,8 @@ class _PSFModality(SimBaseModel):
                         settings=settings,
                         xp=xp,
                     )
-                    fluor_sum += xp.fftconvolve(binned_flux, psf, mode="same")
+                    summed_psf += psf * em_rate
+                fluor_sum = xp.fftconvolve(f_truth, summed_psf, mode="same")
                 fluors.append(fluor_sum)
 
             # stack the fluorophores together to create the channel
