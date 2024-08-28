@@ -18,16 +18,17 @@ from microsim.schema.space import SpaceProtocol
 class _PSFModality(SimBaseModel):
     def psf(
         self,
-        space: SpaceProtocol,
+        *,
+        nz: int,
+        nx: int,
+        dx: float,
+        dz: float,
         objective_lens: ObjectiveLens,
-        settings: Settings,
         xp: NumpyAPI,
         ex_wvl_nm: float | None = None,
         em_wvl_nm: float | None = None,
     ) -> ArrayProtocol:
         # default implementation is a widefield PSF
-        nz, _ny, nx = space.shape
-        dz, _dy, dx = space.scale
         return make_psf(
             nz=nz,
             nx=nx,
@@ -36,7 +37,6 @@ class _PSFModality(SimBaseModel):
             objective=objective_lens,
             ex_wvl_nm=ex_wvl_nm,
             em_wvl_nm=em_wvl_nm,
-            max_au_relative=settings.max_psf_radius_aus,
             xp=xp,
         )
 
@@ -72,39 +72,9 @@ class _PSFModality(SimBaseModel):
                     fluors.append(xp.zeros_like(f_truth))
                     continue
 
-                binned = bin_spectrum(
-                    em_spectrum,
-                    bins=settings.spectral_bins_per_emission_channel,
-                    threshold_percentage=settings.spectral_bin_threshold_percentage,
+                summed_psf = self._summed_weighted_psf(
+                    em_spectrum, settings, truth.attrs["space"], objective_lens, xp
                 )
-
-                # Create a weighted sum of PSFs based on the emission spectrum
-                # This takes advantage of the distributive property of convolution
-                # (a * b) * c = a * (b * c)
-                # We create a PSF for each emission wavelength, multiply it by the
-                # emission rate at that wavelength, and sum them all together, prior
-                # to convolving with the truth.
-                # This creates a more realistic PSF for the fluorophore, as it
-                # accounts for the emission spectrum.
-                summed_psf: Any = 0
-                for em_rate, em_wvl_nm in zip(
-                    binned, binned[Axis.W].values, strict=True
-                ):
-                    if em_rate.isnull().any() or em_rate == 0 or xp.isnan(em_wvl_nm):
-                        continue
-
-                    logging.info(f">>>> PSF @ {em_wvl_nm} nm")
-                    psf = (
-                        self.psf(
-                            truth.attrs["space"],
-                            objective_lens=objective_lens,
-                            em_wvl_nm=em_wvl_nm,
-                            settings=settings,
-                            xp=xp,
-                        )
-                        * em_rate.item()
-                    )
-                    summed_psf += psf
                 fluor_sum = xp.fftconvolve(f_truth, summed_psf, mode="same")
                 fluors.append(fluor_sum)
 
@@ -128,6 +98,62 @@ class _PSFModality(SimBaseModel):
             },
         )
 
+    def _summed_weighted_psf(
+        self,
+        em_spectrum: xrDataArray,
+        settings: Settings,
+        space: SpaceProtocol,
+        objective_lens: ObjectiveLens,
+        xp: NumpyAPI,
+    ) -> ArrayProtocol:
+        """Create a weighted sum of PSFs based on the emission spectrum.
+
+        This takes advantage of the distributive property of convolution
+        (a * b) * c = a * (b * c)
+        We create a PSF for each emission wavelength, multiply it by the
+        emission rate at that wavelength, and sum them all together, prior
+        to convolving with the truth.
+        This creates a more realistic PSF for the fluorophore/channel, as it
+        accounts for the full emission spectrum.
+        """
+        binned = bin_spectrum(
+            em_spectrum,
+            bins=settings.spectral_bins_per_emission_channel,
+            threshold_percentage=settings.spectral_bin_threshold_percentage,
+        )
+
+        # we need to pick a single nx size for all psfs we will sum, based on the
+        # maximum wavelength in the emission spectrum and `settings.max_psf_radius_aus`
+        nz, _ny, _nx = space.shape
+        dz, _dy, dx = space.scale
+        max_wave = binned.coords[Axis.W].max().item()
+        nx = _pick_nx(
+            _nx,
+            dx,
+            settings.max_psf_radius_aus,
+            max_wave,
+            objective_lens.numerical_aperture,
+        )
+
+        summed_psf: Any = 0
+        for em_rate in binned:
+            em_wvl_nm = em_rate.w.item()
+            if em_rate.isnull().any() or em_rate == 0 or xp.isnan(em_wvl_nm):
+                continue
+            weight = em_rate.item()
+            logging.info(f">>>> PSF @ {em_wvl_nm:.1f}nm (x{weight:.2f})")
+            psf = self.psf(
+                nz=nz,
+                nx=nx,
+                dx=dx,
+                dz=dz,
+                objective_lens=objective_lens,
+                em_wvl_nm=em_wvl_nm,
+                xp=xp,
+            )
+            summed_psf += psf * weight
+        return summed_psf  # type: ignore [no-any-return]
+
 
 class Confocal(_PSFModality):
     type: Literal["confocal"] = "confocal"
@@ -135,15 +161,16 @@ class Confocal(_PSFModality):
 
     def psf(
         self,
-        space: SpaceProtocol,
+        *,
+        nz: int,
+        nx: int,
+        dx: float,
+        dz: float,
         objective_lens: ObjectiveLens,
-        settings: Settings,
         xp: NumpyAPI,
         ex_wvl_nm: float | None = None,
         em_wvl_nm: float | None = None,
     ) -> ArrayProtocol:
-        nz, _ny, nx = space.shape
-        dz, _dy, dx = space.scale
         return make_psf(
             nz=nz,
             nx=nx,
@@ -153,7 +180,6 @@ class Confocal(_PSFModality):
             em_wvl_nm=em_wvl_nm,
             ex_wvl_nm=ex_wvl_nm,
             pinhole_au=self.pinhole_au,
-            max_au_relative=settings.max_psf_radius_aus,
             xp=xp,
         )
 
@@ -214,3 +240,18 @@ def bin_spectrum(
     # Swap the dimensions to make the wavelength centroid the primary dimension
     binned_spectrum = binned_spectrum.swap_dims({"w_bins": Axis.W})
     return binned_spectrum
+
+
+def _pick_nx(
+    nx: int, dx: float, max_au_relative: float | None, ex_wvl_um: float, na: float
+) -> int:
+    # now restrict nx to no more than max_au_relative
+    if max_au_relative is not None:
+        airy_radius = 0.61 * ex_wvl_um / na
+        n_pix_per_airy_radius = airy_radius / dx
+        max_nx = int(n_pix_per_airy_radius * max_au_relative * 2)
+        nx = min(nx, max_nx)
+        # if even make odd
+        if nx % 2 == 0:
+            nx += 1
+    return nx
