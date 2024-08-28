@@ -140,8 +140,8 @@ class _PSFModality(SimBaseModel):
             em_wvl_nm = em_rate.w.item()
             if em_rate.isnull().any() or em_rate == 0 or xp.isnan(em_wvl_nm):
                 continue
-
-            logging.info(f">>>> PSF @ {em_wvl_nm} nm")
+            weight = em_rate.item()
+            logging.info(f">>>> PSF @ {em_wvl_nm:.1f}nm (x{weight:.2f})")
             psf = self.psf(
                 nz=nz,
                 nx=nx,
