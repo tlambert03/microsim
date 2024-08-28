@@ -151,7 +151,7 @@ class _PSFModality(SimBaseModel):
                 em_wvl_nm=em_wvl_nm,
                 xp=xp,
             )
-            summed_psf += psf * weight
+            summed_psf = summed_psf + psf * weight
         return summed_psf  # type: ignore [no-any-return]
 
 

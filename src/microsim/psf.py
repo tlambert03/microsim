@@ -425,7 +425,11 @@ def cached_psf(
         )
         if cache_path.exists():
             logging.info("Using cached PSF: %s", cache_path)
-            return xp.asarray(np.load(cache_path))
+            try:
+                return xp.asarray(np.load(cache_path))
+            except ValueError:
+                logging.warning("Failed to load cached PSF, recomputing...")
+                cache_path.unlink()
 
     if pinhole_au is None:
         psf = vectorial_psf_centered(

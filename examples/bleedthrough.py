@@ -1,14 +1,18 @@
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+
 import tifffile as tf
 
 from microsim import schema as ms
 from microsim.cosem import CosemDataset
 
-dsets = CosemDataset.names()
 EGFP = ms.Fluorophore.from_fpbase("EGFP")
 VENUS = ms.Fluorophore.from_fpbase("Venus")
+RATIO = 1.5
 
-for dset in dsets:
-    dset = "jrc_hela-3"
+
+def run_simulation(dset: str) -> None:
+    print("Running simulation for", dset)
     try:
         sim = ms.Simulation(
             # note: this is a rather coarse simulation, but it's fast
@@ -27,7 +31,7 @@ for dset in dsets:
                 ms.FluorophoreDistribution(
                     distribution=ms.CosemLabel(dataset=dset, label="mito-mem_pred"),
                     fluorophore=VENUS,
-                    concentration=1.5,
+                    concentration=RATIO,
                 ),
             ],
             channels=["i6WL::Widefield Dual Green", "i6WL::Widefield Triple Yellow"],
@@ -37,16 +41,29 @@ for dset in dsets:
             exposure_ms=0.5,
             # output_path="bleedout.tif",
         )
-    except Exception:
-        continue
+    except Exception as e:
+        print("❌ FAILED", dset, str(e))
+        return
+
+    dest = Path("egfp_er_venus_mito") / dset
+    dest.mkdir(parents=True, exist_ok=True)
 
     oipf = sim.optical_image_per_fluor()
     with_bleed = sim.digital_image(oipf.sum("f"))
     tf.imwrite(
-        "bleedthrough.tif", with_bleed.transpose("z", "c", "y", "x"), imagej=True
+        dest / f"{dset}_bleedthrough_{RATIO}.tif",
+        with_bleed.transpose("z", "c", "y", "x"),
+        imagej=True,
     )
     just_egfp = sim.digital_image(oipf.sel(f=EGFP))
-    tf.imwrite("just_egfp.tif", just_egfp.isel(c=0), imagej=True)
+    tf.imwrite(dest / f"{dset}_just_egfp_{RATIO}.tif", just_egfp.isel(c=0), imagej=True)
     just_venus = sim.digital_image(oipf.sel(f=VENUS))
-    tf.imwrite("just_venus.tif", just_venus.isel(c=1), imagej=True)
-    break
+    tf.imwrite(
+        dest / f"{dset}_just_venus_{RATIO}.tif", just_venus.isel(c=1), imagej=True
+    )
+
+
+if __name__ == "__main__":
+    dsets = CosemDataset.names()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        list(pool.map(run_simulation, dsets))
