@@ -105,7 +105,7 @@ class _PSFModality(SimBaseModel):
         space: SpaceProtocol,
         objective_lens: ObjectiveLens,
         xp: NumpyAPI,
-    ):
+    ) -> ArrayProtocol:
         """Create a weighted sum of PSFs based on the emission spectrum.
 
         This takes advantage of the distributive property of convolution
@@ -152,7 +152,7 @@ class _PSFModality(SimBaseModel):
                 xp=xp,
             )
             summed_psf += psf * weight
-        return summed_psf
+        return summed_psf  # type: ignore [no-any-return]
 
 
 class Confocal(_PSFModality):
