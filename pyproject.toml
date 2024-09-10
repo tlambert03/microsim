@@ -30,7 +30,7 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    'pydantic-settings',
+    'pydantic-settings !=2.5.0',
     "annotated_types",
     "dm-tree",           # only needed for jax support.  could use an extra instead.
     "numpy<2.0",         # required until tensorstore >0.1.61
