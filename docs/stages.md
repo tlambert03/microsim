@@ -4,14 +4,14 @@ The simulation is divided into several stages, each of which is responsible for 
 
 1. [Establishing the 3D space in which the simulation is performed](#space-creation)
 2. [Generation of the ground truth target/fluorophore positions](#ground-truth)
-3. [Generation of emission photon fluxes](#emission-flux)
+3. [Calculation of emission photon fluxes](#fluorophore-emission-collection)
 4. [Forming the optical image](#optical-image)
 5. [Noise and downsampling in the digital image](#digital-image)
 
 ## Space creation
 
 - **value units**: N/A
-- **dimensions introduced**:
+- **dimensions**:
     - **`Z`**: planes along the optical axis (units length).
     - **`Y`**: rows (units length).
     - **`X`**: columns (units length).
@@ -44,12 +44,16 @@ stage, this volume will be downsampled to the final image shape and scale
 
 ## Ground Truth
 
+- **method**: [`Simulation.ground_truth`][microsim.Simulation.ground_truth]
 - **value units**: fluorophore counts
-- **dimensions introduced**:
-    - **`F`**: Fluorophore (categorical unit [`FluorophoreDistribution`][microsim.schema.FluorophoreDistribution])
+- **dimensions**:
+    - **`F`**: Fluorophore (categorical unit [`Fluorophore`][microsim.schema.Fluorophore])
+    - **`Z`**: planes along the optical axis (units length).
+    - **`Y`**: rows (units length).
+    - **`X`**: columns (units length)
 
-The ground truth stage is responsible for generating the positions of the
-fluorophores in the 3D space. Each
+The ground truth stage is responsible for generating the positions and number of
+the fluorophores in the 3D space. Each
 [`FluorophoreDistribution`][microsim.schema.FluorophoreDistribution] object in
 the simulation specifies the position, number, species (e.g. mEGFP) of
 fluorophores in the volume. The ground truth will have dimensions `(F, Z, Y, X)`
@@ -62,7 +66,7 @@ fluorophores present at each voxel in the volume.
     Here is an example using a ground-truth generator
     [`MatsLines`][microsim.schema.sample.MatsLines] that draws random lines in the
     volume.  The fluorophore is specified to be `EGFP`.
-    
+
     *When specifying the fluorophore as a string, microsim will load properties from
     [FPbase](https://www.fpbase.org/). Otherwise, you may directly create a
     [`Fluorophore`][microsim.schema.Fluorophore] object.*
@@ -90,40 +94,138 @@ fluorophores present at each voxel in the volume.
     PR](https://github.com/tlambert03/microsim/pulls)!
     We will help :slightly_smiling_face:
 
-## Emission Flux
+## Fluorophore Emission & Collection
 
+- **method**: [`Simulation.filtered_emission_rates`][microsim.Simulation.filtered_emission_rates]
 - **value units**: photons / second
-- **dimensions introduced**:
-    - **`W`**: wavelength (units length)
+- **dimensions**:
     - **`C`**: Channel (categorical unit [`OpticalConfig`][microsim.schema.OpticalConfig])
+    - **`F`**: Fluorophore (categorical unit [`Fluorophore`][microsim.schema.Fluorophore])
+    - **`W`**: wavelength (units length)
 
-In this stage, fluorophore counts are converted into emission photon fluxes in
-units of photons per second (per voxel). This is still considered to be in the
-pre-optical domain, before the effects of the detection optics are applied
-(but *after* any effects of the excitation optics are applied).
+In this stage, we calculate the rate of photon emission & collection for each
+combination of fluorophore and optical configuration in the simulation, as a
+function of wavelength. This is still considered to be in the "pre-optical"
+domain, before the effects of the detection optics are applied, but *after* any
+effects of the emission optics and QE are applied.  (i.e. it's slightly out of
+order, but it allows us to more accurately calculate wavelength effects).
 
-This conversion will depend on:
+This array is *not* spatially aware, but will be combined with the ground truth
+array of fluorophore concentration to determine the spatial distribution of
+emitted photons.
+
+This stage includes a number of calculations, and will generally depend on:
 
 - the excitation spectrum of the fluorophore
 - the spectrum and irradiance (W/cm^2) of the excitation light source and filters
-- the pattern of illumination (particularly relevant for structured illumination)
 - the molecular brightness of the fluorophore (extinction coefficient and quantum yield).
+- the spectral transmission of the emission filters and detector QE.
 
-The output of this stage is a 6D array with dimensions `(W, C, F, Z, Y, X)`
-with two new dimensions:
+### Absorption cross section
 
-- The wavelength (`W`) dimension has coordinates representing the wavelength of
-  the emitted photons, and `len(W)` is determined by the number of wavelength bins
-  in the simulation.
+The absorption cross section $\sigma$ (in $cm^2$) of the fluorophore at
+each wavelength is given by:
+
+$$
+\sigma(\lambda) = \log(10) \frac{\epsilon(\lambda) \cdot 10^3}{N_A}
+$$
+
+where:
+
+- $\epsilon(\lambda)$ is the Molar extinction coefficient at each wavelength ($\text{M}^{-1} \text{cm}^{-1}$)
+- $N_A$ is Avogadro's number ($6.022 \times 10^{23} / \text{mol}$)
+
+### Irradiance Flux Density
+
+The flux of excitation photons $\Phi_{\text{ex}}$ (in $photons/cm^2/sec$)
+at each wavelength is given by:
+
+$$
+\Phi_{\text{ex}}(\lambda) = \frac{P(\lambda) \cdot \lambda}{hc}
+$$
+
+where:
+
+- $P(\lambda)$ The spectrum of the light source and its irradiance ($W/cm^2$)
+- $h$ is Planck's constant ($6.626 \times 10^{-34} J \cdot s$)
+- $c$ is the speed of light ($3 \times 10^8$ $m/s$)
+- $\lambda$: the wavelength of the excitation photons ($m$).
+
+*Note that in the simulation, $P(\lambda)$ will also include the effects of the
+excitation filters, which will reduce the irradiance at specific wavelengths.*
+
+### Absorption Rate
+
+The effective rate of photon absorption $\Phi_{\text{abs}}$ (in $photons/sec$)
+at each wavelength is the product of the excitation flux and the absorption cross
+section:
+
+$$
+\Phi_{\text{abs}}(\lambda) = \Phi_{\text{ex}}(\lambda) \times \sigma(\lambda)
+$$
+
+Summed over all wavelengths, this gives the total absorption rate $\Phi_{\text{abs,total}}$:
+
+$$
+\Phi_{\text{abs,total}} = \sum_{\lambda} \Phi_{\text{abs}}(\lambda)
+$$
+
+### Emission Rate
+
+To convert the absorption rate into an emission rate, we need to consider the
+quantum yield $\eta$ of the fluorophore, and the emission spectrum of the
+fluorophore. First, we normalize the emission spectrum $I_{\text{em}}(\lambda)$
+so that the integral over all wavelengths is 1:
+
+$$
+   \tilde{I}_{\text{em}}(\lambda) = \frac{I_{\text{em}}(\lambda)}{\sum_{\lambda} I_{\text{em}}(\lambda)}
+$$
+
+The emission rate $\Phi_{\text{em}}$ (in $photons/sec$) at each
+wavelength is calculated by multiplying the normalized emission spectrum by the
+absorption rate and the quantum yield $\eta$:
+
+$$
+   \Phi_{\text{em}}(\lambda) = \eta \times \Phi_{\text{abs, total}} \times \tilde{I}_{\text{em}}(\lambda)
+$$
+
+where:
+
+- $\eta$ is the quantum yield of the fluorophore.
+
+### Filtered Emission Flux
+
+The emission rate $\Phi_{\text{em}}$ is then multiplied by the combined
+transmission of the emission filters and the quantum efficiency of the detector
+to give the final emission rate $\Phi_{\text{em, filtered}}$:
+
+$$
+\Phi_{\text{em, filtered}}(\lambda) = \Phi_{\text{em}}(\lambda) \times T_{\text{em}}(\lambda) \times \text{QE}(\lambda)
+$$
+
+where:
+
+- $T_{\text{em}}(\lambda)$ is the transmission of the emission filters at each wavelength.
+- $\text{QE}(\lambda)$ is the quantum efficiency of the detector at each wavelength.
+
+The output of this stage (given by
+[`Simulation.filtered_emission_rates`][microsim.Simulation.filtered_emission_rates])
+is a 3D array with dimensions `(C, F, W)`, but lacking spatial information:
+
 - The channel (`C`) dimension has coordinates representing the different optical
   configurations (e.g. filter sets) in the simulation, and `len(C)` is determined
   by the number of `channels` in the simulation.
+- The fluorophore (`F`) dimension has coordinates representing the different
+  fluorophores in the simulation, and `len(F)` is determined by the number of
+  unique fluorophores in the `sample.labels` field of the `Simulation`.
+- The wavelength (`W`) dimension has coordinates representing the wavelength of
+  the emitted photons, with nanometer resolution.
 
 It's worth pointing out that we need to calculate the emission spectral flux for
 *every* combination of fluorophore and channel in order to be able to include
 bleedthrough and crosstalk effects in the simulation. For example `data[{'F': 0,
 'C': 1}]` would represent the emission flux of fluorophore 0 when excited by
-channel 1. This is why both F and C remain at this stage.  
+channel 1. This is why both F and C remain at this stage.
 
 !!! examples
 
@@ -156,13 +258,11 @@ channel 1. This is why both F and C remain at this stage.
     single image.  That's a lot of complexity.  So for now, everything will be
     simulated as a steady-state emission flux.
 
-### Builtin library of common filter sets
+!!! info "Builtin library of common filter sets"
 
-`microsim` provides a library of common optical configs.  For example,
-the above filter set arrangement shown above is a very common FITC filter set,
-which can be loaded from the library as follows:
-
-!!! example
+    `microsim` provides a library of common optical configs.  For example,
+    the above filter set arrangement shown above is a very common FITC filter set,
+    which can be loaded from the library as follows:
 
     ```python
     from microsim.schema.optical_config import lib
@@ -173,17 +273,15 @@ which can be loaded from the library as follows:
     )
     ```
 
-### Optical Configurations from FPbase
+!!! info "Optical Configurations from FPbase"
 
-You can also load optical configurations from [FPbase
-microscope](https://www.fpbase.org/microscopes) using the syntax
-`microscope_id::config_name`. For example, to load the "Widefield Green" config
-from the [Example Simple Widefield microscope on
-FPbase](https://www.fpbase.org/microscope/wKqWbgApvguSNDSRZNSfpN/?c=Widefield%20Green),
-you would grab the microscope id from the URL (in this case `wKqWbgAp`) and add
-the config name (`Widefield Green`), separated by two colons (`::`):
-
-!!! example
+    You can also load optical configurations from [FPbase
+    microscope](https://www.fpbase.org/microscopes) using the syntax
+    `microscope_id::config_name`. For example, to load the "Widefield Green" config
+    from the [Example Simple Widefield microscope on
+    FPbase](https://www.fpbase.org/microscope/wKqWbgApvguSNDSRZNSfpN/?c=Widefield%20Green),
+    you would grab the microscope id from the URL (in this case `wKqWbgAp`) and add
+    the config name (`Widefield Green`), separated by two colons (`::`):
 
     ```python
     sim = Simulation(
@@ -203,16 +301,23 @@ the config name (`Widefield Green`), separated by two colons (`::`):
 
 ## Optical Image
 
-*i.e. the "filtered" Emission Flux*
-
+- **method**: [`Simulation.optical_image`][microsim.Simulation.optical_image]
 - **value units**: photons / second
-- **dimensions lost**:
-    - **`W`**: wavelength
-    - **`F`**: Fluorophore
+- **dimensions**:
+    - **`C`**: Channel (categorical unit [`OpticalConfig`][microsim.schema.OpticalConfig])
+    - **`Z`**: planes along the optical axis (units length).
+    - **`Y`**: rows (units length).
+    - **`X`**: columns (units length)
 
-In this stage, emission photon fluxes are convolved with the optical point
-spread function (PSF) of the microscope and wavelengths are filtered based on
-the emission path configuration to form the (noise free) optical image.
+In this stage, the fluorophore distributions are scaled by the respective
+emission photon fluxes, and then convolved with the optical point spread
+function (PSF) of the microscope to form the (noise free) optical image.
+
+Within each channel, the contributions of individual fluorophores are summed
+together to form the final image (allowing for crosstalk and bleedthrough).  If
+you want access to the individual fluorophore contributions, you can use
+[`Simulation.optical_image_per_fluor`][microsim.Simulation.optical_image_per_fluor],
+which retains the full `(C, F, Z, Y, X)` dimensions.
 
 !!! info "PSF"
 
@@ -252,7 +357,13 @@ bin in the detector.
 
 ## Digital Image
 
+- **method**: [`Simulation.digital_image`][microsim.Simulation.digital_image]
 - **value units**: gray levels
+- **dimensions**:
+    - **`C`**: Channel (categorical unit [`OpticalConfig`][microsim.schema.OpticalConfig])
+    - **`Z`**: planes along the optical axis (units length).
+    - **`Y`**: rows (units length).
+    - **`X`**: columns (units length)
 
 The final stage of the simulation is the conversion of the filtered optical
 image into a digital image. This stage includes the addition of noise

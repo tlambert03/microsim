@@ -1,5 +1,17 @@
-from microsim.schema.optical_config.config import OpticalConfig
-from microsim.schema.optical_config.filter import Bandpass, Longpass
+from collections.abc import Sequence
+from itertools import pairwise
+
+import numpy as np
+
+from microsim.schema.optical_config.config import LightSource, OpticalConfig
+from microsim.schema.optical_config.filter import (
+    Bandpass,
+    Longpass,
+    Placement,
+    SpectrumFilter,
+    bandpass,
+)
+from microsim.schema.spectrum import Spectrum
 
 # https://www.chroma.com/products/sets/49000-et-dapi
 DAPI = OpticalConfig(
@@ -80,3 +92,68 @@ CY7 = OpticalConfig(
         Bandpass(bandcenter=810, bandwidth=90, placement="EM"),
     ],
 )
+
+
+# This is just a rough example... needs to be refined
+def spectral_detector(
+    bins: int,
+    min_wave: float,
+    max_wave: float,
+    lasers: Sequence[int],
+    bp_bandwidth: float = 10,
+) -> list[OpticalConfig]:
+    """Create a spectral detector with a given number of bins and lasers.
+
+    Parameters
+    ----------
+    bins : int
+        Number of bins to use.
+    min_wave : float
+        Minimum wavelength to consider.
+    max_wave : float
+        Maximum wavelength to consider.
+    lasers : Sequence[int]
+        List of lasers to use.
+    bp_bandwidth : float, optional
+        Bandwidth of the bandpass filter, by default 10.
+
+    Returns
+    -------
+    list[ms.OpticalConfig]
+        List of optical configurations.
+
+    Examples
+    --------
+    Create a spectral detector with 8 bins, wavelengths between 480 and 600 nm, and
+    lasers at 488, 515, and 561 nm.
+
+    >>> spectral_detector(8, 480, 600, [488, 515, 561])
+    """
+    lights = [LightSource.laser(laser) for laser in lasers]
+    waves = np.arange(min_wave - 100, max_wave + 100, 1)
+
+    # create fake bandpass ... could also be something like 80/20
+    laser0, *rest = lasers
+    bp = bandpass(waves, center=laser0, bandwidth=bp_bandwidth, transmission=1)
+    for laser in rest:
+        bp = bp + bandpass(waves, center=laser, bandwidth=bp_bandwidth)
+    bp = SpectrumFilter(
+        transmission=Spectrum(wavelength=waves, intensity=1 - bp),
+        placement=Placement.BS,
+    )
+
+    configs: list[OpticalConfig] = []
+    edges = np.linspace(min_wave, max_wave, bins + 1)
+    for i, (low, high) in enumerate(pairwise(edges)):
+        mask = (waves >= low) & (waves <= high)
+        f = SpectrumFilter(
+            transmission=Spectrum(wavelength=waves, intensity=mask),
+            placement=Placement.EM_PATH,
+        )
+        oc = OpticalConfig(
+            name=f"Channel {i}",
+            lights=lights,
+            filters=[bp, f],
+        )
+        configs.append(oc)
+    return configs

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.detectors import Camera, CameraCMOS, CameraEMCCD
 from microsim.util import bin_window
@@ -13,7 +15,7 @@ if TYPE_CHECKING:
 def simulate_camera(
     camera: Camera,
     image: xrDataArray,
-    exposure_ms: float = 100,
+    exposure_ms: float | xrDataArray = 100,
     binning: int = 1,
     add_poisson: bool = True,
     xp: NumpyAPI | None = None,
@@ -26,7 +28,7 @@ def simulate_camera(
         camera objects
     image : DataArray
         array where each element represents photons / second
-    exposure_ms : float
+    exposure_ms : float | DataArray
         exposure time in milliseconds
     binning: int
         camera binning
@@ -49,15 +51,19 @@ def simulate_camera(
 
     # sample poisson noise
     if add_poisson:
+        # FIXME: commenting this out since we also apply it in filtered_emission...
+        # need to reconcile this
+        # incident_photons = incident_photons * camera.qe
         detected_photons = xp.poisson_rvs(
-            incident_photons * camera.qe, shape=incident_photons.shape
+            incident_photons, shape=incident_photons.shape
         )
 
     # dark current
-    thermal_electrons = xp.poisson_rvs(
-        camera.dark_current * exposure_s + camera.clock_induced_charge,
-        shape=detected_photons.shape,
-    )
+    avg_dark_e = camera.dark_current * exposure_s + camera.clock_induced_charge
+    if not isinstance(avg_dark_e, float):
+        new_shape = avg_dark_e.shape + (1,) * (detected_photons.ndim - 1)
+        avg_dark_e = np.asarray(avg_dark_e).reshape(new_shape)  # type: ignore [assignment]
+    thermal_electrons = xp.poisson_rvs(avg_dark_e, shape=detected_photons.shape)
     total_electrons = detected_photons + thermal_electrons
 
     # cap total electrons to full-well-capacity

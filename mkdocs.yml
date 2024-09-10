@@ -37,6 +37,9 @@ markdown_extensions:
       emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.tabbed:
       alternate_style: true
+  - pymdownx.arithmatex:
+      generic: true
+
 
 # mkdocs.yml
 plugins:
@@ -54,6 +57,19 @@ plugins:
             heading_level: 2 # default is 1
             docstring_style: "numpy"
             show_source: false # default is true
+  - mkdocs-jupyter:
+      remove_tag_config:
+        # https://nbconvert.readthedocs.io/en/latest/removing_cells.html
+        remove_all_outputs_tags: [remove_output]
+        remove_input_tags: [remove_input]
+        remove_cell_tags: [remove_cell]
+      # execute: true
+      include_requirejs: true
+      custom_mathjax_url: "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS_CHTML-full,Safe"
 
 extra_css:
   - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js

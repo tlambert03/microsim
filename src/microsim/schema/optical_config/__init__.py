@@ -1,5 +1,5 @@
 from .config import LightSource, OpticalConfig
-from .filter import Bandpass, Longpass, Shortpass, SpectrumFilter
+from .filter import Bandpass, Longpass, Placement, Shortpass, SpectrumFilter
 
 __all__ = [
     "SpectrumFilter",
@@ -8,4 +8,5 @@ __all__ = [
     "Longpass",
     "OpticalConfig",
     "LightSource",
+    "Placement",
 ]

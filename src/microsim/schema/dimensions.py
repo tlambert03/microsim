@@ -18,15 +18,12 @@
 from enum import Enum
 from typing import NamedTuple
 
-from .optical_config import OpticalConfig
-from .sample import FluorophoreDistribution
-
 
 class AxisInfo(NamedTuple):
     name: str
     key: str
     dimensionality: str | None = None
-    category_type: type | None = None
+    category_type: type | str | None = None
     description: str | None = None
 
     @property
@@ -39,11 +36,11 @@ class Axis(str, Enum):
 
     X = "x"
     Y = "y"
-    Z = "z"
-    C = "c"
-    T = "t"
-    F = "f"
-    W = "w"
+    Z = "z"  # Optical axis
+    C = "c"  # Channel
+    T = "t"  # Time
+    F = "f"  # Fluorophore
+    W = "w"  # Wavelength
 
     def __repr__(self) -> str:
         return f"<Axis.{self.name}>"
@@ -84,7 +81,7 @@ _AXES_INFO = [
     AxisInfo(
         name="Channel",
         key=Axis.C.value,
-        category_type=OpticalConfig,
+        category_type="OpticalConfig",
         description=(
             "Channel axis in the final image. "
             "Represents different optical configurations used to acquire the image. "
@@ -95,7 +92,7 @@ _AXES_INFO = [
     AxisInfo(
         name="Fluorophore",
         key=Axis.F.value,
-        category_type=FluorophoreDistribution,
+        category_type="FluorophoreDistribution",
         description=(
             "A fluorophore (aka 'label') axis. "
             "Represents different fluorophore species in the sample. "

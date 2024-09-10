@@ -1,6 +1,9 @@
-from typing import Any
+from math import log
+from typing import Any, cast
 
+import xarray as xr
 from pydantic import model_validator
+from scipy.constants import Avogadro
 
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
@@ -15,14 +18,30 @@ class Fluorophore(SimBaseModel):
     quantum_yield: float | None = None
     lifetime_ns: float | None = None
 
+    def __hash__(self) -> int:
+        return id(self)
+
+    @property
+    def absorption_cross_section(self) -> xr.DataArray:
+        """Return the absorption cross section in cm^2."""
+        if self.extinction_coefficient is None:
+            raise ValueError("Extinction coefficient is not set.")
+        ec = self.excitation_spectrum.as_xarray()  # 1/cm/M
+        # normalize to peak of 1
+        ec = ec / ec.max()
+        # multiply by extinction coefficient
+        ec = ec * self.extinction_coefficient
+        out = log(10) * 1e3 * ec / Avogadro  # cm^2
+        out.attrs["units"] = "cm^2"
+        out.attrs["long_name"] = "Absorption cross-section"
+        out.name = "cross_section"
+        return cast("xr.DataArray", out)
+
     @classmethod
     def from_fpbase(cls, name: str) -> "Fluorophore":
         from microsim.fpbase import get_fluorophore
 
-        try:
-            fpbase_fluor = get_fluorophore(name)
-        except Exception as e:
-            raise ValueError(f"Unable to load fluorophore {name!r} from FPbase") from e
+        fpbase_fluor = get_fluorophore(name)
 
         if (state := fpbase_fluor.default_state) is None:
             raise ValueError(f"Fluorophore {name!r} has ")
@@ -62,3 +81,15 @@ class Fluorophore(SimBaseModel):
         ax.legend(["Excitation", "Emission"])
         if show:
             plt.show()
+
+    def all_spectra(self) -> "xr.DataArray":
+        """Return a DataArray with both excitation and emission spectra."""
+        da: xr.DataArray = xr.concat(
+            [self.excitation_spectrum.as_xarray(), self.emission_spectrum.as_xarray()],
+            dim="spectra",
+        )
+        da.coords.update({"spectra": [f"{self.name} {name}" for name in ["ex", "em"]]})
+        return da
+
+    def __str__(self) -> str:
+        return self.name

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import warnings
 from contextlib import nullcontext, suppress
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
@@ -114,6 +115,12 @@ class NumpyAPI:
     def fftconvolve(
         self, a: ArrT, b: ArrT, mode: Literal["full", "valid", "same"] = "full"
     ) -> ArrT:
+        a_shape = getattr(a, "shape", None)
+        b_shape = getattr(b, "shape", None)
+        a_dtype = getattr(a, "dtype", None)
+        logging.debug(
+            f"{type(self).__name__}.fftconvolve {a_shape=} {b_shape=} {a_dtype=}"
+        )
         return self.signal.fftconvolve(a, b, mode=mode)  # type: ignore
 
     def _simp_like(self, arr: npt.ArrayLike) -> npt.ArrayLike:

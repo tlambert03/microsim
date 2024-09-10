@@ -1,4 +1,4 @@
-from ._camera import Camera, CameraCCD, CameraCMOS, CameraEMCCD
+from ._camera import ICX285, Camera, CameraCCD, CameraCMOS, CameraEMCCD
 from ._simulate import simulate_camera
 
 Detector = CameraEMCCD | CameraCMOS | CameraCCD
@@ -10,4 +10,5 @@ __all__ = [
     "CameraCMOS",
     "CameraEMCCD",
     "simulate_camera",
+    "ICX285",
 ]
