@@ -137,8 +137,10 @@ def _supabase(url: str | None = None, key: str | None = None) -> supabase.Client
     if url is None or key is None:
         try:
             url, key = _guess_cosem_url_key()
-            # cache the values
-            KEY_FILE.write_text(json.dumps({"url": url, "key": key}))
+            with suppress(FileNotFoundError):
+                # cache the values
+                KEY_FILE.parent.mkdir(parents=True, exist_ok=True)
+                KEY_FILE.write_text(json.dumps({"url": url, "key": key}))
         except ValueError as e:  # pragma: no cover
             raise ValueError(
                 "No Cosem API key. You may set your own COSEM_SUPABASE_URL "
