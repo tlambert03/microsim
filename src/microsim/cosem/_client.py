@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 import urllib.response
@@ -51,6 +52,8 @@ if TYPE_CHECKING:
 
 COSEM_BUCKET = "janelia-cosem-datasets"
 COSEM_CACHE = microsim_cache() / COSEM_BUCKET
+KEY_FILE = microsim_cache() / "cosem_key.json"
+CHUNK_PATTERN = re.compile(r'(\d+):"([a-f0-9]+)"')
 MAX_CONNECTIONS = 50
 CFG = client.Config(signature_version=UNSIGNED, max_pool_connections=MAX_CONNECTIONS)
 
@@ -72,7 +75,7 @@ def _urlopen(url: str) -> Any:
     return urllib.request.urlopen(request)
 
 
-def _get_chunk_js() -> str | None:
+def _get_main_js() -> str | None:
     root = "https://openorganelle.janelia.org"
     with _urlopen(root) as response:
         if response.status != 200:
@@ -85,18 +88,30 @@ def _get_chunk_js() -> str | None:
 
 @cache
 def _guess_cosem_url_key() -> tuple[str, str]:
-    if not (url := _get_chunk_js()):
-        raise ValueError("Failed to fetch openorganelle JS file.")
+    if not (url := _get_main_js()):
+        raise ValueError("Failed to fetch openorganelle main JS file.")
     try:
         with _urlopen(url) as response:
             if response.status != 200:
                 raise URLError(f"Failed to fetch {url}.")
-            text: str = response.read().decode("utf-8")
-        url = text.split("SUPABASE_URL:")[1].split(",")[0].strip("\"'")
-        key = text.split("SUPABASE_KEY:")[1].split(",")[0].strip("\"'")
-        return url, key
+            webpack_text: str = response.read().decode("utf-8")
+        matches = CHUNK_PATTERN.findall(webpack_text)
+        for chunk_id, chunk_hash in sorted(matches, reverse=True):
+            # try each chunk until we find the one with the Supabase URL and key
+            url2 = f"{url.rsplit('/', 1)[0]}/{chunk_id}.{chunk_hash}.chunk.js"
+            try:
+                with _urlopen(url2) as response2:
+                    js_text: str = response2.read().decode("utf-8")
+                    if "SUPABASE_URL" not in js_text:
+                        continue
+                    url = js_text.split("SUPABASE_URL:")[1].split(",")[0].strip("\"'")
+                    key = js_text.split("SUPABASE_KEY:")[1].split(",")[0].strip("\"'")
+                    return url, key
+            except URLError:
+                continue
     except Exception as e:
         raise ValueError(f"Failed to fetch Supabase URL and key: {e}") from e
+    raise ValueError("Failed to find Supabase URL and key.")
 
 
 @cache
@@ -105,9 +120,25 @@ def _supabase(url: str | None = None, key: str | None = None) -> supabase.Client
         url = os.getenv("COSEM_SUPABASE_URL")
     if key is None:
         key = os.getenv("COSEM_SUPABASE_KEY")
+    if (url is None or key is None) and KEY_FILE.exists():
+        # get from cache
+        data = json.loads(KEY_FILE.read_bytes())
+        if (url := data.get("url")) and (key := data.get("key")):
+            try:
+                client = Client(url, key)
+                # test it
+                client.from_("dataset").select("name").execute()
+                return client
+            except Exception:
+                # if it fails, remove the cache and refetch
+                logging.warning("Stale supabase URL and key. Refetching.")
+                KEY_FILE.unlink()
+                url, key = None, None
     if url is None or key is None:
         try:
             url, key = _guess_cosem_url_key()
+            # cache the values
+            KEY_FILE.write_text(json.dumps({"url": url, "key": key}))
         except ValueError as e:  # pragma: no cover
             raise ValueError(
                 "No Cosem API key. You may set your own COSEM_SUPABASE_URL "
