@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import os
 from functools import cache
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -20,8 +20,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from microsim._data_array import ArrayProtocol
-    from microsim.schema.optical_config import OpticalConfig
-    from microsim.schema.space import SpaceProtocol
 
 
 def simpson(
@@ -195,7 +193,7 @@ def vectorial_psf(
     wvl: float = 0.6,
     objective: ObjectiveKwargs | ObjectiveLens | None = None,
     sf: int = 3,
-    normalize: bool = True,
+    normalize: bool | Literal["sum", "max"] = "sum",
     xp: NumpyAPI | None = None,
 ) -> npt.NDArray:
     xp = NumpyAPI.create(xp)
@@ -207,8 +205,7 @@ def vectorial_psf(
 
     offsets = xp.asarray(pos[:2]) / (dxy * 1e-6)
     _psf = rz_to_xyz(rz, (ny, nx), sf, off=offsets, xp=xp)  # type: ignore [arg-type]
-    if normalize:
-        _psf /= xp.max(_psf)
+    _psf = _norm_psf(_psf, normalize, xp)
     return _psf
 
 
@@ -228,7 +225,7 @@ def vectorial_psf_centered(
     wvl: float = 0.6,
     objective: ObjectiveKwargs | ObjectiveLens | None = None,
     sf: int = 3,
-    normalize: bool = True,
+    normalize: bool | Literal["sum", "max"] = "sum",
     xp: NumpyAPI | None = None,
 ) -> npt.NDArray:
     """Compute a vectorial model of the microscope point spread function.
@@ -262,7 +259,7 @@ def make_confocal_psf(
     dxy: float = 0.05,
     objective: ObjectiveKwargs | ObjectiveLens | None = None,
     sf: int = 3,
-    normalize: bool = True,
+    normalize: bool | Literal["sum", "max"] = "sum",
     xp: NumpyAPI | None = None,
 ) -> np.ndarray:
     """Create a confocal PSF.
@@ -323,7 +320,23 @@ def make_confocal_psf(
         eff_em_psf = xp._array_assign(eff_em_psf, i, plane)
 
     # The final PSF is the excitation PSF multiplied by the effective emission PSF.
-    return xp.asarray(ex_psf) * eff_em_psf  # type: ignore
+    out = xp.asarray(ex_psf) * eff_em_psf
+    out = _norm_psf(out, normalize, xp)
+    return out  # type: ignore [no-any-return]
+
+
+def _norm_psf(
+    psf: np.ndarray, normalize: bool | Literal["sum", "max"], xp: NumpyAPI
+) -> np.ndarray:
+    if normalize:
+        if isinstance(normalize, str):
+            if normalize == "max":
+                psf /= xp.max(psf)
+            if normalize == "sum":
+                psf /= xp.sum(psf)
+        else:
+            psf /= xp.sum(psf)
+    return psf
 
 
 def _pinhole_mask(
@@ -347,37 +360,32 @@ def _pinhole_mask(
 
 
 def make_psf(
-    space: SpaceProtocol,
-    channel: OpticalConfig,
+    nz: int,
+    nx: int,
+    dx: float,
+    dz: float,
     objective: ObjectiveLens,
+    ex_wvl_nm: float | None = None,
     em_wvl_nm: float | None = None,
     pinhole_au: float | None = None,
     max_au_relative: float | None = None,
     xp: NumpyAPI | None = None,
 ) -> ArrayProtocol:
-    nz, _ny, nx = space.shape
-    dz, _dy, dx = space.scale
-
-    ex = channel.excitation
-    em = channel.emission
-    if ex is None:
-        if em is None:
+    if ex_wvl_nm is None:
+        if em_wvl_nm is None:
             raise ValueError(
                 "Either excitation or emission must be specified to generate a PSF."
             )
-        ex = em
-    if em is None:
-        em = ex
-
+        ex_wvl_nm = em_wvl_nm
     if em_wvl_nm is None:
-        em_wvl_nm = em.center_wave()
+        em_wvl_nm = ex_wvl_nm
 
     return cached_psf(
         nz=nz,
         nx=nx,
         dx=dx,
         dz=dz,
-        ex_wvl_um=ex.center_wave() * 1e-3,  # nm to um
+        ex_wvl_um=ex_wvl_nm * 1e-3,  # nm to um
         em_wvl_um=em_wvl_nm * 1e-3,  # nm to um
         objective=_cast_objective(objective),
         pinhole_au=pinhole_au,
@@ -428,6 +436,7 @@ def cached_psf(
             dxy=dx,
             objective=objective,
             xp=xp,
+            normalize="sum",
         )
     else:
         psf = make_confocal_psf(
@@ -440,6 +449,7 @@ def cached_psf(
             dxy=dx,
             objective=objective,
             xp=xp,
+            normalize="sum",
         )
 
     if use_cache:

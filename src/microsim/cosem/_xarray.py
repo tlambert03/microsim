@@ -53,10 +53,10 @@ def access_zarr(
 
 
 def stt_coord(
-    length: int, dim: str, scale: float, translate: float, unit: str
+    length: int, dim: str, scale: float, translate: float, units: str
 ) -> xr.DataArray:
     return xr.DataArray(
-        (np.arange(length) * scale) + translate, dims=(dim,), attrs={"units": unit}
+        (np.arange(length) * scale) + translate, dims=(dim,), attrs={"units": units}
     )
 
 
@@ -75,7 +75,7 @@ class STTransform(BaseModel):
                 dim=k,
                 scale=self.scale[idx],
                 translate=self.translate[idx],
-                unit=self.units[idx],
+                units=self.units[idx],
             )
             for idx, k in enumerate(axes)
         ]

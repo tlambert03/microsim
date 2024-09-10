@@ -54,6 +54,23 @@ class Settings(SimBaseModel, BaseSettings):
             "multiple fluorophores."
         ),
     )
+    spectral_bins_per_emission_channel: int = Field(
+        4,
+        description="Number of wavelengths to use (per channel) when simulating the "
+        "optical image. By default, a single centroid wavelength is used to approximate"
+        "the emission wavelength.  Increasing this will make the simulation more "
+        "realistic, by superposing multiple different PSFs, but will also increase "
+        "memory usage and time.",
+    )
+    spectral_bin_threshold_percentage: float = Field(
+        1,
+        description="Percentage of the total intensity to use as a threshold when "
+        "binning the emission spectrum. This is used to determine the range of "
+        "wavelengths to consider when simulating the optical image.  First, the "
+        "spectrum is trimmed to include only relevant wavelengths (those with "
+        "intensity above this threshold). Then, the spectrum is discretized into "
+        "spectral_bins_per_emission_channel bins.",
+    )
     num_wavelength_bins: int = Field(
         32,
         description=(

@@ -1,3 +1,5 @@
+import logging
+
 from .backend import BackendName, DeviceName, NumpyAPI
 from .detectors import Camera, CameraCCD, CameraCMOS, CameraEMCCD
 from .lens import ObjectiveLens
@@ -16,6 +18,7 @@ from .simulation import Simulation
 from .space import DownscaledSpace, ExtentScaleSpace, ShapeExtentSpace, ShapeScaleSpace
 from .spectrum import Spectrum
 
+logging.getLogger().setLevel(logging.INFO)
 __all__ = [
     "BackendName",
     "Bandpass",
