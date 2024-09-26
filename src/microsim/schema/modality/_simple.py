@@ -186,6 +186,29 @@ class Confocal(_PSFModality):
 
 class Widefield(_PSFModality):
     type: Literal["widefield"] = "widefield"
+    
+
+class Identity(_PSFModality):
+    """Optical modality in which PSF is not applied.
+    
+    The idea is to use this modality when the ground truth flurophore 
+    distribution is generated from a light micorscope image, i.e., the 
+    PSF convolution is already applied on the image.
+    """
+    
+    def psf(
+        self,
+        *,
+        nz: int,
+        nx: int,
+        dx: float,
+        dz: float,
+        objective_lens: ObjectiveLens,
+        xp: NumpyAPI,
+        ex_wvl_nm: float | None = None,
+        em_wvl_nm: float | None = None,
+    ) -> ArrayProtocol:
+        return xp.ones((nz, nx, nx))
 
 
 def bin_spectrum(
