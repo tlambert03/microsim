@@ -196,19 +196,36 @@ class Identity(_PSFModality):
     PSF convolution is already applied on the image.
     """
     
-    def psf(
+    def render(
         self,
-        *,
-        nz: int,
-        nx: int,
-        dx: float,
-        dz: float,
-        objective_lens: ObjectiveLens,
-        xp: NumpyAPI,
-        ex_wvl_nm: float | None = None,
-        em_wvl_nm: float | None = None,
-    ) -> ArrayProtocol:
-        return xp.ones((nz, nx, nx))
+        truth: xrDataArray,  # (F, Z, Y, X)
+        em_rates: xrDataArray,  # (C, F, W)
+        *args: Any,
+        **kwargs: Any,
+    ) -> xrDataArray:
+        """Render a 3D image of the truth for F fluorophores, in C channels.
+        
+        In this case we don't apply the PSF convolution, as the truth is assumed
+        to be already convolved with the PSF. Therefore, we simply compute the 
+        emission flux for each fluorophore and each channel.
+        """
+        em_image = em_rates.sum(Axis.W) * truth
+        return DataArray(
+            em_image,
+            dims=[Axis.C, Axis.F, Axis.Z, Axis.Y, Axis.X],
+            coords={
+                Axis.C: em_rates.coords[Axis.C],
+                Axis.F: truth.coords[Axis.F],
+                Axis.Z: truth.coords[Axis.Z],
+                Axis.Y: truth.coords[Axis.Y],
+                Axis.X: truth.coords[Axis.X],
+            },
+            attrs={
+                "space": truth.attrs["space"],
+                "objective": "",
+                "units": "photons",
+            },
+        )
 
 
 def bin_spectrum(
