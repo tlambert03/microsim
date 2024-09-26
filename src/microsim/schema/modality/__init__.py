@@ -1,4 +1,4 @@
-from ._simple import Confocal, Widefield, Identity
+from ._simple import Confocal, Identity, Widefield
 
 Modality = Confocal | Widefield | Identity
 
