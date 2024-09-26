@@ -328,6 +328,14 @@ class Simulation(SimBaseModel):
             tf.imwrite(self.output_path, np.asanyarray(result))
 
     def plot(self, transpose: bool = False, legend: bool = True) -> None:
+        """Plot a summary of fluorophores and filters/configs used in the simulation.
+
+        Requires `matplotlib`.
+
+        As the number of channels increases, the plot may become crowded.  In this case,
+        consider setting `transpose=True` to plot channels on the x-axis and
+        fluorophores on the y-axis.
+        """
         plot_simulation_summary(self, transpose=transpose, legend=legend)
 
 
