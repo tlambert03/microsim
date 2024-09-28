@@ -156,10 +156,10 @@ class OpticalConfig(SimBaseModel):
         exc = self.excitation
         if self.lights:
             l0, *rest = self.lights
-            p0, *p_rest = [l.power or 1 for l in self.lights] 
+            p0, *p_rest = (l.power or 1 for l in self.lights)
             illum_spect = l0.spectrum * p0
             if rest:
-                for light, power in zip(rest, p_rest):
+                for light, power in zip(rest, p_rest, strict=False):
                     illum_spect = illum_spect + light.spectrum * power
             if exc:
                 return illum_spect * exc.spectrum
