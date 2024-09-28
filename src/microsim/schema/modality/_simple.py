@@ -191,9 +191,11 @@ class Widefield(_PSFModality):
 class Identity(_PSFModality):
     """Optical modality in which PSF is not applied.
 
-    The idea is to use this modality when the ground truth flurophore
-    distribution is generated from a light micorscope image, i.e., the
-    PSF convolution is already applied on the image.
+    The idea is to use this modality when the ground truth flurophore distribution is
+    generated from a light micorscope image, i.e., the PSF convolution is already
+    applied on the image.  This is useful primarily when you are more interested in the
+    spectral properties (fluorophores, filters, bleedthrough, etc.) than the spatial
+    properties (PSF, modality, etc.) in the simulation.
     """
 
     def render(
@@ -205,9 +207,9 @@ class Identity(_PSFModality):
     ) -> xrDataArray:
         """Render a 3D image of the truth for F fluorophores, in C channels.
 
-        In this case we don't apply the PSF convolution, as the truth is assumed
-        to be already convolved with the PSF. Therefore, we simply compute the
-        emission flux for each fluorophore and each channel.
+        In this case we don't apply the PSF convolution, as the truth is assumed to be
+        already convolved with the PSF. Therefore, we simply compute the emission flux
+        for each fluorophore and each channel.
         """
         em_image = em_rates.sum(Axis.W) * truth
         return DataArray(
