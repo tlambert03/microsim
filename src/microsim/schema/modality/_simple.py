@@ -188,6 +188,48 @@ class Widefield(_PSFModality):
     type: Literal["widefield"] = "widefield"
 
 
+class Identity(_PSFModality):
+    """Optical modality in which PSF is not applied.
+
+    The idea is to use this modality when the ground truth flurophore distribution is
+    generated from a light micorscope image, i.e., the PSF convolution is already
+    applied on the image.  This is useful primarily when you are more interested in the
+    spectral properties (fluorophores, filters, bleedthrough, etc.) than the spatial
+    properties (PSF, modality, etc.) in the simulation.
+    """
+
+    def render(
+        self,
+        truth: xrDataArray,  # (F, Z, Y, X)
+        em_rates: xrDataArray,  # (C, F, W)
+        *args: Any,
+        **kwargs: Any,
+    ) -> xrDataArray:
+        """Render a 3D image of the truth for F fluorophores, in C channels.
+
+        In this case we don't apply the PSF convolution, as the truth is assumed to be
+        already convolved with the PSF. Therefore, we simply compute the emission flux
+        for each fluorophore and each channel.
+        """
+        em_image = em_rates.sum(Axis.W) * truth
+        return DataArray(
+            em_image,
+            dims=[Axis.C, Axis.F, Axis.Z, Axis.Y, Axis.X],
+            coords={
+                Axis.C: em_rates.coords[Axis.C],
+                Axis.F: truth.coords[Axis.F],
+                Axis.Z: truth.coords[Axis.Z],
+                Axis.Y: truth.coords[Axis.Y],
+                Axis.X: truth.coords[Axis.X],
+            },
+            attrs={
+                "space": truth.attrs["space"],
+                "objective": "",
+                "units": "photons",
+            },
+        )
+
+
 def bin_spectrum(
     spectrum: xrDataArray,
     bins: int | np.ndarray = 3,
