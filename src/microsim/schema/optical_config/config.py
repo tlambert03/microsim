@@ -41,7 +41,7 @@ class LightSource(SimBaseModel):
             ),
             power=power,
         )
-        
+
     def scaled_spectrum(self) -> Spectrum:
         """Return light source spectrum scaled to power, if present."""
         spectrum = self.spectrum
