@@ -1,5 +1,5 @@
-from ._simple import Confocal, Widefield
+from ._simple import Confocal, Identity, Widefield
 
-Modality = Confocal | Widefield
+Modality = Confocal | Widefield | Identity
 
-__all__ = ["Modality", "Confocal", "Widefield"]
+__all__ = ["Identity", "Modality", "Confocal", "Widefield"]
