@@ -1,5 +1,18 @@
 # Changelog
 
+## [v0.0.7](https://github.com/tlambert03/microsim/tree/v0.0.7) (2024-10-03)
+
+[Full Changelog](https://github.com/tlambert03/microsim/compare/v0.0.6...v0.0.7)
+
+**Implemented enhancements:**
+
+- feat: scaling each light source by the respective power [\#79](https://github.com/tlambert03/microsim/pull/79) ([federico-carrara](https://github.com/federico-carrara))
+- feat: adding Identity PSF modality [\#78](https://github.com/tlambert03/microsim/pull/78) ([federico-carrara](https://github.com/federico-carrara))
+
+**Merged pull requests:**
+
+- ci\(pre-commit.ci\): autoupdate [\#76](https://github.com/tlambert03/microsim/pull/76) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+
 ## [v0.0.6](https://github.com/tlambert03/microsim/tree/v0.0.6) (2024-09-10)
 
 [Full Changelog](https://github.com/tlambert03/microsim/compare/v0.0.5...v0.0.6)
