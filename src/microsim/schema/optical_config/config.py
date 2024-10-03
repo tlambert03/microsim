@@ -42,6 +42,13 @@ class LightSource(SimBaseModel):
             power=power,
         )
 
+    def scaled_spectrum(self) -> Spectrum:
+        """Return light source spectrum scaled to power, if present."""
+        spectrum = self.spectrum
+        if self.power is not None:
+            spectrum = spectrum * self.power
+        return spectrum
+
 
 class OpticalConfig(SimBaseModel):
     name: str = ""
@@ -150,14 +157,16 @@ class OpticalConfig(SimBaseModel):
 
         This represents the spectrum of light source and all of the filters in the
         excitation path. If there are multiple light sources, they are combined.
+        Different light sources can have different powers. In that case light sources
+        are scaled by the respective light powers.
         """
         exc = self.excitation
         if self.lights:
             l0, *rest = self.lights
-            illum_spect = l0.spectrum
+            illum_spect = l0.scaled_spectrum()
             if rest:
                 for light in rest:
-                    illum_spect = illum_spect + light.spectrum
+                    illum_spect = illum_spect + light.scaled_spectrum()
             if exc:
                 return illum_spect * exc.spectrum
             return illum_spect
