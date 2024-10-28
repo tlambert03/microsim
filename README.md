@@ -67,5 +67,6 @@ ortho_plot(result)
 
 ## Documentation
 
-See the API Reference (<https://tlambert03.github.io/microsim/api/>) for details
+Start with the [tutorial](https://www.talleylambert.com/microsim/tutorial/), then see the 
+[API Reference](<https://tlambert03.github.io/microsim/api/>) for details
 on the `Simulation` object and options for all of the fields.
