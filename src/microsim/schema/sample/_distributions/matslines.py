@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 
 from microsim.schema.backend import NumpyAPI
-from microsim.schema.sample._distributions._base import _BaseDistribution
+from microsim.schema.sample._distributions._base import BaseDistribution
 
 if TYPE_CHECKING:
     import numpy.typing as npt
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from microsim._data_array import xrDataArray
 
 
-class MatsLines(_BaseDistribution):
+class MatsLines(BaseDistribution):
     type: Literal["matslines"] = "matslines"
     density: float = 1
     length: int = 10

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+from pydantic import ValidationError
 
 import microsim.schema as ms
 from microsim.schema.optical_config.lib import FITC
@@ -118,6 +119,28 @@ def test_simulation_from_ground_truth() -> None:
     if hasattr(sim_truth.data, "get"):
         sim_truth = sim_truth.data.get()
     np.testing.assert_array_almost_equal(sim_truth, ground_truth)
+
+
+def test_simulation_custom_distribution() -> None:
+    """Test that we can use any class with a render method as a distribution."""
+
+    class BadDistribution:
+        def have_no_render_method(self, space, xp: ms.NumpyAPI | None = None):
+            return space
+
+    with pytest.raises(ValidationError):
+        ms.Sample(labels=[BadDistribution()])
+
+    class GoodDistribution:
+        def render(self, space, xp: ms.NumpyAPI | None = None):
+            return space
+
+    sim = ms.Simulation(
+        truth_space=ms.ShapeScaleSpace(shape=(64, 128, 128), scale=(0.2, 0.1, 0.1)),
+        output_space={"downscale": 1},
+        sample=ms.Sample(labels=[GoodDistribution()]),
+    )
+    sim.run()
 
 
 def test_pickle(sim1: ms.Simulation) -> None:

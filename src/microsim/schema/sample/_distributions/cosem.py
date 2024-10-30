@@ -7,7 +7,7 @@ from pydantic import BeforeValidator, computed_field, model_validator
 from microsim.cosem.models import CosemDataset, CosemImage
 from microsim.schema.backend import NumpyAPI
 
-from ._base import _BaseDistribution
+from ._base import BaseDistribution
 
 if TYPE_CHECKING:
     from microsim._data_array import xrDataArray
@@ -25,7 +25,7 @@ def _validate_dataset(v: Any) -> CosemDataset:
 Dataset = Annotated[CosemDataset, BeforeValidator(_validate_dataset)]
 
 
-class CosemLabel(_BaseDistribution):
+class CosemLabel(BaseDistribution):
     """Renders ground truth based on a specific layer from a COSEM dataset.
 
     Go to https://openorganelle.janelia.org/datasets/ to find a dataset, and then

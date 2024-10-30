@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any, get_args
+from typing import Any
 
 import numpy as np
 from pydantic import Field, model_validator
@@ -9,14 +9,15 @@ from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.spectrum import Spectrum
 
+from ._distributions._base import Renderable, RenderableType
 from ._distributions.cosem import CosemLabel
 from ._distributions.direct import FixedArrayTruth
 from ._distributions.matslines import MatsLines
 from .fluorophore import Fluorophore
 
-Distribution = MatsLines | CosemLabel | FixedArrayTruth
-DistributionTypes = get_args(Distribution)
-
+AnyDistribution = MatsLines | CosemLabel | FixedArrayTruth | RenderableType
+# TODO: this feels like an unDRY hack
+DistributionTypes = MatsLines | CosemLabel | FixedArrayTruth | Renderable
 
 # This is a placeholder fluorophore for when no fluorophore is specified
 # it has broad excitation and emission spectra, high extinction coefficient.
@@ -34,7 +35,7 @@ MOCK_FLUOR = Fluorophore(
 
 
 class FluorophoreDistribution(SimBaseModel):
-    distribution: Distribution = Field(...)
+    distribution: AnyDistribution = Field(union_mode="left_to_right")
     fluorophore: Fluorophore = MOCK_FLUOR
     # either a scalar that will be multiplied by the distribution
     # (e.g. to increase/decrease concentration of fluorophore)
@@ -47,7 +48,7 @@ class FluorophoreDistribution(SimBaseModel):
 
     def cache_path(self) -> tuple[str, ...] | None:
         if hasattr(self.distribution, "cache_path"):
-            return self.distribution.cache_path()
+            return self.distribution.cache_path()  # type: ignore [no-any-return]
         return None
 
     def render(self, space: xrDataArray, xp: NumpyAPI | None = None) -> xrDataArray:
