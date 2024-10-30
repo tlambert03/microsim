@@ -37,7 +37,7 @@ class _IsInstanceAnySer:
 RenderableType = Annotated[Renderable, _IsInstanceAnySer()]
 
 
-class _BaseDistribution(BaseModel, ABC):
+class BaseDistribution(BaseModel, ABC):
     @classmethod
     def is_random(cls) -> bool:
         """Return True if this distribution generates randomized results."""
