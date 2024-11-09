@@ -1,5 +1,15 @@
 # Changelog
 
+## [v0.0.8](https://github.com/tlambert03/microsim/tree/v0.0.8) (2024-11-09)
+
+[Full Changelog](https://github.com/tlambert03/microsim/compare/v0.0.7...v0.0.8)
+
+**Merged pull requests:**
+
+- ci\(pre-commit.ci\): autoupdate [\#85](https://github.com/tlambert03/microsim/pull/85) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- refactor: change default spectral\_bins\_per\_emission\_channel and max\_psf\_radius\_aus [\#84](https://github.com/tlambert03/microsim/pull/84) ([tlambert03](https://github.com/tlambert03))
+- allow any object with render method to be used for label distribution [\#83](https://github.com/tlambert03/microsim/pull/83) ([tlambert03](https://github.com/tlambert03))
+
 ## [v0.0.7](https://github.com/tlambert03/microsim/tree/v0.0.7) (2024-10-03)
 
 [Full Changelog](https://github.com/tlambert03/microsim/compare/v0.0.6...v0.0.7)
