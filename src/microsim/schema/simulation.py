@@ -307,7 +307,7 @@ class Simulation(SimBaseModel):
         scale = f'scale{"_".join(str(x) for x in truth_space.scale)}'
         conc = f"conc{label.concentration}"
         truth_cache = truth_cache / shape / scale / conc
-        if label.distribution.is_random():
+        if hasattr(label.distribution, "is_random") and label.distribution.is_random():
             truth_cache = truth_cache / f"seed{seed}"
         return truth_cache
 
