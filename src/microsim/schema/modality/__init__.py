@@ -1,4 +1,4 @@
-from ._simple import Confocal, Identity, Widefield
+from ._simple_psf import Confocal, Identity, Widefield
 
 Modality = Confocal | Widefield | Identity
 
