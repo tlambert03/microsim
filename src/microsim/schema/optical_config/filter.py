@@ -3,11 +3,11 @@ from enum import Enum
 from functools import cached_property
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
+import fpbase
 import numpy as np
 from annotated_types import Interval
 from pydantic import Field, computed_field
 
-from microsim import fpbase
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.spectrum import Spectrum
 
@@ -49,18 +49,18 @@ class _FilterBase(SimBaseModel):
     @classmethod
     def from_fpbase(
         cls,
-        filter: str | fpbase.FilterPlacement | fpbase.FilterSpectrum,
+        filter: str | fpbase.models.FilterPlacement | fpbase.models.FilterSpectrum,
         placement: Placement = Placement.ALL,
     ) -> "SpectrumFilter":
         if isinstance(filter, str):
             filter = fpbase.get_filter(filter)  # noqa
-        elif isinstance(filter, fpbase.FilterPlacement):
+        elif isinstance(filter, fpbase.models.FilterPlacement):
             return SpectrumFilter(
                 name=filter.name,
                 placement=filter.path,
                 transmission=Spectrum.from_fpbase(filter.spectrum),
             )
-        if not isinstance(filter, fpbase.FilterSpectrum):
+        if not isinstance(filter, fpbase.models.FilterSpectrum):
             raise TypeError(
                 "filter must be a string, FilterPlacement, or FilterSpectrum, "
                 f"not {type(filter)}"

@@ -39,7 +39,7 @@ class Fluorophore(SimBaseModel):
 
     @classmethod
     def from_fpbase(cls, name: str) -> "Fluorophore":
-        from microsim.fpbase import get_fluorophore
+        from fpbase import get_fluorophore
 
         fpbase_fluor = get_fluorophore(name)
 

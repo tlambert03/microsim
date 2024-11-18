@@ -41,6 +41,7 @@ dependencies = [
     "tensorstore",
     "tqdm",
     "xarray",
+    "fpbase",
 ]
 
 # https://peps.python.org/pep-0621/#dependencies-optional-dependencies

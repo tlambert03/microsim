@@ -3,10 +3,10 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, cast
 
 import xarray as xr
+from fpbase.models import SpectrumOwner
 from pydantic import Field, model_validator
 from scipy.constants import c, h
 
-from microsim.fpbase import SpectrumOwner
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.detectors import Detector
 from microsim.schema.dimensions import Axis
@@ -245,7 +245,7 @@ class OpticalConfig(SimBaseModel):
     def from_fpbase(
         cls, microscope_id: str, config_name: str | None = None
     ) -> "OpticalConfig":
-        from microsim.fpbase import get_microscope
+        from fpbase import get_microscope
 
         if config_name is None:
             if "::" not in microscope_id:  # pragma: no cover
