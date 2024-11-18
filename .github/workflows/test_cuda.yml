@@ -38,7 +38,7 @@ jobs:
           LD_LIBRARY_PATH: "/usr/local/cuda/lib64:/home/tjl10/actions-runner/_work/_tool/Python/3.11.9/x64/lib"
 
       - name: codecov v4
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           verbose: true
           token: ${{ secrets.CODECOV_TOKEN }}
