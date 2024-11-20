@@ -15,6 +15,13 @@ The goal of this library is to generate highly realistic simulated data such as 
 *(this data was generated using segmentations from
 [cell jrc_hela-3 at OpenOrganelle](https://openorganelle.janelia.org/datasets/jrc_hela-3) as the ground truth)*
 
+## Documentation
+
+Start with the [tutorial](https://www.talleylambert.com/microsim/tutorial/), and read about the
+[simulation stages](https://www.talleylambert.com/microsim/stages/), then see the 
+[API Reference](<https://tlambert03.github.io/microsim/api/>) for details
+on the `Simulation` object and options for all of the fields.
+
 ## Installation
 
 ### from PyPI
@@ -64,9 +71,3 @@ result = sim.run()
 # optionally plot the result
 ortho_plot(result)
 ```
-
-## Documentation
-
-Start with the [tutorial](https://www.talleylambert.com/microsim/tutorial/), then see the 
-[API Reference](<https://tlambert03.github.io/microsim/api/>) for details
-on the `Simulation` object and options for all of the fields.
