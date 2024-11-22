@@ -12,9 +12,8 @@ from microsim._field_types import NumpyNdarray
 from ._base_model import SimBaseModel
 
 if TYPE_CHECKING:
+    from fpbase.models import Spectrum as FPbaseSpectrum
     from xarray.plot.accessor import DataArrayPlotAccessor
-
-    from microsim.fpbase import Spectrum as FPbaseSpectrum
 
 
 class _AryRepr:

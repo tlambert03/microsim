@@ -35,3 +35,5 @@ repos:
           - types-tqdm
           - pint
           - platformdirs
+          - types-requests
+          - fpbase

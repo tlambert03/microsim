@@ -6,7 +6,6 @@ import xarray as xr
 from pydantic import Field, model_validator
 from scipy.constants import c, h
 
-from microsim.fpbase import SpectrumOwner
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.detectors import Detector
 from microsim.schema.dimensions import Axis
@@ -16,6 +15,7 @@ from microsim.schema.spectrum import Spectrum
 from .filter import Filter, Placement, SpectrumFilter
 
 if TYPE_CHECKING:
+    from fpbase.models import SpectrumOwner
     from matplotlib.axes import Axes
 
 
@@ -25,7 +25,7 @@ class LightSource(SimBaseModel):
     power: float | None = None  # W/cm^2
 
     @classmethod
-    def from_fpbase(cls, light: SpectrumOwner) -> "LightSource":
+    def from_fpbase(cls, light: "SpectrumOwner") -> "LightSource":
         return cls(name=light.name, spectrum=Spectrum.from_fpbase(light.spectrum))
 
     def plot(self, show: bool = True) -> None:
@@ -245,7 +245,7 @@ class OpticalConfig(SimBaseModel):
     def from_fpbase(
         cls, microscope_id: str, config_name: str | None = None
     ) -> "OpticalConfig":
-        from microsim.fpbase import get_microscope
+        from fpbase import get_microscope
 
         if config_name is None:
             if "::" not in microscope_id:  # pragma: no cover

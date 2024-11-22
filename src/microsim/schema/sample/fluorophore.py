@@ -39,7 +39,7 @@ class Fluorophore(SimBaseModel):
 
     @classmethod
     def from_fpbase(cls, name: str) -> "Fluorophore":
-        from microsim.fpbase import get_fluorophore
+        from fpbase import get_fluorophore
 
         fpbase_fluor = get_fluorophore(name)
 
@@ -50,7 +50,7 @@ class Fluorophore(SimBaseModel):
             name=name,
             excitation_spectrum=state.excitation_spectrum.data,  # type: ignore
             emission_spectrum=state.emission_spectrum.data,  # type: ignore
-            extinction_coefficient=state.extCoeff,
+            extinction_coefficient=state.ext_coeff,
             quantum_yield=state.qy,
             lifetime_ns=state.lifetime,
         )
