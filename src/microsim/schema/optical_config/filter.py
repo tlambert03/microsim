@@ -49,27 +49,27 @@ class _FilterBase(SimBaseModel):
     @classmethod
     def from_fpbase(
         cls,
-        filter: str | fpbase.models.FilterPlacement | fpbase.models.FilterSpectrum,
+        filter: str | fpbase.models.FilterPlacement | fpbase.models.Filter,
         placement: Placement = Placement.ALL,
     ) -> "SpectrumFilter":
         if isinstance(filter, str):
             filter = fpbase.get_filter(filter)  # noqa
         elif isinstance(filter, fpbase.models.FilterPlacement):
             return SpectrumFilter(
-                name=filter.name,
+                name=filter.filter.name,
                 placement=filter.path,
-                transmission=Spectrum.from_fpbase(filter.spectrum),
+                transmission=Spectrum.from_fpbase(filter.filter.spectrum),
             )
-        if not isinstance(filter, fpbase.models.FilterSpectrum):
+        if not isinstance(filter, fpbase.models.Filter):
             raise TypeError(
-                "filter must be a string, FilterPlacement, or FilterSpectrum, "
+                "filter must be a string, FilterPlacement, or Filter, "
                 f"not {type(filter)}"
             )
 
         return SpectrumFilter(
-            name=filter.ownerFilter.name,
+            name=filter.name,
             placement=placement,
-            transmission=Spectrum.from_fpbase(filter),
+            transmission=Spectrum.from_fpbase(filter.spectrum),
         )
 
     def plot(self) -> None:

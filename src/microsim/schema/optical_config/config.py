@@ -3,7 +3,6 @@ from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, cast
 
 import xarray as xr
-from fpbase.models import SpectrumOwner
 from pydantic import Field, model_validator
 from scipy.constants import c, h
 
@@ -16,6 +15,7 @@ from microsim.schema.spectrum import Spectrum
 from .filter import Filter, Placement, SpectrumFilter
 
 if TYPE_CHECKING:
+    from fpbase.models import SpectrumOwner
     from matplotlib.axes import Axes
 
 
@@ -25,7 +25,7 @@ class LightSource(SimBaseModel):
     power: float | None = None  # W/cm^2
 
     @classmethod
-    def from_fpbase(cls, light: SpectrumOwner) -> "LightSource":
+    def from_fpbase(cls, light: "SpectrumOwner") -> "LightSource":
         return cls(name=light.name, spectrum=Spectrum.from_fpbase(light.spectrum))
 
     def plot(self, show: bool = True) -> None:
