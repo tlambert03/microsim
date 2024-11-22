@@ -154,12 +154,18 @@ class CosemImage(BaseModel):
         """
         from microsim.cosem._tstore import read_tensorstore
 
+        _bin_mode: BinMode
         if bin_mode == "auto":
             # we convert segmentation images to sum mode, because they are encoded
             # for instance segmentation, which is not what we want.
-            bin_mode = "sum" if self.content_type == "segmentation" else "standard"
+            _bin_mode = "sum" if self.content_type == "segmentation" else "standard"
+        else:
+            _bin_mode = bin_mode
         return read_tensorstore(
-            self, level=level, transpose=transpose, bin_mode=bin_mode
+            self,
+            level=level,
+            transpose=transpose,
+            bin_mode=_bin_mode,
         )
 
     def read_xarray(self) -> "xr.DataArray | DataTree":

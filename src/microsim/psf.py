@@ -170,7 +170,7 @@ def rz_to_xyz(
             for z in range(nz)
         ]
     )
-    return out.get() if hasattr(out, "get") else out  # type: ignore
+    return out.get() if hasattr(out, "get") else out
 
 
 # def rz_to_xyz(rz, xyshape, sf=3, off=None):

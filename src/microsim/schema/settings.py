@@ -1,5 +1,5 @@
 import random
-from typing import Any, ClassVar, Literal
+from typing import Any, ClassVar
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -35,7 +35,7 @@ class Settings(SimBaseModel, BaseSettings):
         default_factory=lambda: random.randint(0, 2**32 - 1)
     )
     max_psf_radius_aus: float | None = Field(
-        8,
+        6,
         description=(
             "When simulating, restrict generated lateral PSF size to no more than this "
             "many Airy units. Decreasing this can *dramatically* speed up simulations, "
@@ -44,18 +44,8 @@ class Settings(SimBaseModel, BaseSettings):
         ),
     )
     cache: CacheSettings = Field(default_factory=CacheSettings)
-    binning_strategy: Literal["equal_area", "equal_space"] = Field(
-        "equal_space",
-        description=(
-            "The strategy to use for binning data. `'equal_area'` will divide the "
-            "spectrum into intervals with intensity integral, while `'equal_space'` "
-            "will divide the range of values into equally spaced bins. Note that "
-            "`'equal_area'` is more accurate, but is not supported in the case of "
-            "multiple fluorophores."
-        ),
-    )
     spectral_bins_per_emission_channel: int = Field(
-        4,
+        1,
         description="Number of wavelengths to use (per channel) when simulating the "
         "optical image. By default, a single centroid wavelength is used to approximate"
         "the emission wavelength.  Increasing this will make the simulation more "
@@ -70,30 +60,6 @@ class Settings(SimBaseModel, BaseSettings):
         "spectrum is trimmed to include only relevant wavelengths (those with "
         "intensity above this threshold). Then, the spectrum is discretized into "
         "spectral_bins_per_emission_channel bins.",
-    )
-    num_wavelength_bins: int = Field(
-        32,
-        description=(
-            "Number of bins to use when discretizing the wavelength spectrum."
-            "It regards the wavelength range for illumination and excitation spectra."
-            "Increasing this will increase accuracy but also increase memory usage."
-        ),
-    )
-    min_wavelength: int = Field(
-        300,
-        description=(
-            "Minimum wavelength to consider in the simulation."
-            "It is used to define the range of the wavelength spectrum when "
-            "fluorophores are not defined."
-        ),
-    )
-    max_wavelength: int = Field(
-        800,
-        description=(
-            "Maximum wavelength to consider in the simulation."
-            "It is used to define the range of the wavelength spectrum when "
-            "fluorophores are not defined."
-        ),
     )
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
