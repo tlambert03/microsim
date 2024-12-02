@@ -7,7 +7,7 @@ from urllib.request import Request, urlopen
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
-__all__ = ["get_fluorophore", "get_microscope", "FPbaseFluorophore", "FPbaseMicroscope"]
+__all__ = ["FPbaseFluorophore", "FPbaseMicroscope", "get_fluorophore", "get_microscope"]
 
 
 ### Models ###

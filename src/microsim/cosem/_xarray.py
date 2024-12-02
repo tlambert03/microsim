@@ -11,7 +11,7 @@ MIT License
 
 from __future__ import annotations
 
-from collections.abc import Sequence  # noqa: TCH003
+from collections.abc import Sequence  # noqa: TC003
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
