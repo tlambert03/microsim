@@ -7,9 +7,9 @@ from ._fetch import (
 from ._swc import SWC
 
 __all__ = [
+    "SWC",
     "ApiCellTypesSpecimenDetail",
-    "get_reconstructions",
     "NeuronReconstruction",
     "Specimen",
-    "SWC",
+    "get_reconstructions",
 ]

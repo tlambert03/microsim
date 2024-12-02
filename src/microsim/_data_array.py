@@ -29,7 +29,7 @@ else:
     except ImportError:
         from xarray import DataArray  # type: ignore[assignment]
 
-__all__ = ["DataArray", "xrDataArray", "ArrayProtocol"]
+__all__ = ["ArrayProtocol", "DataArray", "xrDataArray"]
 
 xrDataArray = xarray.DataArray
 
