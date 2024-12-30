@@ -4,11 +4,11 @@ from ._simulate import simulate_camera
 Detector = CameraEMCCD | CameraCMOS | CameraCCD
 
 __all__ = [
-    "Detector",
+    "ICX285",
     "Camera",
     "CameraCCD",
     "CameraCMOS",
     "CameraEMCCD",
+    "Detector",
     "simulate_camera",
-    "ICX285",
 ]
