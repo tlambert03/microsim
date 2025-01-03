@@ -215,7 +215,6 @@ class CameraCCD(_Camera):
 class CameraEMCCD(_Camera):
     camera_type: Literal["EMCCD"] = "EMCCD"
 
-    em_full_well: int
     em_gain: float
 
     def apply_pre_quantization_binning(
@@ -235,8 +234,8 @@ class CameraEMCCD(_Camera):
         )
         electron_image[ind_zero] = 0
         electron_image = np.round(electron_image).astype(int)
-        # cap to EM full-well-capacity
-        return np.minimum(electron_image, self.em_full_well)
+
+        return electron_image
 
 
 class CameraCMOS(_Camera):
