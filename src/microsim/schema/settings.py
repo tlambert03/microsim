@@ -1,7 +1,6 @@
 import random
 from typing import Any, ClassVar
 
-import numpy as np
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -29,7 +28,7 @@ class Settings(SimBaseModel, BaseSettings):
     np_backend: BackendName = "auto"
     device: DeviceName = "auto"
     float_dtype: FloatDtype = Field(
-        np.dtype("float32"),
+        "float32",  # type: ignore
         description="Floating-point precision to use for simulations.",
     )
     random_seed: int | None = Field(
