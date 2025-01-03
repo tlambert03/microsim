@@ -1,7 +1,7 @@
 import logging
 
 from .backend import BackendName, DeviceName, NumpyAPI
-from .detectors import Camera, CameraCCD, CameraCMOS, CameraEMCCD
+from .detectors import CameraCCD, CameraCMOS, CameraEMCCD
 from .lens import ObjectiveLens
 from .modality import Confocal, Identity, Modality, Widefield
 from .optical_config import (
@@ -22,7 +22,6 @@ logging.getLogger().setLevel(logging.INFO)
 __all__ = [
     "BackendName",
     "Bandpass",
-    "Camera",
     "CameraCCD",
     "CameraCMOS",
     "CameraEMCCD",

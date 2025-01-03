@@ -58,7 +58,7 @@ class Simulation(SimBaseModel):
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC])
     # TODO: channels should also include `lights: list[LightSource]`
-    detector: Detector | None = None
+    detector: Detector | None = Field(default=None, discriminator="camera_type")
     exposure_ms: float = 100
     settings: Settings = Field(default_factory=Settings)
     output_path: OutPath | None = None
