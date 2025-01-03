@@ -21,7 +21,7 @@ PositiveInt = Annotated[int, Ge(0)]
 class _Camera(SimBaseModel):
     """Base Camera model.
 
-    Parameters
+    Attributes
     ----------
     camera_type : str
         Type of camera, for discriminated union.
