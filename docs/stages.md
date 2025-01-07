@@ -379,7 +379,7 @@ will depend on the settings of the `detector` and the `output_space`.
 
 !!! example
 
-    This example sets up a simulation with a 16-bit detector with a read noise of
+    This example sets up a simulation with a 16-bit CCD detector with a read noise of
     2 electrons rms, and a quantum efficiency of 0.82.  Note that, for now,
     the "pixel size" is implicitly determined by the `output_space` parameter.
     But that will change in the future.
@@ -388,7 +388,7 @@ will depend on the settings of the `detector` and the `output_space`.
     sim = Simulation(
         # ...,
         output_space={"downscale": 4},
-        detector={"bit_depth": 16, "read_noise": 2, "qe": 0.82},
+        detector={"camera_type": "CCD", "bit_depth": 16, "read_noise": 2, "qe": 0.82},
     )
     ```
 
