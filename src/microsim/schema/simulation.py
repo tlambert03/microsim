@@ -303,8 +303,8 @@ class Simulation(SimBaseModel):
             return None
 
         truth_cache = Path(microsim_cache("ground_truth"), *lbl_path)
-        shape = f'shape{"_".join(str(x) for x in truth_space.shape)}'
-        scale = f'scale{"_".join(str(x) for x in truth_space.scale)}'
+        shape = f"shape{'_'.join(str(x) for x in truth_space.shape)}"
+        scale = f"scale{'_'.join(str(x) for x in truth_space.scale)}"
         conc = f"conc{label.concentration}"
         truth_cache = truth_cache / shape / scale / conc
         if hasattr(label.distribution, "is_random") and label.distribution.is_random():
