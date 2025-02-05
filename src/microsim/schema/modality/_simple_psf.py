@@ -42,13 +42,13 @@ class _PSFModality(SimBaseModel):
 
     def render(
         self,
-        truth: xrDataArray,  # (F, Z, Y, X)
+        truth: xrDataArray,  # (B, F, Z, Y, X)
         em_rates: xrDataArray,  # (C, F, W)
         objective_lens: ObjectiveLens,
         settings: Settings,
         xp: NumpyAPI,
     ) -> xrDataArray:
-        """Render a 3D image of the truth for F fluorophores, in C channels."""
+        """Render a batch of 3D images of truth for F fluorophores, in C channels."""
         # for every channel in the emission rates...
         channels = []
         for ch in em_rates.coords[Axis.C].values:
@@ -72,7 +72,6 @@ class _PSFModality(SimBaseModel):
                     fluors.append(xp.zeros_like(f_truth))
                     continue
 
-                # not entirely sure about what would happen here...
                 summed_psf = self._summed_weighted_psf(
                     em_spectrum, settings, truth.attrs["space"], objective_lens, xp
                 )
@@ -82,12 +81,13 @@ class _PSFModality(SimBaseModel):
             # stack the fluorophores together to create the channel
             channels.append(xp.stack(fluors, axis=0))
 
-        return DataArray(
+        channels = DataArray(
             channels,
-            dims=[Axis.C, Axis.F, Axis.Z, Axis.Y, Axis.X],
+            dims=[Axis.C, Axis.F, Axis.B, Axis.Z, Axis.Y, Axis.X],
             coords={
                 Axis.C: em_rates.coords[Axis.C],
                 Axis.F: truth.coords[Axis.F],
+                Axis.B: truth.coords[Axis.B],
                 Axis.Z: truth.coords[Axis.Z],
                 Axis.Y: truth.coords[Axis.Y],
                 Axis.X: truth.coords[Axis.X],
@@ -96,8 +96,10 @@ class _PSFModality(SimBaseModel):
                 "space": truth.attrs["space"],
                 "objective": objective_lens,
                 "units": "photons",
+                "long_name": "Optical Image",
             },
         )
+        return channels.transpose(Axis.B, ...) # put batch dim first
 
     def _summed_weighted_psf(
         self,
@@ -153,6 +155,8 @@ class _PSFModality(SimBaseModel):
                 xp=xp,
             )
             summed_psf += psf * weight
+
+        summed_psf = summed_psf[None, ...]  # add batch dim
         return summed_psf  # type: ignore [no-any-return]
 
 
@@ -201,7 +205,7 @@ class Identity(_PSFModality):
 
     def render(
         self,
-        truth: xrDataArray,  # (F, Z, Y, X)
+        truth: xrDataArray,  # (B, F, Z, Y, X)
         em_rates: xrDataArray,  # (C, F, W)
         *args: Any,
         **kwargs: Any,
@@ -212,24 +216,14 @@ class Identity(_PSFModality):
         already convolved with the PSF. Therefore, we simply compute the emission flux
         for each fluorophore and each channel.
         """
-        # need to add batch dim here
-        em_image = em_rates.sum(Axis.W) * truth
-        return DataArray(
-            em_image,
-            dims=[Axis.C, Axis.F, Axis.Z, Axis.Y, Axis.X],
-            coords={
-                Axis.C: em_rates.coords[Axis.C],
-                Axis.F: truth.coords[Axis.F],
-                Axis.Z: truth.coords[Axis.Z],
-                Axis.Y: truth.coords[Axis.Y],
-                Axis.X: truth.coords[Axis.X],
-            },
-            attrs={
-                "space": truth.attrs["space"],
-                "objective": "",
-                "units": "photons",
-            },
+        em_image = (em_rates.sum(Axis.W) * truth).transpose(Axis.B, ...)
+        em_image.attrs.update(
+            units="photons",
+            objective="",
+            space=truth.attrs["space"],
+            long_name="Optical Image"
         )
+        return em_image
 
 
 def bin_spectrum(

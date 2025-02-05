@@ -174,7 +174,7 @@ class Simulation(SimBaseModel):
             # concat along B axis
             self._ground_truth = xr.concat(
                 truths, dim=pd.Index(range(len(truths)), name=Axis.B)
-            )
+            ) # TODO: is there a better way to give coords to this axis?
             self._ground_truth.attrs.update(
                 units="fluorophores", long_name="Ground Truth"
             )
@@ -241,7 +241,7 @@ class Simulation(SimBaseModel):
         # total photons/s emitted by each fluorophore in each channel
         total_flux = (
             self.filtered_emission_rates().sum(Axis.W) * truth
-        )  # this'd need to slightly change
+        ).transpose(Axis.B, ...)
         total_flux.attrs.update(units="photon/sec", long_name="Emission Flux")
 
         # (C, F, Z, Y, X)
