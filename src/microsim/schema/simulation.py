@@ -92,11 +92,11 @@ class Simulation(SimBaseModel):
         elif isinstance(self.output_space, _RelativeSpace):
             self.output_space.reference = self.truth_space
         return self
-    
+
     @field_validator("samples")
     def _samples_to_list(value: Sample | list[Sample]) -> list[Sample]:
         return [value] if isinstance(value, Sample) else value
-    
+
     @property
     def sample(self) -> Sample:
         warnings.warn(
