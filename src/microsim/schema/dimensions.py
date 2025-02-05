@@ -41,6 +41,7 @@ class Axis(str, Enum):
     T = "t"  # Time
     F = "f"  # Fluorophore
     W = "w"  # Wavelength
+    B = "b"  # Batch
 
     def __repr__(self) -> str:
         return f"<Axis.{self.name}>"

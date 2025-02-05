@@ -93,6 +93,18 @@ class Simulation(SimBaseModel):
             self.output_space.reference = self.truth_space
         return self
     
+    @model_validator(mode="after")
+    def _check_fluorophores_equal_in_samples(self) -> "Self":
+        fp_names = [
+            {lbl.fluorophore.name for lbl in s.labels}
+            for s in self.samples
+        ]
+        if len(set(frozenset(s) for s in fp_names)) != 1:
+            raise ValueError(
+                "All samples in the batch must use the same set of fluorophores."
+            )
+        return self
+    
     @field_validator("samples")
     def _samples_to_list(value: Sample | list[Sample]) -> list[Sample]:
         return [value] if isinstance(value, Sample) else value
@@ -125,36 +137,51 @@ class Simulation(SimBaseModel):
         """
         if not hasattr(self, "_ground_truth"):
             xp = self._xp
-            # make empty space into which we'll add the ground truth
-            # TODO: this is wasteful... label.render should probably
-            # accept the space object directly
-            truth = self.truth_space.create(array_creator=xp.zeros)
 
-            # render each ground truth
-            label_data = []
-            for label in self.sample.labels:
-                cache_path = self._truth_cache_path(
-                    label, self.truth_space, self.settings.random_seed
-                )
-                if self.settings.cache.read and cache_path and cache_path.exists():
-                    data = from_cache(cache_path, xp=xp).astype(
-                        self.settings.float_dtype
+            # render each ground sample
+            # TODO: iterating over sample is a bottleneck for batched approach... Ideas?
+            truths: list[xr.DataArray] = []
+            for sample in self.samples:
+                # render each label in the sample
+                
+                # make empty space into which we'll add the ground truth
+                # TODO: this is wasteful... label.render should probably
+                # accept the space object directly
+                truth = self.truth_space.create(array_creator=xp.zeros)
+                
+                label_data = []
+                for label in sample.labels:
+                    # TODO: differentiate caching for each label
+                    cache_path = self._truth_cache_path(
+                        label, self.truth_space, self.settings.random_seed
                     )
-                    logging.info(
-                        f"Loaded ground truth for {label} from cache: {cache_path}"
-                    )
-                else:
-                    data = label.render(truth, xp=xp)
-                    if self.settings.cache.write and cache_path:
-                        to_cache(data, cache_path, dtype=np.uint16)
+                    if self.settings.cache.read and cache_path and cache_path.exists():
+                        data = from_cache(cache_path, xp=xp).astype(
+                            self.settings.float_dtype
+                        )
+                        logging.info(
+                            f"Loaded ground truth for {label} from cache: {cache_path}"
+                        )
+                    else:
+                        data = label.render(truth, xp=xp)
+                        if self.settings.cache.write and cache_path:
+                            to_cache(data, cache_path, dtype=np.uint16)
 
-                label_data.append(data)
+                    label_data.append(data)
 
-            # concat along the F axis
-            fluors = [lbl.fluorophore for lbl in self.sample.labels]
-            truth = xr.concat(label_data, dim=pd.Index(fluors, name=Axis.F))
-            truth.attrs.update(units="fluorophores", long_name="Ground Truth")
-            self._ground_truth = truth
+                # concat along the F axis
+                fluors = [lbl.fluorophore for lbl in sample.labels]
+                truth = xr.concat(label_data, dim=pd.Index(fluors, name=Axis.F))
+                truths.append(truth)
+            
+            # concat along B axis
+            self._ground_truth = xr.concat(
+                truths, dim=pd.Index(range(len(truths)), name=Axis.B)
+            )
+            self._ground_truth.attrs.update(
+                units="fluorophores", long_name="Ground Truth"
+            )
+        
         return self._ground_truth
 
     def filtered_emission_rates(self) -> xr.DataArray:
