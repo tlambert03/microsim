@@ -108,7 +108,7 @@ class Simulation(SimBaseModel):
     @field_validator("samples")
     def _samples_to_list(value: Sample | list[Sample]) -> list[Sample]:
         return [value] if isinstance(value, Sample) else value
-    
+
     @property
     def sample(self) -> Sample:
         warnings.warn(
