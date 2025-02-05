@@ -123,7 +123,7 @@ class Simulation(SimBaseModel):
         """Return the ground truth data.
 
         Returns position and quantity of fluorophores in the sample.  The return array
-        has dimensions (F, Z, Y, X).  The units are fluorophores counts.
+        has dimensions (B, F, Z, Y, X). The units are fluorophores counts.
 
         Examples
         --------
@@ -220,7 +220,7 @@ class Simulation(SimBaseModel):
 
         This multiplies the per-fluorophore emission rates by the ground truth data to
         get the total emission flux for each voxel in the ground truth. The return
-        array has dimensions (C, F, Z, Y, X).  The units are photons/s.
+        array has dimensions (B, C, F, Z, Y, X).  The units are photons/s.
 
         Note, this integrates over all wavelengths. For finer control over the emission
         spectrum, you may wish to directly combine `filtered_emission_rates` with the
@@ -244,7 +244,7 @@ class Simulation(SimBaseModel):
         ).transpose(Axis.B, ...)
         total_flux.attrs.update(units="photon/sec", long_name="Emission Flux")
 
-        # (C, F, Z, Y, X)
+        # (B, C, F, Z, Y, X)
         return total_flux
 
     def optical_image_per_fluor(self) -> xr.DataArray:
@@ -253,11 +253,11 @@ class Simulation(SimBaseModel):
         This is the emission from each fluorophore in each channel, after filtering by
         the optical configuration and convolution with the PSF.
 
-        The return array has dimensions (C, F, Z, Y, X).  The units are photons/s.
+        The return array has dimensions (B, C, F, Z, Y, X).  The units are photons/s.
         """
-        # (C, F, Z, Y, X)
+        # (B, C, F, Z, Y, X)
         return self.modality.render(
-            self.ground_truth(),  # (F, Z, Y, X)
+            self.ground_truth(),  # (B, F, Z, Y, X)
             self.filtered_emission_rates(),  # (C, F, W)
             objective_lens=self.objective_lens,
             settings=self.settings,
@@ -269,10 +269,10 @@ class Simulation(SimBaseModel):
 
         This is the same as `optical_image_per_fluor`, but sums the contributions of all
         fluorophores in each channel (which a detector would not know). The return
-        array has dimensions (C, Z, Y, X).  The units are photons/s.
+        array has dimensions (B, C, Z, Y, X).  The units are photons/s.
         """
         oipf = self.optical_image_per_fluor()
-        return oipf.sum(Axis.F)  # (C, Z, Y, X)
+        return oipf.sum(Axis.F)  # (B, C, Z, Y, X)
 
     def digital_image(
         self,
@@ -284,13 +284,13 @@ class Simulation(SimBaseModel):
         """Return the digital image as captured by the detector.
 
         This down-scales the optical image to the output space, and simulates the
-        detector response.  The return array has dimensions (C, Z, Y, X).  The units
+        detector response.  The return array has dimensions (B, C, Z, Y, X).  The units
         are gray values, based on the bit-depth of the detector.  If there is no
         detector or `with_detector_noise` is False, the units are simply photons.
         """
         if optical_image is None:
             optical_image = self.optical_image()
-        image = optical_image  # (C, Z, Y, X)
+        image = optical_image  # (B, C, Z, Y, X)
 
         # downscale to output space
         # TODO: consider how we would integrate detector pixel size
@@ -319,7 +319,7 @@ class Simulation(SimBaseModel):
             image = image * (ch_exposures / 1000)
             image.attrs.update(units="photons")
 
-        # (C, Z, Y, X)
+        # (B, C, Z, Y, X)
         return image
 
     def run(self) -> xr.DataArray:
