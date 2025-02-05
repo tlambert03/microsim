@@ -71,7 +71,7 @@ class _PSFModality(SimBaseModel):
                     # no emission at all for this fluorophore in this channel
                     fluors.append(xp.zeros_like(f_truth))
                     continue
-                
+
                 # not entirely sure about what would happen here...
                 summed_psf = self._summed_weighted_psf(
                     em_spectrum, settings, truth.attrs["space"], objective_lens, xp
