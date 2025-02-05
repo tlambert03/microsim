@@ -92,19 +92,16 @@ class Simulation(SimBaseModel):
         elif isinstance(self.output_space, _RelativeSpace):
             self.output_space.reference = self.truth_space
         return self
-    
+
     @model_validator(mode="after")
     def _check_fluorophores_equal_in_samples(self) -> "Self":
-        fp_names = [
-            {lbl.fluorophore.name for lbl in s.labels}
-            for s in self.samples
-        ]
-        if len(set(frozenset(s) for s in fp_names)) != 1:
+        fp_names = [{lbl.fluorophore.name for lbl in s.labels} for s in self.samples]
+        if len({frozenset(s) for s in fp_names}) != 1:
             raise ValueError(
                 "All samples in the batch must use the same set of fluorophores."
             )
         return self
-    
+
     @field_validator("samples")
     def _samples_to_list(value: Sample | list[Sample]) -> list[Sample]:
         return [value] if isinstance(value, Sample) else value
@@ -143,12 +140,12 @@ class Simulation(SimBaseModel):
             truths: list[xr.DataArray] = []
             for sample in self.samples:
                 # render each label in the sample
-                
+
                 # make empty space into which we'll add the ground truth
                 # TODO: this is wasteful... label.render should probably
                 # accept the space object directly
                 truth = self.truth_space.create(array_creator=xp.zeros)
-                
+
                 label_data = []
                 for label in sample.labels:
                     # TODO: differentiate caching for each label
@@ -173,7 +170,7 @@ class Simulation(SimBaseModel):
                 fluors = [lbl.fluorophore for lbl in sample.labels]
                 truth = xr.concat(label_data, dim=pd.Index(fluors, name=Axis.F))
                 truths.append(truth)
-            
+
             # concat along B axis
             self._ground_truth = xr.concat(
                 truths, dim=pd.Index(range(len(truths)), name=Axis.B)
@@ -181,7 +178,7 @@ class Simulation(SimBaseModel):
             self._ground_truth.attrs.update(
                 units="fluorophores", long_name="Ground Truth"
             )
-        
+
         return self._ground_truth
 
     def filtered_emission_rates(self) -> xr.DataArray:
