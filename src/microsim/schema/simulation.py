@@ -53,7 +53,7 @@ class Simulation(SimBaseModel):
 
     truth_space: Space
     output_space: Space | None = None
-    sample: Sample # this will need to become a list
+    sample: Sample  # this will need to become a list
     modality: Modality = Field(default_factory=Widefield)
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC])
@@ -202,7 +202,9 @@ class Simulation(SimBaseModel):
             return truth
 
         # total photons/s emitted by each fluorophore in each channel
-        total_flux = self.filtered_emission_rates().sum(Axis.W) * truth # this'd need to slightly change
+        total_flux = (
+            self.filtered_emission_rates().sum(Axis.W) * truth
+        )  # this'd need to slightly change
         total_flux.attrs.update(units="photon/sec", long_name="Emission Flux")
 
         # (C, F, Z, Y, X)
