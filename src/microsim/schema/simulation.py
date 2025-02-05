@@ -53,7 +53,7 @@ class Simulation(SimBaseModel):
 
     truth_space: Space
     output_space: Space | None = None
-    sample: Sample
+    sample: Sample # this will need to become a list
     modality: Modality = Field(default_factory=Widefield)
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC])
