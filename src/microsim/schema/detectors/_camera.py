@@ -117,7 +117,7 @@ class _Camera(SimBaseModel):
         # dark current
         avg_dark_e = self.dark_current * exposure_s + self.clock_induced_charge
         if not isinstance(avg_dark_e, float):
-            new_shape = avg_dark_e.shape + (1,) * (detected_photons.ndim - 1)
+            new_shape = avg_dark_e.shape + (1,) * (detected_photons.ndim - 1) # add also B dim
             avg_dark_e = np.asarray(avg_dark_e).reshape(new_shape)  # type: ignore [assignment]
         thermal_electrons = xp.poisson_rvs(avg_dark_e, shape=detected_photons.shape)
         total_electrons = detected_photons + thermal_electrons

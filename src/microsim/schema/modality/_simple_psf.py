@@ -71,7 +71,8 @@ class _PSFModality(SimBaseModel):
                     # no emission at all for this fluorophore in this channel
                     fluors.append(xp.zeros_like(f_truth))
                     continue
-
+                
+                # not entirely sure about what would happen here...
                 summed_psf = self._summed_weighted_psf(
                     em_spectrum, settings, truth.attrs["space"], objective_lens, xp
                 )
@@ -211,6 +212,7 @@ class Identity(_PSFModality):
         already convolved with the PSF. Therefore, we simply compute the emission flux
         for each fluorophore and each channel.
         """
+        # need to add batch dim here
         em_image = em_rates.sum(Axis.W) * truth
         return DataArray(
             em_image,

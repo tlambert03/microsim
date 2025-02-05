@@ -53,6 +53,8 @@ class FluorophoreDistribution(SimBaseModel):
 
     def render(self, space: xrDataArray, xp: NumpyAPI | None = None) -> xrDataArray:
         """Render the fluorophore distribution into the given space."""
+        # This would need to change, as with additional batch dim there'd be a mismatch
+        # between distribution and space dims
         dist = self.distribution.render(space, xp)
         if isinstance(self.concentration, float | int):
             return dist * self.concentration
