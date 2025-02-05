@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Annotated
 import numpy as np
 import pandas as pd
 import xarray as xr
-from pydantic import AfterValidator, Field, model_validator
+from pydantic import AfterValidator, Field, field_validator, model_validator
 
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
 from microsim.util import microsim_cache
@@ -53,7 +53,7 @@ class Simulation(SimBaseModel):
 
     truth_space: Space
     output_space: Space | None = None
-    sample: Sample # this will need to become a list
+    samples: Sample | list[Sample]
     modality: Modality = Field(default_factory=Widefield)
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC])
@@ -92,6 +92,19 @@ class Simulation(SimBaseModel):
         elif isinstance(self.output_space, _RelativeSpace):
             self.output_space.reference = self.truth_space
         return self
+    
+    @field_validator("samples")
+    def _samples_to_list(value: Sample | list[Sample]) -> list[Sample]:
+        return [value] if isinstance(value, Sample) else value
+    
+    @property
+    def sample(self) -> Sample:
+        warnings.warn(
+            "The `sample` attribute is deprecated. Use `samples` instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return self.samples[0]
 
     @property
     def _xp(self) -> "NumpyAPI":
