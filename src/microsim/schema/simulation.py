@@ -174,7 +174,7 @@ class Simulation(SimBaseModel):
             # concat along B axis
             self._ground_truth = xr.concat(
                 truths, dim=pd.Index(range(len(truths)), name=Axis.S)
-            ) # TODO: is there a better way to give coords to this axis?
+            )  # TODO: is there a better way to give coords to this axis?
             self._ground_truth.attrs.update(
                 units="fluorophores", long_name="Ground Truth"
             )
@@ -239,9 +239,9 @@ class Simulation(SimBaseModel):
             return truth
 
         # total photons/s emitted by each fluorophore in each channel
-        total_flux = (
-            self.filtered_emission_rates().sum(Axis.W) * truth
-        ).transpose(Axis.S, ...)
+        total_flux = (self.filtered_emission_rates().sum(Axis.W) * truth).transpose(
+            Axis.S, ...
+        )
         total_flux.attrs.update(units="photon/sec", long_name="Emission Flux")
 
         # (S, C, F, Z, Y, X)
@@ -284,10 +284,10 @@ class Simulation(SimBaseModel):
         """Return the digital image as captured by the detector.
 
         This down-scales the optical image to the output space, and simulates the
-        detector response.  The return array has dimensions (S, C, [F], Z, Y, X).  The 
-        units are gray values, based on the bit-depth of the detector.  If there is no 
+        detector response.  The return array has dimensions (S, C, [F], Z, Y, X).  The
+        units are gray values, based on the bit-depth of the detector.  If there is no
         detector or `with_detector_noise` is False, the units are simply photons.
-        
+
         NOTE: the input `optical_image` can only contain a fluorophore dimension (e.g.,
         it can be the output of `optical_image_per_fluor()`).
         """

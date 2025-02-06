@@ -117,9 +117,7 @@ class _Camera(SimBaseModel):
         # dark current
         avg_dark_e = self.dark_current * exposure_s + self.clock_induced_charge
         if not isinstance(avg_dark_e, float):
-            new_shape = (1,) + avg_dark_e.shape + (1,) * (
-                detected_photons.ndim - 2
-            )
+            new_shape = (1,) + avg_dark_e.shape + (1,) * (detected_photons.ndim - 2)
             avg_dark_e = np.asarray(avg_dark_e).reshape(new_shape)  # type: ignore [assignment]
         thermal_electrons = xp.poisson_rvs(avg_dark_e, shape=detected_photons.shape)
         total_electrons = detected_photons + thermal_electrons
@@ -127,7 +125,7 @@ class _Camera(SimBaseModel):
         # cap total electrons to full-well-capacity
         total_electrons = xp.minimum(total_electrons, self.full_well)
 
-        if binning > 1: # TODO: this function might not work with batch dim
+        if binning > 1:  # TODO: this function might not work with batch dim
             total_electrons = self.apply_pre_quantization_binning(
                 total_electrons, binning
             )
@@ -143,7 +141,7 @@ class _Camera(SimBaseModel):
         gray_values = self.quantize_electrons(total_electrons, xp)
 
         # sCMOS binning
-        if binning > 1: # TODO: this function might not work with batch dim
+        if binning > 1:  # TODO: this function might not work with batch dim
             gray_values = self.apply_post_quantization_binning(gray_values, binning)
 
         # ADC saturation

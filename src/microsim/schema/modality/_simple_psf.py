@@ -99,7 +99,7 @@ class _PSFModality(SimBaseModel):
                 "long_name": "Optical Image",
             },
         )
-        return channels.transpose(Axis.S, ...) # put batch dim first
+        return channels.transpose(Axis.S, ...)  # put batch dim first
 
     def _summed_weighted_psf(
         self,
@@ -221,7 +221,7 @@ class Identity(_PSFModality):
             units="photons",
             objective="",
             space=truth.attrs["space"],
-            long_name="Optical Image"
+            long_name="Optical Image",
         )
         return em_image
 
