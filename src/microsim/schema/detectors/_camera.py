@@ -127,7 +127,7 @@ class _Camera(SimBaseModel):
         # cap total electrons to full-well-capacity
         total_electrons = xp.minimum(total_electrons, self.full_well)
 
-        if binning > 1:
+        if binning > 1: # TODO: this function might not work with batch dim
             total_electrons = self.apply_pre_quantization_binning(
                 total_electrons, binning
             )
@@ -143,7 +143,7 @@ class _Camera(SimBaseModel):
         gray_values = self.quantize_electrons(total_electrons, xp)
 
         # sCMOS binning
-        if binning > 1:
+        if binning > 1: # TODO: this function might not work with batch dim
             gray_values = self.apply_post_quantization_binning(gray_values, binning)
 
         # ADC saturation

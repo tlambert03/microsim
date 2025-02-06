@@ -284,13 +284,16 @@ class Simulation(SimBaseModel):
         """Return the digital image as captured by the detector.
 
         This down-scales the optical image to the output space, and simulates the
-        detector response.  The return array has dimensions (B, C, Z, Y, X).  The units
-        are gray values, based on the bit-depth of the detector.  If there is no
+        detector response.  The return array has dimensions (B, C, [F], Z, Y, X).  The 
+        units are gray values, based on the bit-depth of the detector.  If there is no 
         detector or `with_detector_noise` is False, the units are simply photons.
+        
+        NOTE: the input `optical_image` can only contain a fluorophore dimension (e.g.,
+        it can be the output of `optical_image_per_fluor()`).
         """
         if optical_image is None:
             optical_image = self.optical_image()
-        image = optical_image  # (B, C, Z, Y, X)
+        image = optical_image  # (B, C, [F], Z, Y, X)
 
         # downscale to output space
         # TODO: consider how we would integrate detector pixel size
