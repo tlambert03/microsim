@@ -42,7 +42,7 @@ class _PSFModality(SimBaseModel):
 
     def render(
         self,
-        truth: xrDataArray,  # (B, F, Z, Y, X)
+        truth: xrDataArray,  # (S, F, Z, Y, X)
         em_rates: xrDataArray,  # (C, F, W)
         objective_lens: ObjectiveLens,
         settings: Settings,
@@ -83,11 +83,11 @@ class _PSFModality(SimBaseModel):
 
         channels = DataArray(
             channels,
-            dims=[Axis.C, Axis.F, Axis.B, Axis.Z, Axis.Y, Axis.X],
+            dims=[Axis.C, Axis.F, Axis.S, Axis.Z, Axis.Y, Axis.X],
             coords={
                 Axis.C: em_rates.coords[Axis.C],
                 Axis.F: truth.coords[Axis.F],
-                Axis.B: truth.coords[Axis.B],
+                Axis.S: truth.coords[Axis.S],
                 Axis.Z: truth.coords[Axis.Z],
                 Axis.Y: truth.coords[Axis.Y],
                 Axis.X: truth.coords[Axis.X],
@@ -99,7 +99,7 @@ class _PSFModality(SimBaseModel):
                 "long_name": "Optical Image",
             },
         )
-        return channels.transpose(Axis.B, ...) # put batch dim first
+        return channels.transpose(Axis.S, ...) # put batch dim first
 
     def _summed_weighted_psf(
         self,
@@ -205,7 +205,7 @@ class Identity(_PSFModality):
 
     def render(
         self,
-        truth: xrDataArray,  # (B, F, Z, Y, X)
+        truth: xrDataArray,  # (S, F, Z, Y, X)
         em_rates: xrDataArray,  # (C, F, W)
         *args: Any,
         **kwargs: Any,
@@ -216,7 +216,7 @@ class Identity(_PSFModality):
         already convolved with the PSF. Therefore, we simply compute the emission flux
         for each fluorophore and each channel.
         """
-        em_image = (em_rates.sum(Axis.W) * truth).transpose(Axis.B, ...)
+        em_image = (em_rates.sum(Axis.W) * truth).transpose(Axis.S, ...)
         em_image.attrs.update(
             units="photons",
             objective="",
