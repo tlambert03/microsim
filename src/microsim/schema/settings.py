@@ -50,7 +50,7 @@ class Settings(SimBaseModel, BaseSettings):
             "The maximum number of PSFs that will be stored in the in-memory cache, "
             "which follows the LRU caching strategy. Note, this setting will only take "
             "effect by modifying the equivalent environment variable prior to "
-            f"importing microsim."
+            "importing microsim."
         ),
         frozen=True,
     )
