@@ -1,12 +1,12 @@
 import logging
 import warnings
-from annotated_types import MinLen
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
 import numpy as np
 import pandas as pd
 import xarray as xr
+from annotated_types import MinLen
 from pydantic import AfterValidator, Field, field_validator, model_validator
 
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
@@ -105,7 +105,7 @@ class Simulation(SimBaseModel):
 
     @field_validator("samples")
     def _samples_to_list(value: Any) -> list[Any]:
-        return [value] if not isinstance(value, (list, tuple)) else value
+        return [value] if not isinstance(value, list | tuple) else value
 
     @property
     def sample(self) -> Sample:
