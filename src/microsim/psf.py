@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from functools import cache
+from functools import cache, lru_cache
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -11,6 +11,7 @@ import tqdm
 
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.lens import ObjectiveKwargs, ObjectiveLens
+from microsim.schema.settings import IN_MEM_PSF_CACHE_SIZE_DEFAULT
 from microsim.util import microsim_cache
 
 from ._data_array import ArrayProtocol
@@ -21,6 +22,10 @@ if TYPE_CHECKING:
 
     from microsim._data_array import ArrayProtocol
 
+IN_MEM_PSF_CACHE_SIZE = int(
+    os.getenv("MICROSIM_IN_MEM_PSF_CACHE_SIZE", IN_MEM_PSF_CACHE_SIZE_DEFAULT)
+)
+logging.info(f"In-memory PSF cache size has been set to: {IN_MEM_PSF_CACHE_SIZE}.")
 
 def simpson(
     objective: ObjectiveLens,
@@ -395,7 +400,7 @@ def make_psf(
 
 
 # variant of make_psf that only accepts hashable arguments
-@cache
+@lru_cache(maxsize=IN_MEM_PSF_CACHE_SIZE)
 def cached_psf(
     nz: int,
     nx: int,
