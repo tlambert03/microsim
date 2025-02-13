@@ -51,9 +51,10 @@ class Settings(SimBaseModel, BaseSettings):
         description=(
             "The maximum number of PSFs that will be stored in the in-memory cache, "
             "which follows the LRU caching strategy. Note, this setting will only take "
-            "effect if it is set as an environment variable, the default is "
-            f"{IN_MEM_PSF_CACHE_SIZE_DEFAULT}."
+            "effect by modifying the equivalent environment variable prior to "
+            f"importing microsim, the default is {IN_MEM_PSF_CACHE_SIZE_DEFAULT}."
         ),
+        frozen=True,
     )
     spectral_bins_per_emission_channel: int = Field(
         1,
