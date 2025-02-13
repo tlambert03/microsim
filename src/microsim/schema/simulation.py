@@ -1,7 +1,8 @@
 import logging
 import warnings
+from annotated_types import MinLen
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Any
 
 import numpy as np
 import pandas as pd
@@ -53,7 +54,7 @@ class Simulation(SimBaseModel):
 
     truth_space: Space
     output_space: Space | None = None
-    samples: Sample | list[Sample]
+    samples: Annotated[list[Sample], MinLen(1)]
     modality: Modality = Field(default_factory=Widefield)
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC])
@@ -103,8 +104,8 @@ class Simulation(SimBaseModel):
         return self
 
     @field_validator("samples")
-    def _samples_to_list(value: Sample | list[Sample]) -> list[Sample]:
-        return [value] if isinstance(value, Sample) else value
+    def _samples_to_list(value: Any) -> list[Any]:
+        return [value] if not isinstance(value, (list, tuple)) else value
 
     @property
     def sample(self) -> Sample:
