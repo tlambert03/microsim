@@ -9,8 +9,6 @@ from microsim._field_types import FloatDtype
 from ._base_model import SimBaseModel
 from .backend import BackendName, DeviceName, NumpyAPI
 
-IN_MEM_PSF_CACHE_SIZE_DEFAULT = 64
-
 
 class CacheSettings(SimBaseModel):
     read: bool = True
@@ -47,12 +45,12 @@ class Settings(SimBaseModel, BaseSettings):
     )
     cache: CacheSettings = Field(default_factory=CacheSettings)
     in_mem_psf_cache_size: int = Field(
-        default=IN_MEM_PSF_CACHE_SIZE_DEFAULT,
+        default=64,
         description=(
             "The maximum number of PSFs that will be stored in the in-memory cache, "
             "which follows the LRU caching strategy. Note, this setting will only take "
             "effect by modifying the equivalent environment variable prior to "
-            f"importing microsim, the default is {IN_MEM_PSF_CACHE_SIZE_DEFAULT}."
+            f"importing microsim."
         ),
         frozen=True,
     )
