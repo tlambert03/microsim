@@ -27,6 +27,7 @@ IN_MEM_PSF_CACHE_SIZE = int(
 )
 logging.info(f"In-memory PSF cache size has been set to: {IN_MEM_PSF_CACHE_SIZE}.")
 
+
 def simpson(
     objective: ObjectiveLens,
     theta: np.ndarray,
