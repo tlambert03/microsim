@@ -396,7 +396,7 @@ def make_psf(
 
 
 # variant of make_psf that only accepts hashable arguments
-@lru_cache(maxsize=Settings().in_mem_psf_cache_size)
+@lru_cache(maxsize=Settings().cache.in_mem_size.psf)
 def cached_psf(
     nz: int,
     nx: int,

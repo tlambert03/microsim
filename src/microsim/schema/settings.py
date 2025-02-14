@@ -10,9 +10,27 @@ from ._base_model import SimBaseModel
 from .backend import BackendName, DeviceName, NumpyAPI
 
 
+class InMemoryCacheSizes(SimBaseModel):
+    """
+    Parameters that control the in-memory cache size of various cached functions.
+    """
+
+    psf: int = Field(
+        default=64,
+        description=(
+            "The maximum number of PSFs that will be stored in the in-memory cache, "
+            "which follows the LRU caching strategy. Note, this setting will only take "
+            "effect by modifying the equivalent environment variable prior to "
+            "importing microsim."
+        ),
+        frozen=True,
+    )
+
+
 class CacheSettings(SimBaseModel):
     read: bool = True
     write: bool = True
+    in_mem_size: InMemoryCacheSizes = Field(default_factory=InMemoryCacheSizes)
 
     @model_validator(mode="before")
     @classmethod
@@ -44,16 +62,6 @@ class Settings(SimBaseModel, BaseSettings):
         ),
     )
     cache: CacheSettings = Field(default_factory=CacheSettings)
-    in_mem_psf_cache_size: int = Field(
-        default=64,
-        description=(
-            "The maximum number of PSFs that will be stored in the in-memory cache, "
-            "which follows the LRU caching strategy. Note, this setting will only take "
-            "effect by modifying the equivalent environment variable prior to "
-            "importing microsim."
-        ),
-        frozen=True,
-    )
     spectral_bins_per_emission_channel: int = Field(
         1,
         description="Number of wavelengths to use (per channel) when simulating the "
