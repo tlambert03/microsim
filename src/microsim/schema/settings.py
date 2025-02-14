@@ -11,9 +11,7 @@ from .backend import BackendName, DeviceName, NumpyAPI
 
 
 class InMemoryCacheSizes(SimBaseModel):
-    """
-    Parameters that control the in-memory cache size of various cached functions.
-    """
+    """Parameters that control the in-memory cache size of various cached functions."""
 
     psf: int = Field(
         default=64,
