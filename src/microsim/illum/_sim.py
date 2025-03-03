@@ -105,8 +105,7 @@ class SIMIllum2D(BaseModel):
         with tqdm(total=(self.nangles * self.nphases)) as pbar:
             for (ai, pi), (theta, phase) in _enumerated_product(self.angles, phases):
                 pbar.set_description(
-                    f"SIM: angle {ai + 1}/{self.nangles}, "
-                    f"phase {pi + 1}/{self.nphases}"
+                    f"SIM: angle {ai + 1}/{self.nangles}, phase {pi + 1}/{self.nphases}"
                 )
                 img = self._render_plane(sim_plane, coords, theta, phase)
                 img = img.reshape((ny, nz, nx)).transpose((1, 0, 2))

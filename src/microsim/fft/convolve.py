@@ -19,7 +19,7 @@ def _apply_conv_mode_no_copy(ret, s1, s2, mode, axes):
             for a in range(ret.ndim)
         ]
         return _centered(ret, shape_valid)
-    raise ValueError("acceptable mode flags are 'valid'," " 'same', or 'full'")
+    raise ValueError("acceptable mode flags are 'valid', 'same', or 'full'")
 
 
 def patched_fftconvolve(
