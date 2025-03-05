@@ -38,7 +38,7 @@ jobs:
         with:
           enable-cache: true
 
-      - run: uv run --extra cosem pytest --color=yes -v
+      - run: uv run --extra cosem coverage run -p -m pytest --color=yes -v
 
       - uses: actions/upload-artifact@v4
         with:
