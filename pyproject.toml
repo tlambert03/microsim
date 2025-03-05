@@ -33,8 +33,8 @@ dependencies = [
     'pydantic-settings !=2.5.0',
     "annotated_types",
     "dm-tree !=0.1.9; sys_platform == 'darwin'", # only needed for jax support.  could use an extra instead.
-    "dm-tree; sys_platform != 'darwin'",          # only needed for jax support.  could use an extra instead.
-    "numpy<2.0",                                  # required until tensorstore >0.1.61
+    "dm-tree; sys_platform != 'darwin'",         # only needed for jax support.  could use an extra instead.
+    "numpy<2.0",                                 # required until tensorstore >0.1.61
     "pint>=0.23",
     "platformdirs",
     "pydantic>=2.4",
