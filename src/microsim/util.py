@@ -168,7 +168,7 @@ def get_fftconvolve_shape(
         final_shape = full_shape
 
     else:
-        raise ValueError("Acceptable mode flags are 'valid'," " 'same', or 'full'")
+        raise ValueError("Acceptable mode flags are 'valid', 'same', or 'full'")
     return final_shape
 
 

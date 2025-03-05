@@ -15,19 +15,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-      - run: pip install -e .[docs]
-      - run: mkdocs build --strict
+      - uses: astral-sh/setup-uv@v5
+      - run: uv run --group docs mkdocs build --strict
 
   deploy:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: 3.x
-      - run: pip install -e .[docs]
-      - run: mkdocs gh-deploy --force
+      - uses: astral-sh/setup-uv@v5
+      - run: uv run --group docs mkdocs gh-deploy --force
