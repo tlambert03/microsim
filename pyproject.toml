@@ -111,7 +111,7 @@ select = [
     "B",    # flake8-bugbear
     "A001", # flake8-builtins
     "RUF",  # ruff-specific rules
-    "TCH",  # flake8-type-checking
+    "TC",  # flake8-type-checking
     "TID",  # flake8-tidy-imports
 ]
 ignore = [
