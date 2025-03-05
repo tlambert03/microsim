@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
 
-      - run: uv run --extra cosem --only-group test pytest --color=yes -v
+      - run: uv run --extra cosem pytest --color=yes -v
 
       - uses: actions/upload-artifact@v4
         with:

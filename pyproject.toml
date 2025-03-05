@@ -77,15 +77,14 @@ docs = [
 ]
 dev = [
     { include-group = "test" },
-#     # "microsim[cosem]",
-#     "boto3-stubs[s3]",
-#     "ipython",
-#     "mypy",
-#     "pdbpp",
+    "boto3-stubs[s3]",
+    "ipython",
+    "mypy",
+    "pdbpp",
     "pre-commit",
-#     "rich",
-#     "ruff",
-#     "types-tqdm",
+    "rich",
+    "ruff",
+    "types-tqdm",
 ]
 
 [project.urls]
