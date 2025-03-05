@@ -22,16 +22,26 @@ jobs:
       - run: pipx run check-manifest
 
   test:
-    uses: pyapp-kit/workflows/.github/workflows/test-pyrepo.yml@v2
-    with:
-      os: ${{ matrix.os }}
-      python-version: ${{ matrix.python-version }}
-      coverage-upload: artifact
+    name: Test ${{ matrix.os }} py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.10", "3.11", "3.12"]
+    env:
+      UV_PYTHON: ${{ matrix.python-version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+
+      - run: uv run --extra cosem --only-group test pytest --color=yes -v
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: covreport-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: ./.coverage*
+          include-hidden-files: true
 
   upload_coverage:
     if: always()
