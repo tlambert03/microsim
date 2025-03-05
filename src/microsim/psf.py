@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
-from functools import cache
+from functools import cache, lru_cache
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
@@ -11,6 +11,7 @@ import tqdm
 
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.lens import ObjectiveKwargs, ObjectiveLens
+from microsim.schema.settings import Settings
 from microsim.util import microsim_cache
 
 from ._data_array import ArrayProtocol
@@ -395,7 +396,7 @@ def make_psf(
 
 
 # variant of make_psf that only accepts hashable arguments
-@cache
+@lru_cache(maxsize=Settings().cache.in_mem_size.psf)
 def cached_psf(
     nz: int,
     nx: int,
