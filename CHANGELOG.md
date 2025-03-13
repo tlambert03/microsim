@@ -1,5 +1,17 @@
 # Changelog
 
+## [v0.0.9](https://github.com/tlambert03/microsim/tree/v0.0.9) (2025-03-13)
+
+[Full Changelog](https://github.com/tlambert03/microsim/compare/v0.0.8...v0.0.9)
+
+**Merged pull requests:**
+
+- Use uv for project setup [\#100](https://github.com/tlambert03/microsim/pull/100) ([tlambert03](https://github.com/tlambert03))
+- feat: LRU Caching for PSF, ability to set cache size with envvar [\#98](https://github.com/tlambert03/microsim/pull/98) ([melisande-c](https://github.com/melisande-c))
+- refactor: add Camera.camera\_type and other refactors [\#91](https://github.com/tlambert03/microsim/pull/91) ([tlambert03](https://github.com/tlambert03))
+- ci\(pre-commit.ci\): autoupdate [\#89](https://github.com/tlambert03/microsim/pull/89) ([pre-commit-ci[bot]](https://github.com/apps/pre-commit-ci))
+- ci\(dependabot\): bump codecov/codecov-action from 4 to 5 [\#86](https://github.com/tlambert03/microsim/pull/86) ([dependabot[bot]](https://github.com/apps/dependabot))
+
 ## [v0.0.8](https://github.com/tlambert03/microsim/tree/v0.0.8) (2024-11-09)
 
 [Full Changelog](https://github.com/tlambert03/microsim/compare/v0.0.7...v0.0.8)
