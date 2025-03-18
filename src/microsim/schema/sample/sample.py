@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 import numpy as np
 from pydantic import Field, model_validator
@@ -10,14 +10,35 @@ from microsim.schema.backend import NumpyAPI
 from microsim.schema.spectrum import Spectrum
 
 from ._distributions._base import Renderable, RenderableType
-from ._distributions.cosem import CosemLabel
 from ._distributions.direct import FixedArrayTruth
 from ._distributions.matslines import MatsLines
 from .fluorophore import Fluorophore
 
-AnyDistribution = MatsLines | CosemLabel | FixedArrayTruth | RenderableType
-# TODO: this feels like an unDRY hack
-DistributionTypes = MatsLines | CosemLabel | FixedArrayTruth | Renderable
+if TYPE_CHECKING:
+    from ._distributions.cosem import CosemLabel
+    AnyDistribution = (
+        MatsLines 
+        | CosemLabel 
+        | FixedArrayTruth 
+        | RenderableType
+    )
+    DistributionTypes = (
+        MatsLines 
+        | CosemLabel 
+        | FixedArrayTruth 
+        | Renderable
+    )
+else:
+    AnyDistribution = (
+        MatsLines 
+        | FixedArrayTruth 
+        | RenderableType
+    )
+    DistributionTypes = (
+        MatsLines 
+        | FixedArrayTruth 
+        | Renderable
+    )
 
 # This is a placeholder fluorophore for when no fluorophore is specified
 # it has broad excitation and emission spectra, high extinction coefficient.
