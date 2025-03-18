@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from pydantic import Field, model_validator
@@ -16,29 +16,12 @@ from .fluorophore import Fluorophore
 
 if TYPE_CHECKING:
     from ._distributions.cosem import CosemLabel
-    AnyDistribution = (
-        MatsLines 
-        | CosemLabel 
-        | FixedArrayTruth 
-        | RenderableType
-    )
-    DistributionTypes = (
-        MatsLines 
-        | CosemLabel 
-        | FixedArrayTruth 
-        | Renderable
-    )
+
+    AnyDistribution = MatsLines | CosemLabel | FixedArrayTruth | RenderableType
+    DistributionTypes = MatsLines | CosemLabel | FixedArrayTruth | Renderable
 else:
-    AnyDistribution = (
-        MatsLines 
-        | FixedArrayTruth 
-        | RenderableType
-    )
-    DistributionTypes = (
-        MatsLines 
-        | FixedArrayTruth 
-        | Renderable
-    )
+    AnyDistribution = MatsLines | FixedArrayTruth | RenderableType
+    DistributionTypes = MatsLines | FixedArrayTruth | Renderable
 
 # This is a placeholder fluorophore for when no fluorophore is specified
 # it has broad excitation and emission spectra, high extinction coefficient.
