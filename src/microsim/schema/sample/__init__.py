@@ -17,5 +17,6 @@ __all__ = [
 def __getattr__(name: str):
     if name == "CosemLabel":
         from ._distributions.cosem import CosemLabel
+
         return CosemLabel
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
