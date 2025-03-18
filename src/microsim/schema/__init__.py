@@ -56,5 +56,6 @@ __all__ = [
 def __getattr__(name: str) -> Any:
     if name == "CosemLabel":
         from .sample import CosemLabel
+
         return CosemLabel
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
