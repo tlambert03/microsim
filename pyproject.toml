@@ -30,22 +30,24 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    'pydantic-settings >2.5.0',
-    "annotated-types>=0.7.0",
+    "annotated-types >=0.7.0",
     "dm-tree ==0.1.8; sys_platform == 'darwin'", # only needed for jax support.  could use an extra instead.
     "dm-tree >=0.1.7",                           # only needed for jax support.  could use an extra instead.
     "numpy >=1.26,<2.0",                         # required until tensorstore >0.1.61
-    "pint>=0.23",
-    "platformdirs>=4.3.6",
-    "pydantic>=2.8",
-    "scipy>=1.15.2",
-    "tensorstore>=0.1.70,!=0.1.72",
-    "tqdm>=4.67.1",
-    "xarray>=2024.1.0",
+    "pint >=0.23",
+    "platformdirs >=4.3.6",
+    "pydantic >=2.8",
+    "pydantic-settings >2.5.0",
+    "scipy >=1.15.2",
+    "tensorstore >=0.1.70,!=0.1.72",
+    "tqdm >=4.67.1",
+    "xarray >=2024.1.0",
 ]
 
 # # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
+view = ["ndv[pyqt,vispy]", "matplotlib>=3.10.1", "pyopengl-accelerate"]
+io = ["tifffile>=2025.2.18", "zarr >=2.17,<3.0", "imageio>=2.22"]
 cosem = [
     "dask>=2024.1.0",
     "imageio>=2.22",
@@ -54,16 +56,15 @@ cosem = [
     "s3fs>=0.4.2",
     "xarray-datatree>=0.0.14",
 ]
+all = ["microsim[view,io,cosem]"]
 
 [dependency-groups]
 test = [
+    "microsim[all]",
     "jax[cpu]>=0.5.2",
-    "matplotlib>=3.10.1",
     "pytest>=8.3.5",
     "pytest-cov>=6.0.0",
-    "tifffile>=2025.2.18",
     "torch>=2.6.0",
-    "zarr >=2.17,<3.0",
 ]
 docs = [
     "mkdocs >=1.5.3",
@@ -111,7 +112,7 @@ select = [
     "B",    # flake8-bugbear
     "A001", # flake8-builtins
     "RUF",  # ruff-specific rules
-    "TC",  # flake8-type-checking
+    "TC",   # flake8-type-checking
     "TID",  # flake8-tidy-imports
 ]
 ignore = [

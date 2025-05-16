@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Literal
 
+    from cmap._colormap import ColorStopsLike
     from numpy.typing import DTypeLike, NDArray
 
     ShapeLike = Sequence[int]
@@ -365,22 +366,19 @@ def ortho_plot(
         plt.show()
 
 
-def ndview(ary: Any, cmap: Any | None = None) -> None:
+def ndview(ary: Any, cmap: ColorStopsLike | None = None) -> None:
     """View any array using ndv.imshow.
 
     This function is a thin wrapper around `ndv.imshow`.
     """
     try:
         import ndv
-        import qtpy
-        import vispy.app
     except ImportError as e:
         raise ImportError(
             "Please `pip install 'ndv[pyqt,vispy]' to use this function."
         ) from e
 
-    vispy.use(qtpy.API_NAME)
-    ndv.imshow(ary, cmap=cmap)
+    ndv.imshow(ary, default_lut={"cmap": cmap or "gray"})
 
 
 ArrayType = TypeVar("ArrayType", bound=ArrayProtocol)
