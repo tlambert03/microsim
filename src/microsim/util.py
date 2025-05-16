@@ -440,4 +440,4 @@ def http_get(url: str, params: dict | None = None) -> bytes:
             raise HTTPError(
                 url, response.getcode(), "HTTP request failed", response.headers, None
             )
-        return cast(bytes, response.read())
+        return cast("bytes", response.read())

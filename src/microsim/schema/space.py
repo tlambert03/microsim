@@ -174,7 +174,7 @@ class DownscaledSpace(_RelativeSpace):
 
     def rescale(self, img: xrDataArray) -> xrDataArray:
         if isinstance(self.downscale, int | float):
-            axes = {ax: self.downscale for ax in self.axes}
+            axes = dict.fromkeys(self.axes, self.downscale)
         elif isinstance(self.downscale, Sequence):
             axes = dict(zip(self.axes, self.downscale, strict=False))
 

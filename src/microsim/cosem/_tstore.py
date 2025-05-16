@@ -225,7 +225,7 @@ def sum_bin(
 
     for lvl in range(1, max_level or len(img.scales)):
         # determine chunk size of incoming array
-        inchunk = cast(tuple, arr_in.chunk_layout.read_chunk.shape)
+        inchunk = cast("tuple", arr_in.chunk_layout.read_chunk.shape)
         # path of the destination array
         path = dest / (img.bucket_path.lstrip("/") + f"/sum{lvl}")
         kvstore = {"driver": "file", "path": str(path)}
