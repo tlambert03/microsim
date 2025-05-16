@@ -53,32 +53,29 @@ jobs:
     secrets:
       codecov_token: ${{ secrets.CODECOV_TOKEN }}
 
-  deploy:
-    name: Deploy
+  build-and-inspect-package:
+    name: Build & inspect package.
     needs: test
-    if: success() && startsWith(github.ref, 'refs/tags/') && github.event_name != 'schedule'
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hynek/build-and-inspect-python-package@v2
+
+  upload-to-pypi:
+    name: Upload package to PyPI
+    needs: build-and-inspect-package
+    runs-on: ubuntu-latest
+    if: success() && startsWith(github.ref, 'refs/tags/') && github.event_name != 'schedule'
     permissions:
       id-token: write
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Download built artifact to dist/
+        uses: actions/download-artifact@v4
         with:
-          fetch-depth: 0
-
-      - name: 🐍 Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.x"
-
-      - name: 👷 Build
-        run: |
-          python -m pip install build
-          python -m build
-
-      - name: 🚢 Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-
+          name: Packages
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
