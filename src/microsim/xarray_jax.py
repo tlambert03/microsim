@@ -121,8 +121,14 @@ from typing import (
 import jax
 import jax.numpy as jnp
 import numpy as np
-import tree
 import xarray
+
+try:
+    import tree
+except ImportError:
+    raise ImportError(
+        "dm-tree is required when using jax.  Please `pip install dm-tree`."
+    )
 
 
 def Variable(dims, data, **kwargs) -> xarray.Variable:  # pylint:disable=invalid-name
