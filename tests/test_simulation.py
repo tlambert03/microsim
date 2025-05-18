@@ -165,3 +165,4 @@ def test_simulation_write_from_ground_truth(tmp_path: Path) -> None:
         output_path=tmp_path / "output.zarr",
     )
     sim.run()
+    assert (tmp_path / "output.zarr").exists()
