@@ -75,6 +75,7 @@ dev = [
     "boto3-stubs[s3]",
     "ipython",
     "mypy",
+    "pdbpp; sys_platform == 'darwin'",
     "pre-commit",
     "rich",
     "ruff",

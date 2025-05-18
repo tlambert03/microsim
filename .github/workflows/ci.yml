@@ -47,7 +47,7 @@ jobs:
       - if: ${{ matrix.min == 'minimal' }}
         run: uv sync --no-dev --group test
       - if: ${{ matrix.min != 'minimal' }}
-        run: uv sync --no-dev --group test --group arrays --all-extras
+        run: uv sync --no-dev --group test --all-extras
 
       - run: uv run coverage run -p -m pytest --color=yes -v
 
