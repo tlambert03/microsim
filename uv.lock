@@ -1694,7 +1694,6 @@ name = "microsim"
 source = { editable = "." }
 dependencies = [
     { name = "annotated-types" },
-    { name = "dm-tree" },
     { name = "numpy" },
     { name = "pint" },
     { name = "platformdirs" },
@@ -1745,6 +1744,7 @@ view = [
 [package.dev-dependencies]
 dev = [
     { name = "boto3-stubs", extra = ["s3"] },
+    { name = "dm-tree" },
     { name = "ipython", version = "8.36.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.2.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "jax" },
@@ -1769,6 +1769,7 @@ docs = [
     { name = "mkdocstrings-python" },
 ]
 test = [
+    { name = "dm-tree" },
     { name = "jax" },
     { name = "microsim", extra = ["all"] },
     { name = "pytest" },
@@ -1783,8 +1784,6 @@ requires-dist = [
     { name = "boto3", marker = "extra == 'cosem'", specifier = ">=1.32" },
     { name = "dask", marker = "extra == 'all'", specifier = ">=2024.1.0" },
     { name = "dask", marker = "extra == 'cosem'", specifier = ">=2024.1.0" },
-    { name = "dm-tree", specifier = ">=0.1.7" },
-    { name = "dm-tree", marker = "sys_platform == 'darwin'", specifier = "==0.1.8" },
     { name = "imageio", marker = "extra == 'all'", specifier = ">=2.22" },
     { name = "imageio", marker = "extra == 'cosem'", specifier = ">=2.22" },
     { name = "imageio", marker = "extra == 'io'", specifier = ">=2.22" },
@@ -1819,6 +1818,8 @@ provides-extras = ["all", "cosem", "io", "view"]
 [package.metadata.requires-dev]
 dev = [
     { name = "boto3-stubs", extras = ["s3"] },
+    { name = "dm-tree", specifier = ">=0.1.7" },
+    { name = "dm-tree", marker = "sys_platform == 'darwin'", specifier = "==0.1.8" },
     { name = "ipython" },
     { name = "jax", extras = ["cpu"], specifier = ">=0.5.2" },
     { name = "microsim", extras = ["all"], editable = "." },
@@ -1842,6 +1843,8 @@ docs = [
     { name = "mkdocstrings-python", specifier = "==1.9.2" },
 ]
 test = [
+    { name = "dm-tree", specifier = ">=0.1.7" },
+    { name = "dm-tree", marker = "sys_platform == 'darwin'", specifier = "==0.1.8" },
     { name = "jax", extras = ["cpu"], specifier = ">=0.5.2" },
     { name = "microsim", extras = ["all"], editable = "." },
     { name = "pytest", specifier = ">=8.3.5" },
