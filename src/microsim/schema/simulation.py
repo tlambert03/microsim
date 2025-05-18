@@ -320,11 +320,9 @@ class Simulation(SimBaseModel):
             result = result.copy(data=result.data.get(), deep=False)
         with suppress(Exception):
             try:
-                sim_data = self.model_dump(
-                    mode="json",
-                )
+                sim_data = self.model_dump_json()
             except PydanticSerializationError:
-                sim_data = self.model_dump(mode="json", exclude={"sample"})
+                sim_data = self.model_dump_json(exclude={"sample"})
             result.attrs = {"microsim.Simulation": sim_data}
         result.coords[Axis.C] = [c.name for c in result.coords[Axis.C].values]
         if self.output_path.suffix == ".zarr":
