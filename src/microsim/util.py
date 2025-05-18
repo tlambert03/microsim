@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from typing import Literal
 
+    from cmap._colormap import ColorStopsLike
     from numpy.typing import DTypeLike, NDArray
 
     ShapeLike = Sequence[int]
@@ -168,7 +169,7 @@ def get_fftconvolve_shape(
         final_shape = full_shape
 
     else:
-        raise ValueError("Acceptable mode flags are 'valid'," " 'same', or 'full'")
+        raise ValueError("Acceptable mode flags are 'valid', 'same', or 'full'")
     return final_shape
 
 
@@ -260,8 +261,13 @@ def ortho_plot(
     z: int | None = None,
 ) -> None:
     """Plot XY and XZ slices of a 3D array."""
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import LinearSegmentedColormap
+    try:
+        import matplotlib.pyplot as plt
+        from matplotlib.colors import LinearSegmentedColormap
+    except ImportError as e:
+        raise ImportError(
+            "Please `pip install microsim[view]` to use plotting/viewing functions."
+        ) from e
 
     if isinstance(img, xrDataArray):
         img = img.data
@@ -365,22 +371,19 @@ def ortho_plot(
         plt.show()
 
 
-def ndview(ary: Any, cmap: Any | None = None) -> None:
+def ndview(ary: Any, cmap: ColorStopsLike | None = None) -> None:
     """View any array using ndv.imshow.
 
     This function is a thin wrapper around `ndv.imshow`.
     """
     try:
         import ndv
-        import qtpy
-        import vispy.app
     except ImportError as e:
         raise ImportError(
-            "Please `pip install 'ndv[pyqt,vispy]' to use this function."
+            "Please `pip install microsim[view]` to use plotting/viewing functions."
         ) from e
 
-    vispy.use(qtpy.API_NAME)
-    ndv.imshow(ary, cmap=cmap)
+    ndv.imshow(ary, default_lut={"cmap": cmap or "gray"})
 
 
 ArrayType = TypeVar("ArrayType", bound=ArrayProtocol)
@@ -440,4 +443,4 @@ def http_get(url: str, params: dict | None = None) -> bytes:
             raise HTTPError(
                 url, response.getcode(), "HTTP request failed", response.headers, None
             )
-        return cast(bytes, response.read())
+        return cast("bytes", response.read())

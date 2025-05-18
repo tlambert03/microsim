@@ -58,7 +58,7 @@ class Simulation(SimBaseModel):
     objective_lens: ObjectiveLens = Field(default_factory=ObjectiveLens)
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC])
     # TODO: channels should also include `lights: list[LightSource]`
-    detector: Detector | None = None
+    detector: Detector | None = Field(default=None, discriminator="camera_type")
     exposure_ms: float = 100
     settings: Settings = Field(default_factory=Settings)
     output_path: OutPath | None = None
@@ -303,8 +303,8 @@ class Simulation(SimBaseModel):
             return None
 
         truth_cache = Path(microsim_cache("ground_truth"), *lbl_path)
-        shape = f'shape{"_".join(str(x) for x in truth_space.shape)}'
-        scale = f'scale{"_".join(str(x) for x in truth_space.scale)}'
+        shape = f"shape{'_'.join(str(x) for x in truth_space.shape)}"
+        scale = f"scale{'_'.join(str(x) for x in truth_space.scale)}"
         conc = f"conc{label.concentration}"
         truth_cache = truth_cache / shape / scale / conc
         if hasattr(label.distribution, "is_random") and label.distribution.is_random():
@@ -323,7 +323,12 @@ class Simulation(SimBaseModel):
         elif self.output_path.suffix in (".nc",):
             result.to_netcdf(self.output_path)
         elif self.output_path.suffix in (".tif", ".tiff"):
-            import tifffile as tf
+            try:
+                import tifffile as tf
+            except ImportError as e:
+                raise ImportError(
+                    "Please `pip install microsim[io]` to write TIFF files."
+                ) from e
 
             tf.imwrite(self.output_path, np.asanyarray(result))
 
@@ -342,7 +347,12 @@ class Simulation(SimBaseModel):
 def plot_simulation_summary(
     sim: Simulation, transpose: bool = False, legend: bool = True
 ) -> None:
-    import matplotlib.pyplot as plt
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError as e:
+        raise ImportError(
+            "Please `pip install microsim[view]` to use plotting/viewing functions."
+        ) from e
 
     nrows = 5
     ncols = len(sim.channels)

@@ -14,6 +14,7 @@ JSON_BLOCK = re.compile(r"```json([^`]*)```", re.DOTALL)
 
 @pytest.mark.parametrize("doc", DOCS_MDS, ids=lambda p: p.name)
 def test_docs(doc: Path, tmp_path: Path) -> None:
+    pytest.importorskip("matplotlib")
     os.chdir(tmp_path)
     source = doc.read_text(encoding="utf-8")
 

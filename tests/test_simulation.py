@@ -1,3 +1,5 @@
+import importlib
+import importlib.util
 import pickle
 from pathlib import Path
 
@@ -66,7 +68,12 @@ def test_schema(
         np.testing.assert_allclose(out1, out2)
 
 
-@pytest.mark.parametrize("ext", [".tif", ".zarr", ".nc"])
+EXTENSIONS = [".zarr", ".nc"]
+if importlib.util.find_spec("tifffile"):
+    EXTENSIONS.append(".tiff")
+
+
+@pytest.mark.parametrize("ext", EXTENSIONS)
 def test_simulation_output(tmp_path: Path, ext: str) -> None:
     sim = ms.Simulation(
         truth_space=ms.ShapeScaleSpace(shape=(64, 128, 128), scale=(0.2, 0.1, 0.1)),

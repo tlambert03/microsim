@@ -5,8 +5,15 @@ import pytest
 import tensorstore as ts
 
 from microsim import schema as ms
-from microsim.cosem import CosemDataset, CosemImage, CosemView, manage, organelles
 from microsim.schema.optical_config import lib
+
+try:
+    from microsim.cosem import CosemDataset, CosemImage, CosemView, manage, organelles
+except ImportError:
+    pytest.skip(
+        "COSEM dependencies not installed, skipping tests",
+        allow_module_level=True,
+    )
 
 
 def test_cosem_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -32,9 +39,9 @@ def test_cosem_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_cosem_image() -> None:
     # note, this is also testing _get_similar ... since the "real" name is jrc_hela-3
     dataset = CosemDataset.fetch("jrc_hela_3")
-    img = dataset.image(name="fibsem-uint16")
+    img = dataset.image(name="chrom_pred")
     assert isinstance(img, CosemImage)
-    assert img.bucket_key == "jrc_hela-3/jrc_hela-3.n5/em/fibsem-uint16"
+    assert img.bucket_key == "jrc_hela-3/jrc_hela-3.n5/labels/chrom_pred"
 
     assert isinstance(img.read(-1), ts.TensorStore)
 

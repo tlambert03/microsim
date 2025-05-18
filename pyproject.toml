@@ -30,39 +30,53 @@ classifiers = [
     "Typing :: Typed",
 ]
 dependencies = [
-    'pydantic-settings !=2.5.0',
-    "annotated_types",
-    "dm-tree",           # only needed for jax support.  could use an extra instead.
-    "numpy<2.0",         # required until tensorstore >0.1.61
-    "pint>=0.23",
-    "platformdirs",
-    "pydantic>=2.4",
-    "scipy",
-    "tensorstore",
-    "tqdm",
-    "xarray",
+    "annotated-types >=0.7.0",
+    "numpy >=1.26,<2.0",             # something still breaks with 2+
+    "pint >=0.23",
+    "platformdirs >=4.3.6",
+    "pydantic >=2.8",
     "fpbase",
+    "pydantic-settings >2.5.0",
+    "scipy >=1.15.2",
+    "tensorstore >=0.1.70,!=0.1.72",
+    "tqdm >=4.67.1",
+    "xarray >=2024.1.0",
+    "zarr >=2.17,<3.0",
 ]
 
-# https://peps.python.org/pep-0621/#dependencies-optional-dependencies
+[project.urls]
+homepage = "https://github.com/tlambert03/microsim"
+repository = "https://github.com/tlambert03/microsim"
+
+# # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
-cosem = ["xarray-datatree", "s3fs", "dask", "imageio", "supabase", "boto3"]
-test = [
-    "microsim[cosem]",
-    "jax[cpu]",
-    "matplotlib",
-    "pytest-cov",
-    "pytest",
-    "tifffile",
-    "torch",
-    "zarr",
+view = ["ndv[pyqt,vispy]", "matplotlib>=3.10.1", "pyopengl-accelerate"]
+io = ["tifffile>=2025.2.18", "imageio>=2.22"]
+cosem = [
+    "dask>=2024.1.0",
+    "imageio>=2.22",
+    "boto3>=1.32",
+    "supabase>=2.13.0",
+    "s3fs>=0.4.2",
+    "xarray-datatree>=0.0.14",
 ]
+torch = ["torch>=2.6.0"]
+jax = [
+    "jax[cpu]>=0.5.2",
+    "dm-tree ==0.1.8; sys_platform == 'darwin'",
+    "dm-tree >=0.1.7",
+]
+all = ["microsim[view,io,cosem]"]
+
+[dependency-groups]
+test = ["pytest>=8.3.5", "pytest-cov>=6.0.0"]
 dev = [
-    "microsim[test]",
+    { include-group = "test" },
+    "microsim[all,jax,torch]",
     "boto3-stubs[s3]",
     "ipython",
     "mypy",
-    "pdbpp",
+    "pdbpp; sys_platform == 'darwin'",
     "pre-commit",
     "rich",
     "ruff",
@@ -71,6 +85,7 @@ dev = [
 docs = [
     "mkdocs >=1.5.3",
     "mkdocs-material==9.5.17",
+    "mkdocs-autorefs==1.1.0",
     "mkdocstrings ==0.24.3",
     "mkdocstrings-python ==1.9.2",
     "mkdocs-jupyter==0.24.8",
@@ -78,9 +93,9 @@ docs = [
     "griffe-fieldz",
 ]
 
-[project.urls]
-homepage = "https://github.com/tlambert03/microsim"
-repository = "https://github.com/tlambert03/microsim"
+[tool.uv.sources]
+microsim = { workspace = true }
+
 
 [tool.ruff]
 line-length = 88
@@ -101,7 +116,7 @@ select = [
     "B",    # flake8-bugbear
     "A001", # flake8-builtins
     "RUF",  # ruff-specific rules
-    "TCH",  # flake8-type-checking
+    "TC",   # flake8-type-checking
     "TID",  # flake8-tidy-imports
 ]
 ignore = [

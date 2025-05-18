@@ -1,14 +1,12 @@
-from ._camera import ICX285, Camera, CameraCCD, CameraCMOS, CameraEMCCD
-from ._simulate import simulate_camera
+from . import lib
+from ._camera import CameraCCD, CameraCMOS, CameraEMCCD
 
 Detector = CameraEMCCD | CameraCMOS | CameraCCD
 
 __all__ = [
-    "Detector",
-    "Camera",
     "CameraCCD",
     "CameraCMOS",
     "CameraEMCCD",
-    "simulate_camera",
-    "ICX285",
+    "Detector",
+    "lib",
 ]
