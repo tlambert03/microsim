@@ -44,7 +44,7 @@ class Settings(SimBaseModel, BaseSettings):
     np_backend: BackendName = "auto"
     device: DeviceName = "auto"
     float_dtype: FloatDtype = Field(
-        "float32",  # type: ignore
+        "float32",  # type: ignore[arg-type]
         description="Floating-point precision to use for simulations.",
     )
     random_seed: int | None = Field(
