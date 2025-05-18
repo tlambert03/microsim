@@ -15,6 +15,10 @@ The goal of this library is to generate highly realistic simulated data such as 
 *(this data was generated using segmentations from
 [cell jrc_hela-3 at OpenOrganelle](https://openorganelle.janelia.org/datasets/jrc_hela-3) as the ground truth)*
 
+
+<video src='https://github.com/user-attachments/assets/905fa1af-c8bd-406e-87a7-7c5921de74d1'>
+
+
 ## Documentation
 
 Start with the [tutorial](https://www.talleylambert.com/microsim/tutorial/), and read about the
