@@ -69,12 +69,8 @@ def test_schema(
 
 
 EXTENSIONS = [".zarr", ".nc"]
-try:
-    importlib.util.find_spec("tifffile")
-
+if importlib.util.find_spec("tifffile"):
     EXTENSIONS.append(".tiff")
-except ImportError:
-    pass
 
 
 @pytest.mark.parametrize("ext", EXTENSIONS)
