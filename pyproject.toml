@@ -31,7 +31,7 @@ classifiers = [
 ]
 dependencies = [
     "annotated-types >=0.7.0",
-    "numpy >=1.26,<2.0",  # something weird still breaks with >=2.0
+    "numpy >=1.26,<2.0",             # something still breaks with 2+
     "pint >=0.23",
     "platformdirs >=4.3.6",
     "pydantic >=2.8",
@@ -60,7 +60,8 @@ all = ["microsim[view,io,cosem]"]
 test = [
     "microsim[all]",
     "jax[cpu]>=0.5.2",
-    "dm-tree",
+    "dm-tree ==0.1.8; sys_platform == 'darwin'", # only needed for jax support.  could use an extra instead.
+    "dm-tree >=0.1.7",                           # only needed for jax support.  could use an extra instead.
     "pytest>=8.3.5",
     "pytest-cov>=6.0.0",
     "torch>=2.6.0",
