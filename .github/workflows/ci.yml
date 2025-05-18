@@ -43,7 +43,7 @@ jobs:
         with:
           enable-cache: true
 
-      - run: uv run ${{ extras == 'false' && '' || '--all-extras' }} coverage run -p -m pytest --color=yes -v
+      - run: uv run ${{ matrix.extras == 'false' && '' || '--all-extras' }} coverage run -p -m pytest --color=yes -v
 
       - uses: actions/upload-artifact@v4
         with:
