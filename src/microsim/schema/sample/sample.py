@@ -14,14 +14,15 @@ from ._distributions.direct import FixedArrayTruth
 from ._distributions.matslines import MatsLines
 from .fluorophore import Fluorophore
 
-if TYPE_CHECKING:
+try:
     from ._distributions.cosem import CosemLabel
 
     AnyDistribution = MatsLines | CosemLabel | FixedArrayTruth | RenderableType
     DistributionTypes = MatsLines | CosemLabel | FixedArrayTruth | Renderable
-else:
-    AnyDistribution = MatsLines | FixedArrayTruth | RenderableType
-    DistributionTypes = MatsLines | FixedArrayTruth | Renderable
+except ImportError:
+    if not TYPE_CHECKING:
+        AnyDistribution = MatsLines | FixedArrayTruth | RenderableType
+        DistributionTypes = MatsLines | FixedArrayTruth | Renderable
 
 # This is a placeholder fluorophore for when no fluorophore is specified
 # it has broad excitation and emission spectra, high extinction coefficient.
