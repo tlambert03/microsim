@@ -22,7 +22,7 @@ jobs:
       - run: pipx run check-manifest
 
   test:
-    name: Test ${{ matrix.os }} py${{ matrix.python-version }}
+    name: Test ${{ matrix.os }} py${{ matrix.python-version }} ${{ matrix.extras == 'false' && 'no-extras' || ''}}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
