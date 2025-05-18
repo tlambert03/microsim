@@ -1704,6 +1704,8 @@ dependencies = [
     { name = "tensorstore", version = "0.1.75", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
     { name = "tqdm" },
     { name = "xarray" },
+    { name = "zarr", version = "2.18.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "zarr", version = "2.18.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 
 [package.optional-dependencies]
@@ -1718,8 +1720,6 @@ all = [
     { name = "supabase" },
     { name = "tifffile" },
     { name = "xarray-datatree" },
-    { name = "zarr", version = "2.18.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "zarr", version = "2.18.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 cosem = [
     { name = "boto3" },
@@ -1732,8 +1732,6 @@ cosem = [
 io = [
     { name = "imageio" },
     { name = "tifffile" },
-    { name = "zarr", version = "2.18.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "zarr", version = "2.18.7", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 jax = [
     { name = "dm-tree" },
@@ -1814,8 +1812,7 @@ requires-dist = [
     { name = "xarray", specifier = ">=2024.1.0" },
     { name = "xarray-datatree", marker = "extra == 'all'", specifier = ">=0.0.14" },
     { name = "xarray-datatree", marker = "extra == 'cosem'", specifier = ">=0.0.14" },
-    { name = "zarr", marker = "extra == 'all'", specifier = ">=2.17,<3.0" },
-    { name = "zarr", marker = "extra == 'io'", specifier = ">=2.17,<3.0" },
+    { name = "zarr", specifier = ">=2.17,<3.0" },
 ]
 provides-extras = ["all", "cosem", "io", "jax", "torch", "view"]
 
