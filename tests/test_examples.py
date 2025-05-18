@@ -34,4 +34,9 @@ def test_examples(fpath: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
 
         fpath = tmp_path / fpath.name
         fpath.write_text("\n".join(lines))
-    runpy.run_path(str(fpath), run_name="__main__")
+    try:
+        runpy.run_path(str(fpath), run_name="__main__")
+    except ImportError as e:
+        if "microsim" in str(e):
+            pytest.skip(f"Skipping {fpath} due to missing dependencies")
+        raise

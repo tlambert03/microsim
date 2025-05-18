@@ -261,8 +261,13 @@ def ortho_plot(
     z: int | None = None,
 ) -> None:
     """Plot XY and XZ slices of a 3D array."""
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import LinearSegmentedColormap
+    try:
+        import matplotlib.pyplot as plt
+        from matplotlib.colors import LinearSegmentedColormap
+    except ImportError as e:
+        raise ImportError(
+            "Please `pip install microsim[view]` to use plotting/viewing functions."
+        ) from e
 
     if isinstance(img, xrDataArray):
         img = img.data
@@ -375,7 +380,7 @@ def ndview(ary: Any, cmap: ColorStopsLike | None = None) -> None:
         import ndv
     except ImportError as e:
         raise ImportError(
-            "Please `pip install 'ndv[pyqt,vispy]' to use this function."
+            "Please `pip install microsim[view]` to use plotting/viewing functions."
         ) from e
 
     ndv.imshow(ary, default_lut={"cmap": cmap or "gray"})

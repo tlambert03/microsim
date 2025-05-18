@@ -1,3 +1,4 @@
+from contextlib import suppress
 from typing import Any
 
 import numpy as np
@@ -13,10 +14,14 @@ SHAPE = (128, 128, 128)
 ARY = np.random.rand(*SHAPE).astype(np.float32)
 KERNEL = np.random.randint(0, 200, (3, 3, 3)).astype(np.uint8)
 EXPECTED = fftconvolve(ARY, KERNEL, mode="same")
-BACKENDS = {"scipy": "scipy", "jax": JaxFFTBackend(), "torch": TorchFFTBackend()}
+BACKENDS: dict = {"scipy": "scipy"}
+with suppress(ImportError):
+    BACKENDS["jax"] = JaxFFTBackend()
+with suppress(ImportError):
+    BACKENDS["torch"] = TorchFFTBackend()
 
 
-@pytest.mark.parametrize("backend", ["scipy", "jax", "torch"])
+@pytest.mark.parametrize("backend", BACKENDS)
 def test_fft_backend(backend: Any) -> None:
     with scipy.fft.set_backend(BACKENDS[backend], coerce=True):
         result = patched_fftconvolve(ARY, KERNEL, mode="same")

@@ -22,27 +22,38 @@ jobs:
       - run: pipx run check-manifest
 
   test:
-    name: Test ${{ matrix.os }} py${{ matrix.python-version }}
+    name: Test ${{ matrix.os }} py${{ matrix.python-version }} ${{ matrix.min }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.10", "3.11", "3.12"]
+        min: [""]
+        include:
+          - os: ubuntu-latest
+            python-version: "3.12"
+            min: "minimal"
+
     env:
       UV_PYTHON: ${{ matrix.python-version }}
-      UV_FROZEN: 1
+      UV_NO_SYNC: 1
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
 
-      - run: uv run --all-extras coverage run -p -m pytest --color=yes -v
+      - if: ${{ matrix.min == 'minimal' }}
+        run: uv sync --no-dev --group test
+      - if: ${{ matrix.min != 'minimal' }}
+        run: uv sync --no-dev --group test --all-extras
+
+      - run: uv run coverage run -p -m pytest --color=yes -v
 
       - uses: actions/upload-artifact@v4
         with:
-          name: covreport-${{ matrix.os }}-py${{ matrix.python-version }}
+          name: covreport-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.min }}
           path: ./.coverage*
           include-hidden-files: true
 

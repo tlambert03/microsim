@@ -323,7 +323,12 @@ class Simulation(SimBaseModel):
         elif self.output_path.suffix in (".nc",):
             result.to_netcdf(self.output_path)
         elif self.output_path.suffix in (".tif", ".tiff"):
-            import tifffile as tf
+            try:
+                import tifffile as tf
+            except ImportError as e:
+                raise ImportError(
+                    "Please `pip install microsim[io]` to write TIFF files."
+                ) from e
 
             tf.imwrite(self.output_path, np.asanyarray(result))
 
@@ -342,7 +347,12 @@ class Simulation(SimBaseModel):
 def plot_simulation_summary(
     sim: Simulation, transpose: bool = False, legend: bool = True
 ) -> None:
-    import matplotlib.pyplot as plt
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError as e:
+        raise ImportError(
+            "Please `pip install microsim[view]` to use plotting/viewing functions."
+        ) from e
 
     nrows = 5
     ncols = len(sim.channels)

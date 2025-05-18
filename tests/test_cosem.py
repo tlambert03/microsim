@@ -5,8 +5,15 @@ import pytest
 import tensorstore as ts
 
 from microsim import schema as ms
-from microsim.cosem import CosemDataset, CosemImage, CosemView, manage, organelles
 from microsim.schema.optical_config import lib
+
+try:
+    from microsim.cosem import CosemDataset, CosemImage, CosemView, manage, organelles
+except ImportError:
+    pytest.skip(
+        "COSEM dependencies not installed, skipping tests",
+        allow_module_level=True,
+    )
 
 
 def test_cosem_dataset(monkeypatch: pytest.MonkeyPatch) -> None:

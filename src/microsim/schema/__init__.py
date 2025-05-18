@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .backend import BackendName, DeviceName, NumpyAPI
 from .detectors import CameraCCD, CameraCMOS, CameraEMCCD
@@ -18,6 +18,9 @@ from .settings import Settings
 from .simulation import Simulation
 from .space import DownscaledSpace, ExtentScaleSpace, ShapeExtentSpace, ShapeScaleSpace
 from .spectrum import Spectrum
+
+if TYPE_CHECKING:
+    from .sample._distributions.cosem import CosemLabel
 
 logging.getLogger().setLevel(logging.INFO)
 __all__ = [
