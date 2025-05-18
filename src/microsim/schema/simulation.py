@@ -1,5 +1,6 @@
 import logging
 import warnings
+from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
@@ -7,6 +8,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
+from pydantic_core import PydanticSerializationError
 
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
 from microsim.util import microsim_cache
@@ -316,7 +318,14 @@ class Simulation(SimBaseModel):
             return
         if hasattr(result.data, "get"):
             result = result.copy(data=result.data.get(), deep=False)
-        result.attrs = {"microsim.Simulation": self.model_dump_json()}
+        with suppress(Exception):
+            try:
+                sim_data = self.model_dump(
+                    mode="json",
+                )
+            except PydanticSerializationError:
+                sim_data = self.model_dump(mode="json", exclude={"sample"})
+            result.attrs = {"microsim.Simulation": sim_data}
         result.coords[Axis.C] = [c.name for c in result.coords[Axis.C].values]
         if self.output_path.suffix == ".zarr":
             result.to_zarr(self.output_path, mode="w")
