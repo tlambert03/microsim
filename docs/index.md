@@ -27,12 +27,12 @@ pip install "microsim[all] @ git+https://github.com/tlambert03/microsim"
 
 ### With GPU support
 
-If available, microsim can use Jax, Cupy or Torch to accelerate computations.
+If available, microsim can use either Jax or Cupy to accelerate computations.
 These are not installed by default, see the
-[jax](https://jax.readthedocs.io/en/latest/installation.html),
-[cupy](https://docs.cupy.dev/en/stable/install.html) or
-[torch](https://pytorch.org/get-started/locally/) installation instructions,
-paying attention to your GPU requirements.
+[jax](https://jax.readthedocs.io/en/latest/installation.html)
+or [cupy](https://docs.cupy.dev/en/stable/install.html) installation instructions,
+paying attention to your GPU requirements.  Support for torch is not fully
+implemented yet, but is planned.
 
 ## Quickstart
 
