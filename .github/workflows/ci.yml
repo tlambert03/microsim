@@ -22,17 +22,18 @@ jobs:
       - run: pipx run check-manifest
 
   test:
-    name: Test ${{ matrix.os }} py${{ matrix.python-version }} ${{ matrix.extras == 'false' && 'no-extras' || ''}}
+    name: Test ${{ matrix.os }} py${{ matrix.python-version }} ${{ matrix.extras == 'no-extras' && 'no-extras' || ''}}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.10", "3.11", "3.12"]
+        extras: [""]
         include:
           - os: ubuntu-latest
             python-version: "3.12"
-            extras: false
+            extras: "no-extras"
 
     env:
       UV_PYTHON: ${{ matrix.python-version }}
@@ -43,7 +44,7 @@ jobs:
         with:
           enable-cache: true
 
-      - run: uv run ${{ matrix.extras == 'false' && '' || '--all-extras' }} coverage run -p -m pytest --color=yes -v
+      - run: uv run ${{ matrix.extras == 'no-extras' && '' || '--all-extras' }} coverage run -p -m pytest --color=yes -v
 
       - uses: actions/upload-artifact@v4
         with:
