@@ -874,6 +874,19 @@ wheels = [
 ]
 
 [[package]]
+name = "fpbase"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/97/2a/63face7d4a14e013b1de53af2718b27ea6a28f1864eb3e24c5beea8bfc9d/fpbase-0.1.2.tar.gz", hash = "sha256:8025f7a043152d73a2b9d796413bc44ee09f402c70c39f03c500a864fb9a695a", size = 14067, upload-time = "2024-12-13T13:32:13.392Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/aa/8e/6b5925bc2a3ca912d1d75dbce6ad8c0ce71a416c0a34fc7f431998a7c964/fpbase-0.1.2-py3-none-any.whl", hash = "sha256:bcc1ca6b2ba9bea0081427153ef4265a40af15618b8bc890d3cd57935862a595", size = 11600, upload-time = "2024-12-13T13:32:10.439Z" },
+]
+
+[[package]]
 name = "freetype-py"
 version = "2.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1160,7 +1173,7 @@ name = "importlib-metadata"
 version = "8.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp" },
+    { name = "zipp", marker = "python_full_version < '3.12'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/76/66/650a33bd90f786193e4de4b3ad86ea60b53c89b669a5c7be931fac31cdb0/importlib_metadata-8.7.0.tar.gz", hash = "sha256:d13b81ad223b890aa16c5471f2ac3056cf76c5f10f82d6f9292f0b415f389000", size = 56641, upload-time = "2025-04-27T15:29:01.736Z" }
 wheels = [
@@ -1706,6 +1719,7 @@ name = "microsim"
 source = { editable = "." }
 dependencies = [
     { name = "annotated-types" },
+    { name = "fpbase" },
     { name = "numpy" },
     { name = "pint" },
     { name = "platformdirs" },
@@ -1797,6 +1811,7 @@ requires-dist = [
     { name = "dask", marker = "extra == 'cosem'", specifier = ">=2024.1.0" },
     { name = "dm-tree", marker = "sys_platform == 'darwin' and extra == 'jax'", specifier = "==0.1.8" },
     { name = "dm-tree", marker = "extra == 'jax'", specifier = ">=0.1.7" },
+    { name = "fpbase" },
     { name = "imageio", marker = "extra == 'all'", specifier = ">=2.22" },
     { name = "imageio", marker = "extra == 'cosem'", specifier = ">=2.22" },
     { name = "imageio", marker = "extra == 'io'", specifier = ">=2.22" },
