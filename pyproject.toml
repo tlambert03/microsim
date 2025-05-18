@@ -51,7 +51,7 @@ repository = "https://github.com/tlambert03/microsim"
 # # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
 view = ["ndv[pyqt,vispy]", "matplotlib>=3.10.1", "pyopengl-accelerate"]
-io = ["tifffile>=2025.2.18", "imageio>=2.22"]
+io = ["tifffile>=2025.2.18", "imageio[ffmpeg]>=2.22"]
 cosem = [
     "dask>=2024.1.0",
     "imageio>=2.22",
