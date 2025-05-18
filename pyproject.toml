@@ -42,6 +42,10 @@ dependencies = [
     "xarray >=2024.1.0",
 ]
 
+[project.urls]
+homepage = "https://github.com/tlambert03/microsim"
+repository = "https://github.com/tlambert03/microsim"
+
 # # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
 view = ["ndv[pyqt,vispy]", "matplotlib>=3.10.1", "pyopengl-accelerate"]
@@ -54,17 +58,26 @@ cosem = [
     "s3fs>=0.4.2",
     "xarray-datatree>=0.0.14",
 ]
+torch = ["torch>=2.6.0"]
+jax = [
+    "jax[cpu]>=0.5.2",
+    "dm-tree ==0.1.8; sys_platform == 'darwin'",
+    "dm-tree >=0.1.7",
+]
 all = ["microsim[view,io,cosem]"]
 
 [dependency-groups]
-test = [
-    "microsim[all]",
-    "jax[cpu]>=0.5.2",
-    "dm-tree ==0.1.8; sys_platform == 'darwin'", # only needed for jax support.  could use an extra instead.
-    "dm-tree >=0.1.7",                           # only needed for jax support.  could use an extra instead.
-    "pytest>=8.3.5",
-    "pytest-cov>=6.0.0",
-    "torch>=2.6.0",
+test = ["pytest>=8.3.5", "pytest-cov>=6.0.0"]
+dev = [
+    { include-group = "test" },
+    "microsim[all,jax,torch]",
+    "boto3-stubs[s3]",
+    "ipython",
+    "mypy",
+    "pre-commit",
+    "rich",
+    "ruff",
+    "types-tqdm",
 ]
 docs = [
     "mkdocs >=1.5.3",
@@ -76,21 +89,9 @@ docs = [
     "griffe==0.45.3",
     "griffe-fieldz",
 ]
-dev = [
-    { include-group = "test" },
-    "boto3-stubs[s3]",
-    "ipython",
-    "mypy",
-    "pre-commit",
-    "rich",
-    "ruff",
-    "types-tqdm",
-]
 
-
-[project.urls]
-homepage = "https://github.com/tlambert03/microsim"
-repository = "https://github.com/tlambert03/microsim"
+[tool.uv.sources]
+microsim = { workspace = true }
 
 
 [tool.ruff]
@@ -191,6 +192,3 @@ ignore = [
 
 [tool.typos.default]
 extend-ignore-identifiers-re = ["(?i)nd.*", "(?i)ome", "(?i)ser"]
-
-[tool.uv.sources]
-microsim = { workspace = true }
