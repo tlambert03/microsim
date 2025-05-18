@@ -47,7 +47,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: covreport-${{ matrix.os }}-py${{ matrix.python-version }}
+          name: covreport-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.extras }}
           path: ./.coverage*
           include-hidden-files: true
 
