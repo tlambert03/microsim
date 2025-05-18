@@ -50,7 +50,7 @@ uv sync
 To get the bleeding edge version, which will change rapidly, you can install from github.
 
 ```bash
-pip install git+https://github.com/tlambert03/microsim
+pip install "microsim[all] @ git+https://github.com/tlambert03/microsim"
 ```
 
 ### With GPU support

@@ -4,14 +4,37 @@ Microscope simulation library for generating realistic microscope images.
 
 ## Installation
 
-For now, please install from github.  This library is in early development,
-expect rapid changes and breakages.
+### from PyPI
 
 ```bash
-pip install git+https://github.com/tlambert03/microsim
+pip install microsim[all]
 ```
 
-## Usage
+!!! note
+    At the moment, this library is a bit more "application" than it
+    is "library".  If you are following the docs or tutorials, its
+    probably best to install the full `[all]` extra, which brings in
+    io, visualization, and other data-fetching dependencies.  However,
+    the bare minimal install is fully functional for generating data.
+
+### From github
+
+To get the bleeding edge version, which will change rapidly, you can install from github.
+
+```bash
+pip install "microsim[all] @ git+https://github.com/tlambert03/microsim"
+```
+
+### With GPU support
+
+If available, microsim can use Jax, Cupy or Torch to accelerate computations.
+These are not installed by default, see the
+[jax](https://jax.readthedocs.io/en/latest/installation.html),
+[cupy](https://docs.cupy.dev/en/stable/install.html) or
+[torch](https://pytorch.org/get-started/locally/) installation instructions,
+paying attention to your GPU requirements.
+
+## Quickstart
 
 Construct and run a [`microsim.Simulation`][] object.
 
@@ -107,3 +130,6 @@ spec = Path('confocal.json').read_text()
 sim = Simulation.model_validate_json(spec)
 sim.run()
 ```
+
+For more details, see the [tutorial](./tutorial.ipynb), [conceptual
+overview](./concept.md) and the [API docs](./api)
