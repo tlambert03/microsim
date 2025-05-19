@@ -7,7 +7,7 @@ Microscope simulation library for generating realistic microscope images.
 ### from PyPI
 
 ```bash
-pip install microsim[all]
+pip install "microsim[all]"
 ```
 
 !!! note

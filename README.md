@@ -29,7 +29,7 @@ on the `Simulation` object and options for all of the fields.
 ### from PyPI
 
 ```bash
-pip install microsim[all]
+pip install "microsim[all]"
 ```
 
 > [!NOTE]
