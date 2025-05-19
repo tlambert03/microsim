@@ -101,6 +101,7 @@ microsim = { workspace = true }
 line-length = 88
 src = ["src"]
 fix = true
+unsafe-fixes = true
 
 [tool.ruff.lint]
 pydocstyle = { convention = "numpy" }
