@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Any, Protocol, TypeVar, cast
 from urllib import parse, request
 from urllib.error import HTTPError
 
-import imageio
 import numpy as np
 import numpy.typing as npt
 import platformdirs
@@ -506,6 +505,13 @@ def animate(
         If provided, upsize the Y and X dimensions by this factor (nearest
         neighbor).
     """
+    try:
+        import imageio
+    except ImportError as e:
+        raise ImportError(
+            "Please `pip install microsim[io]` to use extra reading/writing functions."
+        ) from e
+
     volume = _colorize(ary, colormaps)
     if upsize:
         # upsize just the Y and X dimensions
