@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 import os
 from functools import cache, lru_cache
 from typing import TYPE_CHECKING, Literal
@@ -15,6 +14,7 @@ from microsim.schema.settings import Settings
 from microsim.util import microsim_cache
 
 from ._data_array import ArrayProtocol
+from ._logger import logger
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -425,9 +425,16 @@ def cached_psf(
             nz, nx, dz, dx, em_wvl_um, pinhole_au, ex_wvl_um, objective
         )
         if cache_path.exists():
-            logging.info("Using cached PSF: %s", cache_path)
+            logger.info(
+                f"Found cached PSF {nz=} {nx=} {dz=} {dx=} "
+                f"{ex_wvl_um=:.2f} {pinhole_au=}"
+            )
             return xp.asarray(np.load(cache_path))
 
+    logger.info(
+        f"Creating new PSF {nz=} {nx=} {dz=} {dx=} "
+        f"{ex_wvl_um=:.2f} {pinhole_au=}"
+    )
     if pinhole_au is None:
         psf = vectorial_psf_centered(
             wvl=em_wvl_um,

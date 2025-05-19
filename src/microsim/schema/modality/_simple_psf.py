@@ -1,4 +1,3 @@
-import logging
 import warnings
 from typing import Annotated, Any, Literal
 
@@ -13,6 +12,8 @@ from microsim.schema.dimensions import Axis
 from microsim.schema.lens import ObjectiveLens
 from microsim.schema.settings import Settings
 from microsim.schema.space import SpaceProtocol
+
+from ..._logger import logger, logging_indented
 
 
 class _PSFModality(SimBaseModel):
@@ -52,31 +53,37 @@ class _PSFModality(SimBaseModel):
         # for every channel in the emission rates...
         channels = []
         for ch in em_rates.coords[Axis.C].values:
-            logging.info(f"Rendering channel {ch} -----------------")
+            logger.info(f"Rendering {type(self).__name__} channel {ch} ---------------")
 
-            # for every fluorophore in the sample...
-            fluors = []
-            for f_idx, fluor in enumerate(truth.coords[Axis.F].values):
-                logging.info(f">> fluor {fluor}")
-                f_truth = truth.isel({Axis.F: f_idx})
+            with logging_indented():
+                # for every fluorophore in the sample...
+                fluors = []
+                for f_idx, fluor in enumerate(truth.coords[Axis.F].values):
+                    logger.info(f"Fluor: {fluor}")
+                    with logging_indented():
+                        f_truth = truth.isel({Axis.F: f_idx})
 
-                # discretize the emission spectrum for this specific ch/fluor pair
-                em_spectrum = em_rates.sel({Axis.C: ch, Axis.F: fluor})
-                # if we happen to have 2 spectra for the same fluorophore
-                # in the same channel, just take the first one (shouldn't happen)
-                if Axis.F in em_spectrum.dims:  # pragma: no cover
-                    em_spectrum = em_spectrum.isel({Axis.F: 0})
+                        # discretize the em spectrum for this specific ch/fluor pair
+                        em_spectrum = em_rates.sel({Axis.C: ch, Axis.F: fluor})
+                        # if we happen to have 2 spectra for the same fluorophore
+                        # in the same channel, just take the first one (shouldn't happen)
+                        if Axis.F in em_spectrum.dims:  # pragma: no cover
+                            em_spectrum = em_spectrum.isel({Axis.F: 0})
 
-                if not (em_spectrum > 1e-12).any():
-                    # no emission at all for this fluorophore in this channel
-                    fluors.append(xp.zeros_like(f_truth))
-                    continue
+                        if not (em_spectrum > 1e-12).any():
+                            # no emission at all for this fluorophore in this channel
+                            fluors.append(xp.zeros_like(f_truth))
+                            continue
 
-                summed_psf = self._summed_weighted_psf(
-                    em_spectrum, settings, truth.attrs["space"], objective_lens, xp
-                )
-                fluor_sum = xp.fftconvolve(f_truth, summed_psf, mode="same")
-                fluors.append(fluor_sum)
+                        summed_psf = self._summed_weighted_psf(
+                            em_spectrum,
+                            settings,
+                            truth.attrs["space"],
+                            objective_lens,
+                            xp,
+                        )
+                        fluor_sum = xp.fftconvolve(f_truth, summed_psf, mode="same")
+                        fluors.append(fluor_sum)
 
             # stack the fluorophores together to create the channel
             channels.append(xp.stack(fluors, axis=0))
@@ -141,7 +148,7 @@ class _PSFModality(SimBaseModel):
             if em_rate.isnull().any() or em_rate == 0 or xp.isnan(em_wvl_nm):
                 continue
             weight = em_rate.item()
-            logging.info(f">>>> PSF @ {em_wvl_nm:.1f}nm (x{weight:.2f})")
+            logger.info(f"Need PSF ({nz},{nx}) @ {em_wvl_nm:.1f} nm ({weight=:.2f})")
             psf = self.psf(
                 nz=nz,
                 nx=nx,

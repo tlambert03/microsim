@@ -1,4 +1,5 @@
 import logging
+import time
 import warnings
 from contextlib import suppress
 from pathlib import Path
@@ -9,7 +10,7 @@ import pandas as pd
 import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 from pydantic_core import PydanticSerializationError
-
+from .._logger import logger, logging_indented
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
 from microsim.util import microsim_cache
 
@@ -112,38 +113,46 @@ class Simulation(SimBaseModel):
         >>> truth.isel(f=0).max('z').plot()  # plot max projection of first fluorophore
         >>> plt.show()
         """
+        logger.info(f"Creating ground truth (shape ={self.truth_space.shape}) + ")
+        _t0 = time.perf_counter()
+
         if not hasattr(self, "_ground_truth"):
-            xp = self._xp
-            # make empty space into which we'll add the ground truth
-            # TODO: this is wasteful... label.render should probably
-            # accept the space object directly
-            truth = self.truth_space.create(array_creator=xp.zeros)
+            with logging_indented():
+                xp = self._xp
+                # make empty space into which we'll add the ground truth
+                # TODO: this is wasteful... label.render should probably
+                # accept the space object directly
+                truth = self.truth_space.create(array_creator=xp.zeros)
 
-            # render each ground truth
-            label_data = []
-            for label in self.sample.labels:
-                cache_path = self._truth_cache_path(
-                    label, self.truth_space, self.settings.random_seed
-                )
-                if self.settings.cache.read and cache_path and cache_path.exists():
-                    data = from_cache(cache_path, xp=xp).astype(
-                        self.settings.float_dtype
+                # render each ground truth
+                label_data = []
+                for label in self.sample.labels:
+                    cache_path = self._truth_cache_path(
+                        label, self.truth_space, self.settings.random_seed
                     )
-                    logging.info(
-                        f"Loaded ground truth for {label} from cache: {cache_path}"
-                    )
-                else:
-                    data = label.render(truth, xp=xp)
-                    if self.settings.cache.write and cache_path:
-                        to_cache(data, cache_path, dtype=np.uint16)
+                    if self.settings.cache.read and cache_path and cache_path.exists():
+                        data = from_cache(cache_path, xp=xp).astype(
+                            self.settings.float_dtype
+                        )
+                        logger.info(
+                            f"Loaded ground truth for {label} from cache: {cache_path}"
+                        )
+                    else:
+                        data = label.render(truth, xp=xp)
+                        if self.settings.cache.write and cache_path:
+                            to_cache(data, cache_path, dtype=np.uint16)
 
-                label_data.append(data)
+                    label_data.append(data)
 
-            # concat along the F axis
-            fluors = [lbl.fluorophore for lbl in self.sample.labels]
-            truth = xr.concat(label_data, dim=pd.Index(fluors, name=Axis.F))
-            truth.attrs.update(units="fluorophores", long_name="Ground Truth")
-            self._ground_truth = truth
+                # concat along the F axis
+                fluors = [lbl.fluorophore for lbl in self.sample.labels]
+                truth = xr.concat(label_data, dim=pd.Index(fluors, name=Axis.F))
+                truth.attrs.update(units="fluorophores", long_name="Ground Truth")
+                self._ground_truth = truth
+
+        logger.info(
+            f"Ground truth generated in {time.perf_counter() - _t0:.2f} seconds"
+        )
         return self._ground_truth
 
     def filtered_emission_rates(self) -> xr.DataArray:
@@ -234,6 +243,7 @@ class Simulation(SimBaseModel):
         fluorophores in each channel (which a detector would not know). The return
         array has dimensions (C, Z, Y, X).  The units are photons/s.
         """
+        logger.info("Creating optical_image ...")
         oipf = self.optical_image_per_fluor()
         return oipf.sum(Axis.F)  # (C, Z, Y, X)
 
@@ -251,6 +261,9 @@ class Simulation(SimBaseModel):
         are gray values, based on the bit-depth of the detector.  If there is no
         detector or `with_detector_noise` is False, the units are simply photons.
         """
+        _t0 = time.perf_counter()
+        logger.info("Creating digital_image ...")
+
         if optical_image is None:
             optical_image = self.optical_image()
         image = optical_image  # (C, Z, Y, X)
@@ -259,6 +272,7 @@ class Simulation(SimBaseModel):
         # TODO: consider how we would integrate detector pixel size
         # rather than a user-sepicified output space
         if self.output_space is not None:
+            logger.info(f"Rescaling to output space {self.output_space.shape}")
             image = self.output_space.rescale(image)
 
         # simulate detector
@@ -276,6 +290,7 @@ class Simulation(SimBaseModel):
             ch_exposures = exposure_ms
 
         if self.detector is not None and with_detector_noise:
+            logger.info(f"Simulating {type(self.detector).__name__} detector ...")
             image = self.detector.render(image, exposure_ms=ch_exposures, xp=self._xp)
             image.attrs.update(units="gray values")
         else:
@@ -283,6 +298,9 @@ class Simulation(SimBaseModel):
             image.attrs.update(units="photons")
 
         # (C, Z, Y, X)
+        logger.info(
+            f"Digital image generated in {time.perf_counter() - _t0:.2f} seconds"
+        )
         return image
 
     def run(self) -> xr.DataArray:
