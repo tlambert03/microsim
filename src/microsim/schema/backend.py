@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import warnings
 from contextlib import nullcontext, suppress
 from typing import TYPE_CHECKING, Any, Literal, TypeVar
@@ -33,8 +34,14 @@ class NumpyAPI:
     def create(cls, backend: BackendName | NumpyAPI | None) -> NumpyAPI:
         if isinstance(backend, NumpyAPI):
             return backend
-        if not backend:
-            backend = backend or "auto"
+        else:
+            if backend in ("auto", None):
+                backend = os.getenv("MICROSIM_BACKEND", "") or "auto"  # type: ignore
+            if backend not in ("numpy", "torch", "jax", "cupy", "auto"):
+                raise ValueError(
+                    f"Invalid backend: {backend}. Must be one of "
+                    "'numpy', 'torch', 'jax', 'cupy', or 'auto'."
+                )
         backend = backend.lower()  # type: ignore
 
         ctx = suppress(ImportError) if backend == "auto" else nullcontext()

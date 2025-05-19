@@ -60,7 +60,7 @@ cosem = [
     "s3fs>=0.4.2",
     "xarray-datatree>=0.0.14",
 ]
-torch = ["torch>=2.6.0"]
+torch = ["torch>=2.6.0", "torchaudio>=2.7.0"]
 jax = [
     "jax[cpu]>=0.5.2",
     "dm-tree ==0.1.8; sys_platform == 'darwin'",
@@ -100,6 +100,7 @@ microsim = { workspace = true }
 [tool.ruff]
 line-length = 88
 src = ["src"]
+fix = true
 
 [tool.ruff.lint]
 pydocstyle = { convention = "numpy" }
