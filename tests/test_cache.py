@@ -42,8 +42,8 @@ def test_cache_psf(caplog: pytest.LogCaptureFixture) -> None:
     caplog.set_level(10)
     psf1 = cached_psf(**kwargs)
     cached_psf.cache_clear()  # clear the functools cache
-    assert "Using cached PSF:" not in caplog.text
+    assert "Found cached PSF" not in caplog.text
     psf2 = cached_psf(**kwargs)
-    assert "Using cached PSF:" in caplog.text
+    assert "Found cached PSF" in caplog.text
 
     np.testing.assert_array_equal(psf1, psf2)
