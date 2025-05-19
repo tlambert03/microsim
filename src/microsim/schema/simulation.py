@@ -1,4 +1,3 @@
-import logging
 import time
 import warnings
 from contextlib import suppress
@@ -10,8 +9,9 @@ import pandas as pd
 import xarray as xr
 from pydantic import AfterValidator, Field, model_validator
 from pydantic_core import PydanticSerializationError
-from .._logger import logger, logging_indented
+
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
+from microsim._logger import logger, logging_indented
 from microsim.util import microsim_cache
 
 from ._base_model import SimBaseModel

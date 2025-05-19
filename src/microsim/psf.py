@@ -432,8 +432,7 @@ def cached_psf(
             return xp.asarray(np.load(cache_path))
 
     logger.info(
-        f"Creating new PSF {nz=} {nx=} {dz=} {dx=} "
-        f"{ex_wvl_um=:.2f} {pinhole_au=}"
+        f"Creating new PSF {nz=} {nx=} {dz=} {dx=} {ex_wvl_um=:.2f} {pinhole_au=}"
     )
     if pinhole_au is None:
         psf = vectorial_psf_centered(

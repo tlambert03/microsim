@@ -77,7 +77,7 @@ dev = [
     "ipython",
     "mypy",
     "pdbpp; sys_platform == 'darwin'",
-    "pre-commit",
+    "pre-commit-uv",
     "rich",
     "ruff",
     "types-tqdm",

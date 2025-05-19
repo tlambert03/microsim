@@ -5,6 +5,7 @@ import numpy as np
 from annotated_types import Ge
 
 from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
+from microsim._logger import logger, logging_indented
 from microsim.psf import make_psf
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
@@ -12,8 +13,6 @@ from microsim.schema.dimensions import Axis
 from microsim.schema.lens import ObjectiveLens
 from microsim.schema.settings import Settings
 from microsim.schema.space import SpaceProtocol
-
-from ..._logger import logger, logging_indented
 
 
 class _PSFModality(SimBaseModel):
@@ -66,7 +65,7 @@ class _PSFModality(SimBaseModel):
                         # discretize the em spectrum for this specific ch/fluor pair
                         em_spectrum = em_rates.sel({Axis.C: ch, Axis.F: fluor})
                         # if we happen to have 2 spectra for the same fluorophore
-                        # in the same channel, just take the first one (shouldn't happen)
+                        # in the same channel, just take the first one (shouldn't happen
                         if Axis.F in em_spectrum.dims:  # pragma: no cover
                             em_spectrum = em_spectrum.isel({Axis.F: 0})
 
