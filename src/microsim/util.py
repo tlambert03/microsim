@@ -450,27 +450,36 @@ def http_get(url: str, params: dict | None = None) -> bytes:
 def _colorize(
     ary: xrDataArray,
     colormaps: Sequence[ColorStopsLike] = (),
+    colorized_axis: Axis = Axis.C,
+    clims: tuple[float, float] | None = None,
 ) -> np.ndarray:
     """Colorize a 3D array using the provided colormaps."""
     from cmap import Colormap
 
+    n_channels = ary.sizes[colorized_axis]
     if not colormaps:
-        colormaps = ["green", "magenta", "cyan", "yellow", "red", "blue"]
-    n_channels = ary.sizes[Axis.C]
+        if n_channels == 1:
+            colormaps = ["gray"]
+        else:
+            colormaps = ["green", "magenta", "cyan", "yellow", "red", "blue"]
     if len(colormaps) != n_channels:
         colormaps = colormaps[:n_channels]
 
     colorized = []
     for i, cmap in enumerate(colormaps):
         # convert to 8 bit autoscaled:
-        data = ary.isel({Axis.C: i})
-        data = data - np.min(data)
-        data = data / np.max(data)
-        colorized.append(Colormap(cmap)(np.clip(data, 0, 1)))
+        data = ary.isel({colorized_axis: i})
+        if clims is None:
+            mi, ma = data.min(), data.max()
+        else:
+            mi, ma = clims
+        data = np.clip((data - mi) / (ma - mi), 0, 1)
+        colorized.append(Colormap(cmap)(data))
 
     # add them all together
-    summed = np.sum(np.stack(colorized), axis=0)[..., :3]  # drop alpha channel
-    return (summed * 255).astype(np.uint8)  # type: ignore
+    summed = np.sum(np.stack(colorized), axis=0)[..., :3] * 255.0  # type: ignore
+    summed = np.clip(summed, 0, 255)
+    return summed.astype(np.uint8)  # type: ignore
 
 
 def animate(
@@ -481,7 +490,9 @@ def animate(
     crf: int = 18,
     preset: str = "slow",
     colormaps: Sequence[ColorStopsLike] = (),
+    colorized_axis: Axis = Axis.C,
     upsize: int | None = None,
+    clims: tuple[float, float] | None = None,
 ) -> None:
     """Output an mp4 animating a 3D array.
 
@@ -501,6 +512,9 @@ def animate(
     colormaps : Sequence[ColorStopsLike], optional
         List of colormaps to use for each channel, by default (green, magenta, cyan,
         yellow, red, blue)
+    colorized_axis : Axis, optional
+        Axis along which to colorize the array. Default is `Axis.C` (channel).
+        If the array has no channel axis, it will be colorized as a single channel.
     upsize : int, optional
         If provided, upsize the Y and X dimensions by this factor (nearest
         neighbor).
@@ -512,7 +526,23 @@ def animate(
             "Please `pip install microsim[io]` to use extra reading/writing functions."
         ) from e
 
-    volume = _colorize(ary, colormaps)
+    if colorized_axis in ary.dims:
+        volume = _colorize(ary, colormaps, colorized_axis=colorized_axis, clims=clims)
+    else:
+        # if no colorized axis, just use the data as is
+        volume = np.asarray(ary).squeeze()
+        if volume.ndim != 3:
+            raise ValueError(
+                "Input array must be 3D or 4D. "
+                f"Got {volume.ndim}D array with shape {volume.shape}"
+            )
+        if clims is None:
+            mi, ma = volume.min(), volume.max()
+        else:
+            mi, ma = clims
+        volume = np.clip((volume - mi) / (ma - mi), 0, 1) * 255.0
+        volume = volume.astype(np.uint8)
+
     if upsize:
         # upsize just the Y and X dimensions
         volume = np.repeat(volume, upsize, axis=-3)

@@ -343,6 +343,7 @@ class Simulation(SimBaseModel):
                 sim_data = self.model_dump_json(exclude={"sample"})
             result.attrs = {"microsim.Simulation": sim_data}
         result.coords[Axis.C] = [c.name for c in result.coords[Axis.C].values]
+        self.output_path.parent.mkdir(parents=True, exist_ok=True)
         if self.output_path.suffix == ".zarr":
             result.to_zarr(self.output_path, mode="w")
         elif self.output_path.suffix in (".nc",):
@@ -499,6 +500,6 @@ def plot_simulation_summary(
 
     # make sure lims are at least 400-750
     a, b = fp_ax[0].get_xlim()
-    fp_ax[0].set_xlim(min(a, 450), max(b, 750))  # shared x-axis
+    fp_ax[0].set_xlim(350, 750)  # shared x-axis
     plt.tight_layout()
     plt.show()
