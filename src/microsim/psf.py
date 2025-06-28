@@ -131,7 +131,7 @@ def vectorial_rz(
     simpson_integral = simpson(
         p, theta, constJ, xp.asarray(zv), ci, zpos, wave_num, xp=xp
     )
-    return 8.0 * np.pi / 3.0 * simpson_integral * (step / ud) ** 2
+    return 8.0 * np.pi / 3.0 * simpson_integral * (step / ud) ** 2  # type: ignore[no-any-return]
 
 
 def radius_map(
@@ -323,7 +323,7 @@ def make_confocal_psf(
     # The final PSF is the excitation PSF multiplied by the effective emission PSF.
     out = xp.asarray(ex_psf) * eff_em_psf
     out = _norm_psf(out, normalize, xp)
-    return out  # type: ignore [no-any-return]
+    return out
 
 
 def _norm_psf(

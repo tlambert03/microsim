@@ -185,7 +185,7 @@ class JaxAPI(NumpyAPI):
         # tests passing.
         np.random.seed(seed)
 
-    def poisson_rvs(  # type: ignore
+    def poisson_rvs(
         self,
         lam: jax.Array | float,
         shape: Sequence[int] | None = None,
@@ -216,7 +216,7 @@ class JaxAPI(NumpyAPI):
         simp = simp.at[-1].set(1)
         return simp
 
-    def _array_assign(  # type: ignore
+    def _array_assign(
         self,
         arr: jax.Array,
         mask: npt.ArrayLike,
