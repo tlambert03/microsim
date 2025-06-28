@@ -153,7 +153,7 @@ class _Camera(SimBaseModel):
         else:
             output = gray_values.astype("uint8")
 
-        return output
+        return output  # type: ignore[no-any-return]
 
     @property
     def dynamic_range(self) -> float:
