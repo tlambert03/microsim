@@ -14,7 +14,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
       - run: uv run --group docs mkdocs build --strict
 
@@ -22,6 +22,6 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: astral-sh/setup-uv@v6
       - run: uv run --group docs mkdocs gh-deploy --force
