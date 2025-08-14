@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from microsim.schema.detectors._camera import CameraCCD
+from microsim.schema.detectors._camera import CameraCCD, CameraEMCCD
 from microsim.schema.spectrum import Spectrum
 
 # fmt: off
@@ -23,3 +23,15 @@ ICX285 = CameraCCD(
     # npixels_h=1344,
     # npixels_v=1024,
 )
+
+Andor_iXon_Ultra_888 = CameraEMCCD(
+    name="Andor iXon Ultra 888",
+    qe=0.95,
+    dark_current=0.0005,
+    full_well=80_000,
+    bit_depth=16,
+    em_gain=1000, #up to 1000x
+    offset=100,
+    read_noise=40, #Native read noise at 10MHz read speed. See https://www.biovis.com/resources/ccd/iXon_Ultra_888_EMCCD_Specifications.pdf
+)
+
