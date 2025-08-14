@@ -1,34 +1,36 @@
 """Library of commercial detectors for the microsim schema."""
 
 import csv
-import numpy as np
 from pathlib import Path
 
-from microsim.schema.detectors._camera import CameraCCD, CameraEMCCD, CameraCMOS
+import numpy as np
+
+from microsim.schema.detectors._camera import CameraCCD, CameraCMOS, CameraEMCCD
 from microsim.schema.spectrum import Spectrum
 
 
-def _load_qe_from_csv(csv_filename):
+def _load_qe_from_csv(csv_filename: str) -> tuple[np.ndarray, np.ndarray]:
     """Load QE curve from CSV file.
-    
+
     Args:
         csv_filename: Name of the CSV, first col should be wavelength in nm, second col should be QE in %
-        
-    Returns:
+
+    Returns
+    -------
         tuple: (wavelengths, qe_values) where qe_values are normalized to [0,1]
     """
     csv_path = Path(__file__).parent / csv_filename
     wavelengths = []
     qe_values = []
-    
-    with open(csv_path, 'r') as f:
+
+    with open(csv_path) as f:
         reader = csv.reader(f)
         for row in reader:
             if len(row) >= 2:
                 wavelengths.append(float(row[0]))
                 # Convert percentage
                 qe_values.append(float(row[1]) / 100.0)
-    
+
     return np.array(wavelengths), np.array(qe_values)
 
 
@@ -64,9 +66,9 @@ Andor_iXon_Ultra_888_BVF = CameraEMCCD(
     dark_current=0.0005,
     full_well=80_000,
     bit_depth=16,
-    em_gain=1000, #up to 1000x
+    em_gain=1000,  # up to 1000x
     offset=100,
-    read_noise=40, #Native read noise at 10MHz read speed. See https://www.biovis.com/resources/ccd/iXon_Ultra_888_EMCCD_Specifications.pdf
+    read_noise=40,  # Native read noise at 10MHz read speed. See https://www.biovis.com/resources/ccd/iXon_Ultra_888_EMCCD_Specifications.pdf
 )
 
 
@@ -77,9 +79,9 @@ Andor_iXon_Ultra_888_EXF = CameraEMCCD(
     dark_current=0.0005,
     full_well=80_000,
     bit_depth=16,
-    em_gain=1000, #up to 1000x
+    em_gain=1000,  # up to 1000x
     offset=100,
-    read_noise=40, #Native read noise at 10MHz read speed. See https://www.biovis.com/resources/ccd/iXon_Ultra_888_EMCCD_Specifications.pdf
+    read_noise=40,  # Native read noise at 10MHz read speed. See https://www.biovis.com/resources/ccd/iXon_Ultra_888_EMCCD_Specifications.pdf
 )
 
 _orca_wavelengths, _orca_qe = _load_qe_from_csv("C15440_20UP_QE.csv")
@@ -87,9 +89,9 @@ _orca_wavelengths, _orca_qe = _load_qe_from_csv("C15440_20UP_QE.csv")
 C15440_20UP = CameraCMOS(
     name="C15440-20UP (Hamamatsu ORCA-Fusion BT)",
     qe=Spectrum(wavelength=_orca_wavelengths, intensity=_orca_qe),
-    dark_current=1.0, # (-8C , Ambient temperature: +25 ˚C) see https://www.hamamatsu.com/us/en/product/cameras/cmos-cameras/C15440-20UP.html
+    dark_current=1.0,  # (-8C , Ambient temperature: +25 ˚C) see https://www.hamamatsu.com/us/en/product/cameras/cmos-cameras/C15440-20UP.html
     full_well=15_000,
     bit_depth=16,
     offset=100,
-    read_noise=1.0, 
+    read_noise=1.0,
 )
