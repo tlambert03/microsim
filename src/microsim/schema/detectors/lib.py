@@ -4,7 +4,7 @@ import csv
 import numpy as np
 from pathlib import Path
 
-from microsim.schema.detectors._camera import CameraCCD, CameraEMCCD
+from microsim.schema.detectors._camera import CameraCCD, CameraEMCCD, CameraCMOS
 from microsim.schema.spectrum import Spectrum
 
 
@@ -82,12 +82,14 @@ Andor_iXon_Ultra_888_EXF = CameraEMCCD(
     read_noise=40, #Native read noise at 10MHz read speed. See https://www.biovis.com/resources/ccd/iXon_Ultra_888_EMCCD_Specifications.pdf
 )
 
+_orca_wavelengths, _orca_qe = _load_qe_from_csv("C15440_20UP_QE.csv")
 
 C15440_20UP = CameraCMOS(
     name="C15440-20UP (Hamamatsu ORCA-Fusion BT)",
-    qe=0.9,
+    qe=Spectrum(wavelength=_orca_wavelengths, intensity=_orca_qe),
     dark_current=1.0, # (-8C , Ambient temperature: +25 ˚C) see https://www.hamamatsu.com/us/en/product/cameras/cmos-cameras/C15440-20UP.html
     full_well=15_000,
     bit_depth=16,
     offset=100,
-
+    read_noise=1.0, 
+)
