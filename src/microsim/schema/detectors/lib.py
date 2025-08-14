@@ -13,7 +13,8 @@ def _load_qe_from_csv(csv_filename: str) -> tuple[np.ndarray, np.ndarray]:
     """Load QE curve from CSV file.
 
     Args:
-        csv_filename: Name of the CSV, first col should be wavelength in nm, second col should be QE in %
+        csv_filename: Name of the CSV, first col should be wavelength in nm,
+         second col should be QE in %
 
     Returns
     -------
