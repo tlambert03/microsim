@@ -83,3 +83,11 @@ Andor_iXon_Ultra_888_EXF = CameraEMCCD(
 )
 
 
+C15440_20UP = CameraCMOS(
+    name="C15440-20UP (Hamamatsu ORCA-Fusion BT)",
+    qe=0.9,
+    dark_current=1.0, # (-8C , Ambient temperature: +25 ˚C) see https://www.hamamatsu.com/us/en/product/cameras/cmos-cameras/C15440-20UP.html
+    full_well=15_000,
+    bit_depth=16,
+    offset=100,
+
