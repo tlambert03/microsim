@@ -10,6 +10,7 @@ from pydantic import (
     model_validator,
 )
 from pydantic_core import CoreSchema, core_schema
+from scipy.ndimage import zoom
 
 from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
 
@@ -154,6 +155,39 @@ ConcreteSpace = ExtentScaleSpace | ShapeExtentSpace | ShapeScaleSpace
 class _RelativeSpace(_Space):
     reference: ConcreteSpace | None = None
 
+    def rescale_to_reference(self, img: xrDataArray) -> xrDataArray:
+        """Rescale image from this relative space to its reference space."""
+        if not self.reference:
+            raise ValueError("Must provide a reference space.")
+
+        target_shape = self.reference.shape
+        spatial_shape = img.shape[-len(target_shape) :]  # Take last N dimensions
+
+        if spatial_shape == target_shape:
+            return img  # Already correct size
+
+        # Calculate zoom factors to reach target shape
+        zoom_factors = [1.0] * len(img.shape)  # Start with no zoom
+        for i, (target_size, current_size) in enumerate(
+            zip(target_shape, spatial_shape, strict=True)
+        ):
+            zoom_factors[-(len(target_shape) - i)] = target_size / current_size
+
+        data = zoom(img.data, zoom_factors, order=1, prefilter=False)
+
+        # Rebuild coords - preserve non-spatial coords, update spatial ones
+        coords = dict(img.coords)
+        for i, ax in enumerate(self.reference.axes):
+            coords[ax] = np.arange(target_shape[i]) * self.reference.scale[i]
+
+        return xrDataArray(
+            data,
+            coords=coords,
+            dims=img.dims,  # Keep original dimensions
+            name=img.name,
+            attrs=img.attrs,
+        )
+
     @property
     def shape(self) -> tuple[int, ...]:
         raise NotImplementedError
@@ -210,6 +244,27 @@ class DownscaledSpace(_RelativeSpace):
 
 class UpscaledSpace(_RelativeSpace):
     upscale: tuple[float, ...] | int
+
+    def rescale(self, img: xrDataArray) -> xrDataArray:
+        if isinstance(self.upscale, int | float):
+            zoom_factors: tuple[float, ...] = (self.upscale,) * len(img.shape)
+        else:
+            zoom_factors = self.upscale
+
+        data = zoom(img.data, zoom_factors, order=1, prefilter=False)
+
+        # Rebuild coords with new spacing
+        coords = {}
+        for i, ax in enumerate(self.axes):
+            coords[ax] = np.arange(data.shape[i]) * self.scale[i]
+
+        return xrDataArray(
+            data,
+            coords=coords,
+            dims=self.axes,
+            name=img.name,
+            attrs=img.attrs,
+        )
 
     @computed_field  # type: ignore
     @property
