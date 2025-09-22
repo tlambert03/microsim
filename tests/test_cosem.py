@@ -7,6 +7,8 @@ import tensorstore as ts
 from microsim import schema as ms
 from microsim.schema.optical_config import lib
 
+from ._util import skipif_no_internet
+
 try:
     from microsim.cosem import CosemDataset, CosemImage, CosemView, manage, organelles
 except ImportError:
@@ -16,6 +18,7 @@ except ImportError:
     )
 
 
+@skipif_no_internet
 def test_cosem_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
     dataset = CosemDataset.fetch("jrc_hela-3")
     assert dataset in CosemDataset.all().values()
@@ -36,6 +39,7 @@ def test_cosem_dataset(monkeypatch: pytest.MonkeyPatch) -> None:
         dataset.read(("fibsem-uint16", "er_seg"), level=-1)
 
 
+@skipif_no_internet
 def test_cosem_image() -> None:
     # note, this is also testing _get_similar ... since the "real" name is jrc_hela-3
     dataset = CosemDataset.fetch("jrc_hela_3")
@@ -49,6 +53,7 @@ def test_cosem_image() -> None:
         img = dataset.image(name="not real")
 
 
+@skipif_no_internet
 def test_cosem_view() -> None:
     orgs = organelles()
     assert "Centrosome" in orgs
@@ -61,6 +66,7 @@ def test_cosem_view() -> None:
     assert CosemDataset.fetch("jrc_hela-2").view("Centrosome") == first_view
 
 
+@skipif_no_internet
 def test_cosem_manage(monkeypatch: pytest.MonkeyPatch) -> None:
     with monkeypatch.context() as m:
         m.setattr(sys, "argv", ["", "--help"])
@@ -81,6 +87,7 @@ def test_cosem_manage(monkeypatch: pytest.MonkeyPatch) -> None:
         manage.main()
 
 
+@skipif_no_internet
 def test_cosem_simulation() -> None:
     sim = ms.Simulation(
         truth_space=ms.ShapeScaleSpace(shape=(32, 256, 256), scale=(0.64, 0.64, 0.64)),
