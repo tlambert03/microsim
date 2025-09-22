@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from microsim import util
+from tests._util import skipif_no_internet
 
 EXAMPLE_DIR = Path(__file__).parent.parent / "examples/"
 skip = {
@@ -19,6 +20,7 @@ examples = [
 ]
 
 
+@skipif_no_internet
 @pytest.mark.usefixtures("mpl_show_patch")
 @pytest.mark.parametrize("fpath", examples, ids=lambda x: x.name)
 def test_examples(fpath: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

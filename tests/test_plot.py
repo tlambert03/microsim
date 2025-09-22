@@ -1,8 +1,10 @@
 import pytest
 
 from microsim.schema import Fluorophore, OpticalConfig, Simulation, SpectrumFilter
+from tests._util import skipif_no_internet
 
 
+@skipif_no_internet
 def test_plot_oc() -> None:
     pytest.importorskip("matplotlib")
     Fluorophore.from_fpbase("EGFP").plot(show=False)
