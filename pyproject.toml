@@ -155,6 +155,9 @@ init_typed = false
 module = ["microsim.xarray_jax.*"]
 ignore_errors = true
 
+[tool.pyright]
+reportArgumentType = false  # too hard with pydantic
+
 # https://docs.pytest.org/en/6.2.x/customize.html
 [tool.pytest.ini_options]
 minversion = "7.0"

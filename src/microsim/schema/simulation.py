@@ -270,17 +270,10 @@ class Simulation(SimBaseModel):
 
         # rescale to output space
         # TODO: consider how we would integrate detector pixel size
-        # rather than a user-sepicified output space
+        # rather than a user-specified output space
         if self.output_space is not None:
             logger.info(f"Rescaling to output space {self.output_space.shape}")
-            if isinstance(self.output_space, _RelativeSpace):
-                # Output space knows how to rescale
-                image = self.output_space.rescale(image)
-            elif isinstance(self.truth_space, _RelativeSpace):
-                # Truth space is relative, output is concrete -
-                # rescale from truth to output
-                image = self.truth_space.rescale_to_reference(image)
-            # If both spaces are concrete, no rescaling needed
+            image = self.output_space.rescale(image)
 
         # simulate detector
         if exposure_ms is None:

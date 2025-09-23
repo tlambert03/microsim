@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import Any, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
 from pydantic import (
@@ -10,7 +10,6 @@ from pydantic import (
     model_validator,
 )
 from pydantic_core import CoreSchema, core_schema
-from scipy.ndimage import zoom
 
 from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
 
@@ -35,6 +34,7 @@ class FloatArray(Sequence[float]):
         return np.array(value, dtype=np.float64)
 
 
+@runtime_checkable
 class SpaceProtocol(Protocol):
     @property
     def axes(self) -> tuple[str, ...]: ...
@@ -72,6 +72,30 @@ class _Space(SimBaseModel):
 
 class _AxesSpace(_Space):
     axes: tuple[Axis, ...] = (Axis.Z, Axis.Y, Axis.X)
+
+    def rescale(self, img: xrDataArray) -> xrDataArray:
+        # dim : mapping of hashable to int, optional
+        # Mapping from the dimension name to the window size.
+        if not (img_space := getattr(img, "space", None)):
+            raise ValueError("Input image must have a 'space' attribute.")
+        if isinstance(img_space, SpaceProtocol) and isinstance(self, SpaceProtocol):
+            dims = {
+                ax: int(
+                    self.scale[self.axes.index(ax)]
+                    / img_space.scale[img_space.axes.index(ax)]
+                )
+                for ax in self.axes
+                if ax in img.dims
+            }
+        else:
+            raise NotImplementedError(
+                "Rescaling from relative spaces is not implemented."
+            )
+        if any(d < 1 for d in dims.values()):
+            raise ValueError(
+                f"Can only downscale an image. Got downscale factors {dims}."
+            )
+        return img.coarsen(dims).sum()  # type: ignore
 
     @field_validator("axes", mode="before")
     def _cast_axes(cls, value: Any) -> tuple[Axis, ...]:
@@ -155,39 +179,6 @@ ConcreteSpace = ExtentScaleSpace | ShapeExtentSpace | ShapeScaleSpace
 class _RelativeSpace(_Space):
     reference: ConcreteSpace | None = None
 
-    def rescale_to_reference(self, img: xrDataArray) -> xrDataArray:
-        """Rescale image from this relative space to its reference space."""
-        if not self.reference:
-            raise ValueError("Must provide a reference space.")
-
-        target_shape = self.reference.shape
-        spatial_shape = img.shape[-len(target_shape) :]  # Take last N dimensions
-
-        if spatial_shape == target_shape:
-            return img  # Already correct size
-
-        # Calculate zoom factors to reach target shape
-        zoom_factors = [1.0] * len(img.shape)  # Start with no zoom
-        for i, (target_size, current_size) in enumerate(
-            zip(target_shape, spatial_shape, strict=True)
-        ):
-            zoom_factors[-(len(target_shape) - i)] = target_size / current_size
-
-        data = zoom(img.data, zoom_factors, order=1, prefilter=False)
-
-        # Rebuild coords - preserve non-spatial coords, update spatial ones
-        coords = dict(img.coords)
-        for i, ax in enumerate(self.reference.axes):
-            coords[ax] = np.arange(target_shape[i]) * self.reference.scale[i]
-
-        return xrDataArray(
-            data,
-            coords=coords,
-            dims=img.dims,  # Keep original dimensions
-            name=img.name,
-            attrs=img.attrs,
-        )
-
     @property
     def shape(self) -> tuple[int, ...]:
         raise NotImplementedError
@@ -244,27 +235,6 @@ class DownscaledSpace(_RelativeSpace):
 
 class UpscaledSpace(_RelativeSpace):
     upscale: tuple[float, ...] | int
-
-    def rescale(self, img: xrDataArray) -> xrDataArray:
-        if isinstance(self.upscale, int | float):
-            zoom_factors: tuple[float, ...] = (self.upscale,) * len(img.shape)
-        else:
-            zoom_factors = self.upscale
-
-        data = zoom(img.data, zoom_factors, order=1, prefilter=False)
-
-        # Rebuild coords with new spacing
-        coords = {}
-        for i, ax in enumerate(self.axes):
-            coords[ax] = np.arange(data.shape[i]) * self.scale[i]
-
-        return xrDataArray(
-            data,
-            coords=coords,
-            dims=self.axes,
-            name=img.name,
-            attrs=img.attrs,
-        )
 
     @computed_field  # type: ignore
     @property
