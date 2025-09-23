@@ -73,26 +73,35 @@ class _Space(SimBaseModel):
 class _AxesSpace(_Space):
     axes: tuple[Axis, ...] = (Axis.Z, Axis.Y, Axis.X)
 
-    def rescale(self, img: xrDataArray) -> xrDataArray:
-        # dim : mapping of hashable to int, optional
-        # Mapping from the dimension name to the window size.
-        if not (img_space := getattr(img, "space", None)):
-            raise ValueError("Input image must have a 'space' attribute.")
-        if isinstance(img_space, SpaceProtocol) and isinstance(self, SpaceProtocol):
-            dims = {
-                ax: int(
-                    self.scale[self.axes.index(ax)]
-                    / img_space.scale[img_space.axes.index(ax)]
-                )
-                for ax in self.axes
-                if ax in img.dims
-            }
-        else:
+    def _get_scale_ratios(self, img_space: Any) -> dict[str, int]:
+        """Calculate integer scale ratios between two spaces for coarsening."""
+        if not (
+            isinstance(img_space, SpaceProtocol) and isinstance(self, SpaceProtocol)
+        ):  # pragma: no cover
             raise NotImplementedError(
-                "Rescaling from relative spaces is not implemented."
+                f"Rescaling from {type(img_space)} to {type(self)} is not implemented."
             )
-        if any(d < 1 for d in dims.values()):
+
+        if set(self.axes) != set(img_space.axes):  # pragma: no cover
             raise ValueError(
+                f"Spaces must have the same axes. Got {self.axes} and {img_space.axes}."
+            )
+        # Create axis->scale mappings
+        self_scales = dict(zip(self.axes, self.scale, strict=True))
+        img_scales = dict(zip(img_space.axes, img_space.scale, strict=True))
+        return {
+            ax: int(self_scales[ax] / img_scales[ax])
+            for ax in self.axes
+            if ax in img_scales
+        }
+
+    def rescale(self, img: xrDataArray) -> xrDataArray:
+        if not (img_space := getattr(img, "space", None)):  # pragma: no cover
+            raise ValueError("Input image must have a 'space' attribute.")
+
+        dims = self._get_scale_ratios(img_space)
+        if any(d < 1 for d in dims.values()):  # pragma: no cover
+            raise NotImplementedError(
                 f"Can only downscale an image. Got downscale factors {dims}."
             )
         return img.coarsen(dims).sum()  # type: ignore
