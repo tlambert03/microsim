@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import Any, Protocol, TypeVar
+from typing import Any, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
 from pydantic import (
@@ -34,6 +34,7 @@ class FloatArray(Sequence[float]):
         return np.array(value, dtype=np.float64)
 
 
+@runtime_checkable
 class SpaceProtocol(Protocol):
     @property
     def axes(self) -> tuple[str, ...]: ...
@@ -71,6 +72,39 @@ class _Space(SimBaseModel):
 
 class _AxesSpace(_Space):
     axes: tuple[Axis, ...] = (Axis.Z, Axis.Y, Axis.X)
+
+    def _get_scale_ratios(self, img_space: Any) -> dict[str, int]:
+        """Calculate integer scale ratios between two spaces for coarsening."""
+        if not (
+            isinstance(img_space, SpaceProtocol) and isinstance(self, SpaceProtocol)
+        ):  # pragma: no cover
+            raise NotImplementedError(
+                f"Rescaling from {type(img_space)} to {type(self)} is not implemented."
+            )
+
+        if set(self.axes) != set(img_space.axes):  # pragma: no cover
+            raise ValueError(
+                f"Spaces must have the same axes. Got {self.axes} and {img_space.axes}."
+            )
+        # Create axis->scale mappings
+        self_scales = dict(zip(self.axes, self.scale, strict=True))
+        img_scales = dict(zip(img_space.axes, img_space.scale, strict=True))
+        return {
+            ax: int(self_scales[ax] / img_scales[ax])
+            for ax in self.axes
+            if ax in img_scales
+        }
+
+    def rescale(self, img: xrDataArray) -> xrDataArray:
+        if not (img_space := getattr(img, "space", None)):  # pragma: no cover
+            raise ValueError("Input image must have a 'space' attribute.")
+
+        dims = self._get_scale_ratios(img_space)
+        if any(d < 1 for d in dims.values()):  # pragma: no cover
+            raise NotImplementedError(
+                f"Can only downscale an image. Got downscale factors {dims}."
+            )
+        return img.coarsen(dims).sum()  # type: ignore
 
     @field_validator("axes", mode="before")
     def _cast_axes(cls, value: Any) -> tuple[Axis, ...]:

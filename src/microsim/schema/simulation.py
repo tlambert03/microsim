@@ -268,9 +268,9 @@ class Simulation(SimBaseModel):
             optical_image = self.optical_image()
         image = optical_image  # (C, Z, Y, X)
 
-        # downscale to output space
+        # rescale to output space
         # TODO: consider how we would integrate detector pixel size
-        # rather than a user-sepicified output space
+        # rather than a user-specified output space
         if self.output_space is not None:
             logger.info(f"Rescaling to output space {self.output_space.shape}")
             image = self.output_space.rescale(image)
