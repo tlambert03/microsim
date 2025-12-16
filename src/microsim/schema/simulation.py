@@ -119,10 +119,6 @@ class Simulation(SimBaseModel):
         if not hasattr(self, "_ground_truth"):
             with logging_indented():
                 xp = self._xp
-                # make empty space into which we'll add the ground truth
-                # TODO: this is wasteful... label.render should probably
-                # accept the space object directly
-                truth = self.truth_space.create(array_creator=xp.zeros)
 
                 # render each ground truth
                 label_data = []
@@ -138,6 +134,10 @@ class Simulation(SimBaseModel):
                             f"Loaded ground truth for {label} from cache: {cache_path}"
                         )
                     else:
+                        # make empty space into which we'll add the ground truth
+                        # TODO: this is wasteful... label.render should probably
+                        # accept the space object directly
+                        truth = self.truth_space.create(array_creator=xp.zeros)
                         data = label.render(truth, xp=xp)
                         if self.settings.cache.write and cache_path:
                             to_cache(data, cache_path, dtype=np.uint16)
