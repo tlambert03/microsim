@@ -45,7 +45,7 @@ def make_unit_validator(units: UnitLike) -> Callable[[Any], PlainQuantity]:
             raise ValueError(f"Expected a quantity with units {units}, got {quant}")
         with suppress(pint.UndefinedUnitError):
             # try to cast to the given units.
-            # This may fail, even if quant.check() passed, if `units` is just a dimenson
+            # This may fail even if quant.check() passed if units is just a dimension
             quant = quant.to(units)
         return quant
 
