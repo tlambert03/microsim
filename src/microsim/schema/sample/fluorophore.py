@@ -66,7 +66,7 @@ class Fluorophore(SimBaseModel):
     def plot(self, show: bool = True) -> None:
         import matplotlib.pyplot as plt
 
-        fig, ax = plt.subplots(figsize=(12, 3))
+        _fig, ax = plt.subplots(figsize=(12, 3))
         ax.plot(
             self.excitation_spectrum.wavelength,
             self.excitation_spectrum.intensity,
