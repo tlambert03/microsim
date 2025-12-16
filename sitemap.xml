@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://tlambert03.github.io/microsim/</loc>
+         <lastmod>2025-12-16</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://tlambert03.github.io/microsim/api/</loc>
+         <lastmod>2025-12-16</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://tlambert03.github.io/microsim/concept/</loc>
+         <lastmod>2025-12-16</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://tlambert03.github.io/microsim/stages/</loc>
+         <lastmod>2025-12-16</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://tlambert03.github.io/microsim/tutorial/</loc>
+         <lastmod>2025-12-16</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+</urlset>

@@ -1,0 +1,5903 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Pure python extensions of the C++ micro-manager core">
+      
+      
+      
+        <link rel="canonical" href="https://tlambert03.github.io/microsim/api/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../concept/">
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.5.17">
+    
+    
+      
+        <title>API Reference - microsim</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.bcfcd587.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#api-reference" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="microsim" class="md-header__button md-logo" aria-label="microsim" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M160 32c0-17.7 14.3-32 32-32h32c17.7 0 32 14.3 32 32 17.7 0 32 14.3 32 32v224c0 17.7-14.3 32-32 32 0 17.7-14.3 32-32 32h-32c-17.7 0-32-14.3-32-32-17.7 0-32-14.3-32-32V64c0-17.7 14.3-32 32-32zM32 448h288c70.7 0 128-57.3 128-128s-57.3-128-128-128v-64c106 0 192 86 192 192 0 49.2-18.5 94-48.9 128H480c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32zm80-64h192c8.8 0 16 7.2 16 16s-7.2 16-16 16H112c-8.8 0-16-7.2-16-16s7.2-16 16-16z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            microsim
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              API Reference
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+      <script>var media,input,key,value,palette=__md_get("__palette");if(palette&&palette.color){"(prefers-color-scheme)"===palette.color.media&&(media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']"),palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent"));for([key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/tlambert03/microsim" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    tlambert03/microsim
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="microsim" class="md-nav__button md-logo" aria-label="microsim" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M160 32c0-17.7 14.3-32 32-32h32c17.7 0 32 14.3 32 32 17.7 0 32 14.3 32 32v224c0 17.7-14.3 32-32 32 0 17.7-14.3 32-32 32h-32c-17.7 0-32-14.3-32-32-17.7 0-32-14.3-32-32V64c0-17.7 14.3-32 32-32zM32 448h288c70.7 0 128-57.3 128-128s-57.3-128-128-128v-64c106 0 192 86 192 192 0 49.2-18.5 94-48.9 128H480c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32zm80-64h192c8.8 0 16 7.2 16 16s-7.2 16-16 16H112c-8.8 0-16-7.2-16-16s7.2-16 16-16z"/></svg>
+
+    </a>
+    microsim
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/tlambert03/microsim" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.5.1 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    tlambert03/microsim
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    microsim
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    API Reference
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    API Reference
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#simulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Simulation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.simulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      simulation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="simulation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Simulation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Simulation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.digital_image" class="md-nav__link">
+    <span class="md-ellipsis">
+      digital_image
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.emission_flux" class="md-nav__link">
+    <span class="md-ellipsis">
+      emission_flux
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.filtered_emission_rates" class="md-nav__link">
+    <span class="md-ellipsis">
+      filtered_emission_rates
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.from_ground_truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      from_ground_truth
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.ground_truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      ground_truth
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.optical_image" class="md-nav__link">
+    <span class="md-ellipsis">
+      optical_image
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.optical_image_per_fluor" class="md-nav__link">
+    <span class="md-ellipsis">
+      optical_image_per_fluor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      plot
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.run" class="md-nav__link">
+    <span class="md-ellipsis">
+      run
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      Spaces
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.space" class="md-nav__link">
+    <span class="md-ellipsis">
+      space
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="space">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.space.DownscaledSpace" class="md-nav__link">
+    <span class="md-ellipsis">
+      DownscaledSpace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.space.ExtentScaleSpace" class="md-nav__link">
+    <span class="md-ellipsis">
+      ExtentScaleSpace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.space.ShapeExtentSpace" class="md-nav__link">
+    <span class="md-ellipsis">
+      ShapeExtentSpace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.space.ShapeScaleSpace" class="md-nav__link">
+    <span class="md-ellipsis">
+      ShapeScaleSpace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.space.UpscaledSpace" class="md-nav__link">
+    <span class="md-ellipsis">
+      UpscaledSpace
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#objective-lens" class="md-nav__link">
+    <span class="md-ellipsis">
+      Objective Lens
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.lens" class="md-nav__link">
+    <span class="md-ellipsis">
+      lens
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="lens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.lens.ObjectiveKwargs" class="md-nav__link">
+    <span class="md-ellipsis">
+      ObjectiveKwargs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.lens.ObjectiveLens" class="md-nav__link">
+    <span class="md-ellipsis">
+      ObjectiveLens
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ObjectiveLens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.lens.ObjectiveLens.cache_key" class="md-nav__link">
+    <span class="md-ellipsis">
+      cache_key
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optical-configs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optical Configs
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config" class="md-nav__link">
+    <span class="md-ellipsis">
+      optical_config
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="optical_config">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.Bandpass" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bandpass
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.LightSource" class="md-nav__link">
+    <span class="md-ellipsis">
+      LightSource
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LightSource">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.LightSource.scaled_spectrum" class="md-nav__link">
+    <span class="md-ellipsis">
+      scaled_spectrum
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.Longpass" class="md-nav__link">
+    <span class="md-ellipsis">
+      Longpass
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      OpticalConfig
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OpticalConfig">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.emission" class="md-nav__link">
+    <span class="md-ellipsis">
+      emission
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.excitation" class="md-nav__link">
+    <span class="md-ellipsis">
+      excitation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.illumination" class="md-nav__link">
+    <span class="md-ellipsis">
+      illumination
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.illumination_flux_density" class="md-nav__link">
+    <span class="md-ellipsis">
+      illumination_flux_density
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.irradiance" class="md-nav__link">
+    <span class="md-ellipsis">
+      irradiance
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.absorption_rate" class="md-nav__link">
+    <span class="md-ellipsis">
+      absorption_rate
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.all_spectra" class="md-nav__link">
+    <span class="md-ellipsis">
+      all_spectra
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.filtered_emission_rate" class="md-nav__link">
+    <span class="md-ellipsis">
+      filtered_emission_rate
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.plot_emission" class="md-nav__link">
+    <span class="md-ellipsis">
+      plot_emission
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.plot_excitation" class="md-nav__link">
+    <span class="md-ellipsis">
+      plot_excitation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.total_emission_rate" class="md-nav__link">
+    <span class="md-ellipsis">
+      total_emission_rate
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.Shortpass" class="md-nav__link">
+    <span class="md-ellipsis">
+      Shortpass
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.SpectrumFilter" class="md-nav__link">
+    <span class="md-ellipsis">
+      SpectrumFilter
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Samples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.sample" class="md-nav__link">
+    <span class="md-ellipsis">
+      sample
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="sample">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.BaseDistribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      BaseDistribution
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="BaseDistribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.BaseDistribution.cache_path" class="md-nav__link">
+    <span class="md-ellipsis">
+      cache_path
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.BaseDistribution.is_random" class="md-nav__link">
+    <span class="md-ellipsis">
+      is_random
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.BaseDistribution.render" class="md-nav__link">
+    <span class="md-ellipsis">
+      render
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.Fluorophore" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fluorophore
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Fluorophore">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.Fluorophore.absorption_cross_section" class="md-nav__link">
+    <span class="md-ellipsis">
+      absorption_cross_section
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.Fluorophore.all_spectra" class="md-nav__link">
+    <span class="md-ellipsis">
+      all_spectra
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.FluorophoreDistribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      FluorophoreDistribution
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FluorophoreDistribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.FluorophoreDistribution.__str__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __str__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.FluorophoreDistribution.from_array" class="md-nav__link">
+    <span class="md-ellipsis">
+      from_array
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.FluorophoreDistribution.render" class="md-nav__link">
+    <span class="md-ellipsis">
+      render
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.MatsLines" class="md-nav__link">
+    <span class="md-ellipsis">
+      MatsLines
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.Sample" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sample
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modality" class="md-nav__link">
+    <span class="md-ellipsis">
+      Modality
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.modality" class="md-nav__link">
+    <span class="md-ellipsis">
+      modality
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="modality">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.modality.Confocal" class="md-nav__link">
+    <span class="md-ellipsis">
+      Confocal
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.modality.Identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      Identity
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Identity">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.modality.Identity.render" class="md-nav__link">
+    <span class="md-ellipsis">
+      render
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.modality.Widefield" class="md-nav__link">
+    <span class="md-ellipsis">
+      Widefield
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Settings
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      settings
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="settings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.settings.CacheSettings" class="md-nav__link">
+    <span class="md-ellipsis">
+      CacheSettings
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.settings.InMemoryCacheSizes" class="md-nav__link">
+    <span class="md-ellipsis">
+      InMemoryCacheSizes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.settings.Settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Settings
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other Types
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.spectrum" class="md-nav__link">
+    <span class="md-ellipsis">
+      spectrum
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="spectrum">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.spectrum.Spectrum" class="md-nav__link">
+    <span class="md-ellipsis">
+      Spectrum
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Spectrum">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.spectrum.Spectrum.max_intensity" class="md-nav__link">
+    <span class="md-ellipsis">
+      max_intensity
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.spectrum.Spectrum.peak_wavelength" class="md-nav__link">
+    <span class="md-ellipsis">
+      peak_wavelength
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.spectrum.get_overlapping_indices" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_overlapping_indices
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../concept/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Conceptual Overview
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../stages/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Simulation Stages
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../tutorial/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Microsim Tutorial
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#simulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Simulation
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.simulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      simulation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="simulation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Simulation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Simulation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.digital_image" class="md-nav__link">
+    <span class="md-ellipsis">
+      digital_image
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.emission_flux" class="md-nav__link">
+    <span class="md-ellipsis">
+      emission_flux
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.filtered_emission_rates" class="md-nav__link">
+    <span class="md-ellipsis">
+      filtered_emission_rates
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.from_ground_truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      from_ground_truth
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.ground_truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      ground_truth
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.optical_image" class="md-nav__link">
+    <span class="md-ellipsis">
+      optical_image
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.optical_image_per_fluor" class="md-nav__link">
+    <span class="md-ellipsis">
+      optical_image_per_fluor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.plot" class="md-nav__link">
+    <span class="md-ellipsis">
+      plot
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.simulation.Simulation.run" class="md-nav__link">
+    <span class="md-ellipsis">
+      run
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#spaces" class="md-nav__link">
+    <span class="md-ellipsis">
+      Spaces
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.space" class="md-nav__link">
+    <span class="md-ellipsis">
+      space
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="space">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.space.DownscaledSpace" class="md-nav__link">
+    <span class="md-ellipsis">
+      DownscaledSpace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.space.ExtentScaleSpace" class="md-nav__link">
+    <span class="md-ellipsis">
+      ExtentScaleSpace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.space.ShapeExtentSpace" class="md-nav__link">
+    <span class="md-ellipsis">
+      ShapeExtentSpace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.space.ShapeScaleSpace" class="md-nav__link">
+    <span class="md-ellipsis">
+      ShapeScaleSpace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.space.UpscaledSpace" class="md-nav__link">
+    <span class="md-ellipsis">
+      UpscaledSpace
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#objective-lens" class="md-nav__link">
+    <span class="md-ellipsis">
+      Objective Lens
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.lens" class="md-nav__link">
+    <span class="md-ellipsis">
+      lens
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="lens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.lens.ObjectiveKwargs" class="md-nav__link">
+    <span class="md-ellipsis">
+      ObjectiveKwargs
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.lens.ObjectiveLens" class="md-nav__link">
+    <span class="md-ellipsis">
+      ObjectiveLens
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ObjectiveLens">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.lens.ObjectiveLens.cache_key" class="md-nav__link">
+    <span class="md-ellipsis">
+      cache_key
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#optical-configs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Optical Configs
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config" class="md-nav__link">
+    <span class="md-ellipsis">
+      optical_config
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="optical_config">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.Bandpass" class="md-nav__link">
+    <span class="md-ellipsis">
+      Bandpass
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.LightSource" class="md-nav__link">
+    <span class="md-ellipsis">
+      LightSource
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="LightSource">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.LightSource.scaled_spectrum" class="md-nav__link">
+    <span class="md-ellipsis">
+      scaled_spectrum
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.Longpass" class="md-nav__link">
+    <span class="md-ellipsis">
+      Longpass
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig" class="md-nav__link">
+    <span class="md-ellipsis">
+      OpticalConfig
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="OpticalConfig">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.emission" class="md-nav__link">
+    <span class="md-ellipsis">
+      emission
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.excitation" class="md-nav__link">
+    <span class="md-ellipsis">
+      excitation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.illumination" class="md-nav__link">
+    <span class="md-ellipsis">
+      illumination
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.illumination_flux_density" class="md-nav__link">
+    <span class="md-ellipsis">
+      illumination_flux_density
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.irradiance" class="md-nav__link">
+    <span class="md-ellipsis">
+      irradiance
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.absorption_rate" class="md-nav__link">
+    <span class="md-ellipsis">
+      absorption_rate
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.all_spectra" class="md-nav__link">
+    <span class="md-ellipsis">
+      all_spectra
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.filtered_emission_rate" class="md-nav__link">
+    <span class="md-ellipsis">
+      filtered_emission_rate
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.plot_emission" class="md-nav__link">
+    <span class="md-ellipsis">
+      plot_emission
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.plot_excitation" class="md-nav__link">
+    <span class="md-ellipsis">
+      plot_excitation
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.OpticalConfig.total_emission_rate" class="md-nav__link">
+    <span class="md-ellipsis">
+      total_emission_rate
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.Shortpass" class="md-nav__link">
+    <span class="md-ellipsis">
+      Shortpass
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.optical_config.SpectrumFilter" class="md-nav__link">
+    <span class="md-ellipsis">
+      SpectrumFilter
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#samples" class="md-nav__link">
+    <span class="md-ellipsis">
+      Samples
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.sample" class="md-nav__link">
+    <span class="md-ellipsis">
+      sample
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="sample">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.BaseDistribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      BaseDistribution
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="BaseDistribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.BaseDistribution.cache_path" class="md-nav__link">
+    <span class="md-ellipsis">
+      cache_path
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.BaseDistribution.is_random" class="md-nav__link">
+    <span class="md-ellipsis">
+      is_random
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.BaseDistribution.render" class="md-nav__link">
+    <span class="md-ellipsis">
+      render
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.Fluorophore" class="md-nav__link">
+    <span class="md-ellipsis">
+      Fluorophore
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Fluorophore">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.Fluorophore.absorption_cross_section" class="md-nav__link">
+    <span class="md-ellipsis">
+      absorption_cross_section
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.Fluorophore.all_spectra" class="md-nav__link">
+    <span class="md-ellipsis">
+      all_spectra
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.FluorophoreDistribution" class="md-nav__link">
+    <span class="md-ellipsis">
+      FluorophoreDistribution
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="FluorophoreDistribution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.FluorophoreDistribution.__str__" class="md-nav__link">
+    <span class="md-ellipsis">
+      __str__
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.FluorophoreDistribution.from_array" class="md-nav__link">
+    <span class="md-ellipsis">
+      from_array
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.FluorophoreDistribution.render" class="md-nav__link">
+    <span class="md-ellipsis">
+      render
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.MatsLines" class="md-nav__link">
+    <span class="md-ellipsis">
+      MatsLines
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.sample.Sample" class="md-nav__link">
+    <span class="md-ellipsis">
+      Sample
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#modality" class="md-nav__link">
+    <span class="md-ellipsis">
+      Modality
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.modality" class="md-nav__link">
+    <span class="md-ellipsis">
+      modality
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="modality">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.modality.Confocal" class="md-nav__link">
+    <span class="md-ellipsis">
+      Confocal
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.modality.Identity" class="md-nav__link">
+    <span class="md-ellipsis">
+      Identity
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Identity">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.modality.Identity.render" class="md-nav__link">
+    <span class="md-ellipsis">
+      render
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.modality.Widefield" class="md-nav__link">
+    <span class="md-ellipsis">
+      Widefield
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Settings
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      settings
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="settings">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.settings.CacheSettings" class="md-nav__link">
+    <span class="md-ellipsis">
+      CacheSettings
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.settings.InMemoryCacheSizes" class="md-nav__link">
+    <span class="md-ellipsis">
+      InMemoryCacheSizes
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.settings.Settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Settings
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#other-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      Other Types
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#microsim.schema.spectrum" class="md-nav__link">
+    <span class="md-ellipsis">
+      spectrum
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="spectrum">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.spectrum.Spectrum" class="md-nav__link">
+    <span class="md-ellipsis">
+      Spectrum
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Spectrum">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.spectrum.Spectrum.max_intensity" class="md-nav__link">
+    <span class="md-ellipsis">
+      max_intensity
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.spectrum.Spectrum.peak_wavelength" class="md-nav__link">
+    <span class="md-ellipsis">
+      peak_wavelength
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#microsim.schema.spectrum.get_overlapping_indices" class="md-nav__link">
+    <span class="md-ellipsis">
+      get_overlapping_indices
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+  
+  
+
+
+<h1 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">#</a></h1>
+<p>All classes here are importable from the <code>microsim.schema</code> module.</p>
+<h2 id="simulation">Simulation<a class="headerlink" href="#simulation" title="Permanent link">#</a></h2>
+<p>The top level object is the <code>Simulation</code> object. This
+object contains all the information needed to run a simulation.</p>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="microsim.schema.simulation" class="doc doc-heading">
+          <code>microsim.schema.simulation</code>
+
+
+<a href="#microsim.schema.simulation" class="headerlink" title="Permanent link">#</a></h2>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.simulation.Simulation" class="doc doc-heading">
+          <code>Simulation</code>
+
+
+<a href="#microsim.schema.simulation.Simulation" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema._base_model.SimBaseModel">SimBaseModel</span></code></p>
+
+  
+      <p>Top level Simulation object.</p>
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>truth_space</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.space.ExtentScaleSpace" href="#microsim.schema.space.ExtentScaleSpace">ExtentScaleSpace</a> | <a class="autorefs autorefs-internal" title="microsim.schema.space.ShapeExtentSpace" href="#microsim.schema.space.ShapeExtentSpace">ShapeExtentSpace</a> | <a class="autorefs autorefs-internal" title="microsim.schema.space.ShapeScaleSpace" href="#microsim.schema.space.ShapeScaleSpace">ShapeScaleSpace</a> | <a class="autorefs autorefs-internal" title="microsim.schema.space.DownscaledSpace" href="#microsim.schema.space.DownscaledSpace">DownscaledSpace</a> | UpscaledSpace</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>output_space</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.space.ExtentScaleSpace" href="#microsim.schema.space.ExtentScaleSpace">ExtentScaleSpace</a> | <a class="autorefs autorefs-internal" title="microsim.schema.space.ShapeExtentSpace" href="#microsim.schema.space.ShapeExtentSpace">ShapeExtentSpace</a> | <a class="autorefs autorefs-internal" title="microsim.schema.space.ShapeScaleSpace" href="#microsim.schema.space.ShapeScaleSpace">ShapeScaleSpace</a> | <a class="autorefs autorefs-internal" title="microsim.schema.space.DownscaledSpace" href="#microsim.schema.space.DownscaledSpace">DownscaledSpace</a> | UpscaledSpace | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>sample</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.sample.Sample" href="#microsim.schema.sample.Sample">Sample</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>modality</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.modality.Confocal" href="#microsim.schema.modality.Confocal">Confocal</a> | <a class="autorefs autorefs-internal" title="microsim.schema.modality.Widefield" href="#microsim.schema.modality.Widefield">Widefield</a> | <a class="autorefs autorefs-internal" title="microsim.schema.modality.Identity" href="#microsim.schema.modality.Identity">Identity</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>Widefield(type=&#39;widefield&#39;)</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>objective_lens</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.lens.ObjectiveLens" href="#microsim.schema.lens.ObjectiveLens">ObjectiveLens</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>ObjectiveLens(numerical_aperture=1.4, coverslip_ri=1.515, coverslip_ri_spec=1.515, immersion_medium_ri=1.515, immersion_medium_ri_spec=1.515, specimen_ri=1.47, working_distance_um=150.0, coverslip_thickness_um=170.0, coverslip_thickness_spec_um=170.0, magnification=1.0)</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>channels</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-internal" title="microsim.schema.optical_config.OpticalConfig" href="#microsim.schema.optical_config.OpticalConfig">OpticalConfig</a>]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>[OpticalConfig(name=&#39;FITC&#39;, filters=[Bandpass(type=&#39;bandpass&#39;, name=&#39;&#39;, placement=&lt;Placement.EX_PATH: &#39;EX&#39;&gt;, bandcenter=470.0, bandwidth=40.0, transmission=1.0, spectrum=Spectrum(wavelength=ndarray&lt;shape=(500,) dtype=int64&gt;, intensity=ndarray&lt;shape=(500,) dtype=float64&gt;, scalar=1.0)), Longpass(type=&#39;longpass&#39;, name=&#39;&#39;, placement=&lt;Placement.BS: &#39;BS&#39;&gt;, cuton=495.0, slope=None, transmission=1.0, spectrum=Spectrum(wavelength=ndarray&lt;shape=(500,) dtype=int64&gt;, intensity=ndarray&lt;shape=(500,) dtype=float64&gt;, scalar=1.0)), Bandpass(type=&#39;bandpass&#39;, name=&#39;&#39;, placement=&lt;Placement.EM_PATH: &#39;EM&#39;&gt;, bandcenter=525.0, bandwidth=50.0, transmission=1.0, spectrum=Spectrum(wavelength=ndarray&lt;shape=(500,) dtype=int64&gt;, intensity=ndarray&lt;shape=(500,) dtype=float64&gt;, scalar=1.0))], lights=[], detector=None, exposure_ms=None, power=None)]</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>detector</code></td>
+          <td>
+                <code><span title="microsim.schema.detectors.CameraEMCCD">CameraEMCCD</span> | <span title="microsim.schema.detectors.CameraCMOS">CameraCMOS</span> | <span title="microsim.schema.detectors.CameraCCD">CameraCCD</span> | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>exposure_ms</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>100</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>settings</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.settings.Settings" href="#microsim.schema.settings.Settings">Settings</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>Settings(np_backend=&#39;auto&#39;, device=&#39;auto&#39;, float_dtype=dtype(&#39;float32&#39;), random_seed=907399067, max_psf_radius_aus=6.0, cache=CacheSettings(read=True, write=True, in_mem_size=InMemoryCacheSizes(psf=64)), spectral_bins_per_emission_channel=1, spectral_bin_threshold_percentage=1.0)</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>output_path</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" title="typing.Annotated" href="https://docs.python.org/3/library/typing.html#typing.Annotated">Annotated</a>[<a class="autorefs autorefs-external" title="pathlib.Path" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path">Path</a>, <span title="pydantic.AfterValidator">AfterValidator</span>] | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.simulation.Simulation.digital_image" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">digital_image</span><span class="p">(</span><span class="n">optical_image</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">exposure_ms</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">with_detector_noise</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+<a href="#microsim.schema.simulation.Simulation.digital_image" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return the digital image as captured by the detector.</p>
+<p>This down-scales the optical image to the output space, and simulates the
+detector response.  The return array has dimensions (C, Z, Y, X).  The units
+are gray values, based on the bit-depth of the detector.  If there is no
+detector or <code>with_detector_noise</code> is False, the units are simply photons.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.simulation.Simulation.emission_flux" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">emission_flux</span><span class="p">()</span></code>
+
+<a href="#microsim.schema.simulation.Simulation.emission_flux" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return the spatial emission in photons per second (after emission filters).</p>
+<p>This is the ground truth data multiplied by the filtered emission rates, <em>prior</em>
+to convolution with the PSF.</p>
+<p>This multiplies the per-fluorophore emission rates by the ground truth data to
+get the total emission flux for each voxel in the ground truth. The return
+array has dimensions (C, F, Z, Y, X).  The units are photons/s.</p>
+<p>Note, this integrates over all wavelengths. For finer control over the emission
+spectrum, you may wish to directly combine <code>filtered_emission_rates</code> with the
+ground truth data as needed.</p>
+<p>This function is <em>NOT</em> used by <code>run()</code>. It is provided as a convenience for
+debugging and analysis. See also <code>optical_image_per_fluor</code>, which is similar to
+this function, but returns the image <em>after</em> convolution with the PSF.  That
+function may return a different result than simply convolving this function's
+output with a single PSF, as it more accurately models multi-wavelength
+emission spectra (as superposition of multiple PSFs).</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.simulation.Simulation.filtered_emission_rates" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">filtered_emission_rates</span><span class="p">()</span></code>
+
+<a href="#microsim.schema.simulation.Simulation.filtered_emission_rates" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return the emission rates for each fluorophore in each channel.</p>
+<p>Returns a (C, F, W) array of emission rates for each fluorophore in each
+channel, as a function of wavelength.  The units are photons/s.  The range
+of wavelengths will encompass the union of all the fluorophores' emission
+spectra, and the rates will be zero where the fluorophore does not emit.</p>
+
+
+
+<p><strong>Examples:</strong></p>
+    <div class="highlight"><pre><span></span><code><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">Simulation</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rates</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">filtered_emission_rates</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">rates</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">c</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="c1"># plot emission of all fluors in channel 0</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.simulation.Simulation.from_ground_truth" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">from_ground_truth</span><span class="p">(</span><span class="n">ground_truth</span><span class="p">,</span> <span class="n">scale</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#microsim.schema.simulation.Simulation.from_ground_truth" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Shortcut to create a simulation directly from a ground truth array.</p>
+<p>In this case, we bypass derive the <code>truth_space</code> and <code>sample</code> objects directly
+from a pre-calculated ground truth array.  <code>scale</code> must also be provided as a
+tuple of floats, one for each dimension of the ground truth array.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.simulation.Simulation.ground_truth" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">ground_truth</span><span class="p">()</span></code>
+
+<a href="#microsim.schema.simulation.Simulation.ground_truth" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return the ground truth data.</p>
+<p>Returns position and quantity of fluorophores in the sample.  The return array
+has dimensions (F, Z, Y, X).  The units are fluorophores counts.</p>
+
+
+
+<p><strong>Examples:</strong></p>
+    <div class="highlight"><pre><span></span><code><span class="gp">&gt;&gt;&gt; </span><span class="n">sim</span> <span class="o">=</span> <span class="n">Simulation</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">truth</span> <span class="o">=</span> <span class="n">sim</span><span class="o">.</span><span class="n">ground_truth</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">truth</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">f</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="s1">&#39;z&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">plot</span><span class="p">()</span>  <span class="c1"># plot max projection of first fluorophore</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre></div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.simulation.Simulation.optical_image" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">optical_image</span><span class="p">()</span></code>
+
+<a href="#microsim.schema.simulation.Simulation.optical_image" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return the optical image as delivered to the detector.</p>
+<p>This is the same as <code>optical_image_per_fluor</code>, but sums the contributions of all
+fluorophores in each channel (which a detector would not know). The return
+array has dimensions (C, Z, Y, X).  The units are photons/s.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.simulation.Simulation.optical_image_per_fluor" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">optical_image_per_fluor</span><span class="p">()</span></code>
+
+<a href="#microsim.schema.simulation.Simulation.optical_image_per_fluor" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return the optical image for each channel/fluorophore combination.</p>
+<p>This is the emission from each fluorophore in each channel, after filtering by
+the optical configuration and convolution with the PSF.</p>
+<p>The return array has dimensions (C, F, Z, Y, X).  The units are photons/s.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.simulation.Simulation.plot" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">plot</span><span class="p">(</span><span class="n">transpose</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">legend</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></code>
+
+<a href="#microsim.schema.simulation.Simulation.plot" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Plot a summary of fluorophores and filters/configs used in the simulation.</p>
+<p>Requires <code>matplotlib</code>.</p>
+<p>As the number of channels increases, the plot may become crowded.  In this case,
+consider setting <code>transpose=True</code> to plot channels on the x-axis and
+fluorophores on the y-axis.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.simulation.Simulation.run" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">run</span><span class="p">()</span></code>
+
+<a href="#microsim.schema.simulation.Simulation.run" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Run the complete simulation and return the result.</p>
+<p>This will also write a file to disk if <code>output</code> is set.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+
+
+
+  </div>
+
+  </div>
+
+</div><h2 id="spaces">Spaces<a class="headerlink" href="#spaces" title="Permanent link">#</a></h2>
+<p>Spaces define the shape and scale of various spaces in the simulation.
+They can be defined in many different ways, but they all either directly
+declare or calculate the <code>shape</code>, <code>scale</code>, <code>extent</code> and <code>axes</code> names of
+the space in which the simulation is run.</p>
+<p>For example, you might define the ground truth fluorophore distribution
+in a highly sampled space, and then downscale the resulting simulation
+to a realistic microscope image sampling.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">microsim</span><span class="w"> </span><span class="kn">import</span> <span class="n">Simulation</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">microsim.schema</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">ms</span>
+
+<span class="n">Simulation</span><span class="p">(</span>
+    <span class="c1"># ground truth with z-step 20nm and XY pixel size 10nm</span>
+    <span class="n">truth_space</span><span class="o">=</span><span class="n">ms</span><span class="o">.</span><span class="n">ShapeScaleSpace</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="mi">256</span><span class="p">,</span> <span class="mi">1024</span><span class="p">,</span> <span class="mi">1024</span><span class="p">),</span> <span class="n">scale</span><span class="o">=</span><span class="p">(</span><span class="mf">0.02</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">,</span> <span class="mf">0.01</span><span class="p">)),</span>
+    <span class="c1"># downscale output to 160nm x 80nm x 80nm pixels with shape (32, 128, 128)</span>
+    <span class="n">output_space</span><span class="o">=</span><span class="n">ms</span><span class="o">.</span><span class="n">DownscaledSpace</span><span class="p">(</span><span class="n">downscale</span><span class="o">=</span><span class="mi">8</span><span class="p">),</span>
+    <span class="n">sample</span><span class="o">=</span><span class="n">ms</span><span class="o">.</span><span class="n">Sample</span><span class="p">(</span><span class="n">labels</span><span class="o">=</span><span class="p">[])</span>  <span class="c1"># ...</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>If one of the spaces is defined using a relative space such as <code>DownscaledSpace</code>,
+the other <em>must</em> be an absolute space such as <code>ShapeScaleSpace</code>.</p>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="microsim.schema.space" class="doc doc-heading">
+          <code>microsim.schema.space</code>
+
+
+<a href="#microsim.schema.space" class="headerlink" title="Permanent link">#</a></h2>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.space.DownscaledSpace" class="doc doc-heading">
+          <code>DownscaledSpace</code>
+
+
+<a href="#microsim.schema.space.DownscaledSpace" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema.space._RelativeSpace">_RelativeSpace</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>downscale</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>, ...] | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.space.ExtentScaleSpace" class="doc doc-heading">
+          <code>ExtentScaleSpace</code>
+
+
+<a href="#microsim.schema.space.ExtentScaleSpace" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema.space._AxesSpace">_AxesSpace</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>extent</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a>, ...]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>scale</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a>, ...]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.space.ShapeExtentSpace" class="doc doc-heading">
+          <code>ShapeExtentSpace</code>
+
+
+<a href="#microsim.schema.space.ShapeExtentSpace" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema.space._AxesSpace">_AxesSpace</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>shape</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>, ...]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>extent</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a>, ...]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.space.ShapeScaleSpace" class="doc doc-heading">
+          <code>ShapeScaleSpace</code>
+
+
+<a href="#microsim.schema.space.ShapeScaleSpace" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema.space._AxesSpace">_AxesSpace</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>shape</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a>, ...]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>scale</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a>, ...]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>()</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.space.UpscaledSpace" class="doc doc-heading">
+          <code>UpscaledSpace</code>
+
+
+<a href="#microsim.schema.space.UpscaledSpace" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema.space._RelativeSpace">_RelativeSpace</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>upscale</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#tuple">tuple</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a>, ...] | <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+
+
+
+  </div>
+
+  </div>
+
+</div><h2 id="objective-lens">Objective Lens<a class="headerlink" href="#objective-lens" title="Permanent link">#</a></h2>
+<p>Properties of the objective lens used in the simulation.  Will help
+to determine the PSF and other optical properties of the simulation.</p>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="microsim.schema.lens" class="doc doc-heading">
+          <code>microsim.schema.lens</code>
+
+
+<a href="#microsim.schema.lens" class="headerlink" title="Permanent link">#</a></h2>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.lens.ObjectiveKwargs" class="doc doc-heading">
+          <code>ObjectiveKwargs</code>
+
+
+<a href="#microsim.schema.lens.ObjectiveKwargs" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-external" title="typing.TypedDict" href="https://docs.python.org/3/library/typing.html#typing.TypedDict">TypedDict</a></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>numerical_aperture</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>coverslip_ri</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>coverslip_ri_spec</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>immersion_medium_ri</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>immersion_medium_ri_spec</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>specimen_ri</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>working_distance</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>coverslip_thickness</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>coverslip_thickness_spec</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>magnification</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.lens.ObjectiveLens" class="doc doc-heading">
+          <code>ObjectiveLens</code>
+
+
+<a href="#microsim.schema.lens.ObjectiveLens" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema._base_model.SimBaseModel">SimBaseModel</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>numerical_aperture</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>1.4</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>coverslip_ri</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>1.515</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>coverslip_ri_spec</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>1.515</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>immersion_medium_ri</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>1.515</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>immersion_medium_ri_spec</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>1.515</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>specimen_ri</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>1.47</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>working_distance_um</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>150.0</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>coverslip_thickness_um</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>170.0</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>coverslip_thickness_spec_um</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>170.0</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>magnification</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              <p>magnification of objective lens.</p>
+            </div>
+          </td>
+          <td>
+                <code>1</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.lens.ObjectiveLens.cache_key" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cache_key</span><span class="p">()</span></code>
+
+<a href="#microsim.schema.lens.ObjectiveLens.cache_key" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Persistent identifier for the model.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+
+
+
+  </div>
+
+  </div>
+
+</div><h2 id="optical-configs">Optical Configs<a class="headerlink" href="#optical-configs" title="Permanent link">#</a></h2>
+<p>Optical configurations define the filters and wavelengths used
+in the simulation.</p>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="microsim.schema.optical_config" class="doc doc-heading">
+          <code>microsim.schema.optical_config</code>
+
+
+<a href="#microsim.schema.optical_config" class="headerlink" title="Permanent link">#</a></h2>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.optical_config.Bandpass" class="doc doc-heading">
+          <code>Bandpass</code>
+
+
+<a href="#microsim.schema.optical_config.Bandpass" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema.optical_config.filter._FilterBase">_FilterBase</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>type</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>&#39;bandpass&#39;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>bandcenter</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>bandwidth</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>transmission</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>1.0</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.optical_config.LightSource" class="doc doc-heading">
+          <code>LightSource</code>
+
+
+<a href="#microsim.schema.optical_config.LightSource" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema._base_model.SimBaseModel">SimBaseModel</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>name</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>&#39;&#39;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>spectrum</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.spectrum.Spectrum" href="#microsim.schema.spectrum.Spectrum">Spectrum</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>power</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.optical_config.LightSource.scaled_spectrum" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">scaled_spectrum</span><span class="p">()</span></code>
+
+<a href="#microsim.schema.optical_config.LightSource.scaled_spectrum" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return light source spectrum scaled to power, if present.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.optical_config.Longpass" class="doc doc-heading">
+          <code>Longpass</code>
+
+
+<a href="#microsim.schema.optical_config.Longpass" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema.optical_config.filter._FilterBase">_FilterBase</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>type</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>&#39;longpass&#39;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>placement</code></td>
+          <td>
+                <code><span title="microsim.schema.optical_config.filter.Placement">Placement</span></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>&lt;Placement.EM_PATH: &#39;EM&#39;&gt;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>cuton</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>slope</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>transmission</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>1.0</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.optical_config.OpticalConfig" class="doc doc-heading">
+          <code>OpticalConfig</code>
+
+
+<a href="#microsim.schema.optical_config.OpticalConfig" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema._base_model.SimBaseModel">SimBaseModel</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>name</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>&#39;&#39;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>filters</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[Union[<a class="autorefs autorefs-internal" title="microsim.schema.optical_config.filter.Bandpass" href="#microsim.schema.optical_config.Bandpass">Bandpass</a>, <a class="autorefs autorefs-internal" title="microsim.schema.optical_config.filter.Shortpass" href="#microsim.schema.optical_config.Shortpass">Shortpass</a>, <a class="autorefs autorefs-internal" title="microsim.schema.optical_config.filter.Longpass" href="#microsim.schema.optical_config.Longpass">Longpass</a>, <a class="autorefs autorefs-internal" title="microsim.schema.optical_config.filter.SpectrumFilter" href="#microsim.schema.optical_config.SpectrumFilter">SpectrumFilter</a>]]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>[]</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>lights</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-internal" title="microsim.schema.optical_config.config.LightSource" href="#microsim.schema.optical_config.LightSource">LightSource</a>]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>[]</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>detector</code></td>
+          <td>
+                <code><span title="microsim.schema.detectors.CameraEMCCD">CameraEMCCD</span> | <span title="microsim.schema.detectors.CameraCMOS">CameraCMOS</span> | <span title="microsim.schema.detectors.CameraCCD">CameraCCD</span> | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>exposure_ms</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>power</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="microsim.schema.optical_config.OpticalConfig.emission" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">emission</span><span class="p">:</span> <span class="n">Filter</span> <span class="o">|</span> <span class="kc">None</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#microsim.schema.optical_config.OpticalConfig.emission" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Combine all emission filters into a single spectrum.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="microsim.schema.optical_config.OpticalConfig.excitation" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">excitation</span><span class="p">:</span> <span class="n">Filter</span> <span class="o">|</span> <span class="kc">None</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#microsim.schema.optical_config.OpticalConfig.excitation" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Combine all excitation filters into a single spectrum.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="microsim.schema.optical_config.OpticalConfig.illumination" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">illumination</span><span class="p">:</span> <span class="n">Spectrum</span> <span class="o">|</span> <span class="kc">None</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#microsim.schema.optical_config.OpticalConfig.illumination" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return the combined illumination spectrum.</p>
+<p>This represents the spectrum of light source and all of the filters in the
+excitation path. If there are multiple light sources, they are combined.
+Different light sources can have different powers. In that case light sources
+are scaled by the respective light powers.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="microsim.schema.optical_config.OpticalConfig.illumination_flux_density" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">illumination_flux_density</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#microsim.schema.optical_config.OpticalConfig.illumination_flux_density" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return the illumination flux density in photons/cm^2/s.</p>
+<p>This is a measure of the number of photons per unit area per second in the
+excitation path of this optical configuration.
+It converts irradiance (W/cm^2) to photons/cm^2/s using the energy of a photon.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="microsim.schema.optical_config.OpticalConfig.irradiance" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">irradiance</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#microsim.schema.optical_config.OpticalConfig.irradiance" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return the illumination irradiance in W/cm^2.</p>
+<p>This scales the illumination spectrum to power. It is a measure of the power per
+unit area of the excitation path of this optical configuration, in W/cm^2, as
+a function of wavelength.</p>
+  </div>
+
+</div>
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.optical_config.OpticalConfig.absorption_rate" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">absorption_rate</span><span class="p">(</span><span class="n">fluorophore</span><span class="p">)</span></code>
+
+<a href="#microsim.schema.optical_config.OpticalConfig.absorption_rate" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return the absorption rate of a fluorophore with this configuration.</p>
+<p>The absorption rate is the number of photons absorbed per second per
+fluorophore, as a function of wavelength. It's a vector with a single axis W,
+and singleton dimensions F and C.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.optical_config.OpticalConfig.all_spectra" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">all_spectra</span><span class="p">()</span></code>
+
+<a href="#microsim.schema.optical_config.OpticalConfig.all_spectra" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return a DataArray with all spectra in this configuration.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.optical_config.OpticalConfig.filtered_emission_rate" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">filtered_emission_rate</span><span class="p">(</span><span class="n">fluorophore</span><span class="p">,</span> <span class="n">detector_qe</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#microsim.schema.optical_config.OpticalConfig.filtered_emission_rate" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return the emission rate of a fluorophore with this config, after filters.</p>
+<p>The emission rate is the number of photons emitted per second per
+fluorophore, as a function of wavelength, after being excited by this optical
+config, then passing through the emission path of this config. It's a vector
+with a single axis W, and singleton dimensions F and C.</p>
+<p>This is the complete picture of the treatment of a specific fluorophore with
+this optical configuration.  It takes into account:</p>
+<div class="highlight"><pre><span></span><code>- the excitation spectrum and extinction coefficient of the fluorophore
+- the excitation filter/beamsplitter and light source spectra
+- the quantum yield and emission spectrum of the fluorophore
+- the emission filter/beamsplitter spectra
+- camera QE, if passed
+</code></pre></div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.optical_config.OpticalConfig.plot_emission" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">plot_emission</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">detector_qe</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#microsim.schema.optical_config.OpticalConfig.plot_emission" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Plot all components of the emission path.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.optical_config.OpticalConfig.plot_excitation" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">plot_excitation</span><span class="p">(</span><span class="n">ax</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#microsim.schema.optical_config.OpticalConfig.plot_excitation" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Plot all components of the excitation path.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.optical_config.OpticalConfig.total_emission_rate" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">total_emission_rate</span><span class="p">(</span><span class="n">fluorophore</span><span class="p">)</span></code>
+
+<a href="#microsim.schema.optical_config.OpticalConfig.total_emission_rate" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return the emission rate of a fluorophore with this configuration.</p>
+<p>The emission rate is the total number of photons emitted per second per
+fluorophore, as a function of wavelength, prior to any filtering in the emission
+path. It's a vector with a single axis W, and singleton dimensions F and C</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.optical_config.Shortpass" class="doc doc-heading">
+          <code>Shortpass</code>
+
+
+<a href="#microsim.schema.optical_config.Shortpass" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema.optical_config.filter._FilterBase">_FilterBase</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>type</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>&#39;shortpass&#39;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>placement</code></td>
+          <td>
+                <code><span title="microsim.schema.optical_config.filter.Placement">Placement</span></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>&lt;Placement.EX_PATH: &#39;EX&#39;&gt;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>cutoff</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>slope</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>transmission</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>1.0</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.optical_config.SpectrumFilter" class="doc doc-heading">
+          <code>SpectrumFilter</code>
+
+
+<a href="#microsim.schema.optical_config.SpectrumFilter" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema.optical_config.filter._FilterBase">_FilterBase</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>type</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>&#39;spectrum&#39;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>transmission</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.spectrum.Spectrum" href="#microsim.schema.spectrum.Spectrum">Spectrum</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+
+
+
+  </div>
+
+  </div>
+
+</div><h2 id="samples">Samples<a class="headerlink" href="#samples" title="Permanent link">#</a></h2>
+<p>Samples define the distribution and properties of fluorophores in
+the simulation.  A <code>Sample</code> is a set of <code>labels</code>, each of which
+is a combination of a <code>Fluorophore</code> and a <code>FluorophoreDistribution</code>.</p>
+<p>The <code>FluorophoreDistribution</code> is the primary object that determines
+what the sample will look like.</p>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="microsim.schema.sample" class="doc doc-heading">
+          <code>microsim.schema.sample</code>
+
+
+<a href="#microsim.schema.sample" class="headerlink" title="Permanent link">#</a></h2>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.sample.BaseDistribution" class="doc doc-heading">
+          <code>BaseDistribution</code>
+
+
+<a href="#microsim.schema.sample.BaseDistribution" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="pydantic.BaseModel">BaseModel</span></code>, <code><a class="autorefs autorefs-external" title="abc.ABC" href="https://docs.python.org/3/library/abc.html#abc.ABC">ABC</a></code></p>
+
+  
+      
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.sample.BaseDistribution.cache_path" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">cache_path</span><span class="p">()</span></code>
+
+<a href="#microsim.schema.sample.BaseDistribution.cache_path" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return a tuple of strings that uniquely identify this distribution.</p>
+<p>This may be used to determine a cache location for ground truths generated
+by this distribution. If None is returned, no caching will be performed.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.sample.BaseDistribution.is_random" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">is_random</span><span class="p">()</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#microsim.schema.sample.BaseDistribution.is_random" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return True if this distribution generates randomized results.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.sample.BaseDistribution.render" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">render</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">xp</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-abstractmethod"><code>abstractmethod</code></small>
+  </span>
+
+<a href="#microsim.schema.sample.BaseDistribution.render" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Render the distribution into the given space.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.sample.Fluorophore" class="doc doc-heading">
+          <code>Fluorophore</code>
+
+
+<a href="#microsim.schema.sample.Fluorophore" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema._base_model.SimBaseModel">SimBaseModel</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>name</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>excitation_spectrum</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.spectrum.Spectrum" href="#microsim.schema.spectrum.Spectrum">Spectrum</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>emission_spectrum</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.spectrum.Spectrum" href="#microsim.schema.spectrum.Spectrum">Spectrum</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>bleaching_half_life_s</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>extinction_coefficient</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>quantum_yield</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>lifetime_ns</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="microsim.schema.sample.Fluorophore.absorption_cross_section" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">absorption_cross_section</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#microsim.schema.sample.Fluorophore.absorption_cross_section" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return the absorption cross section in cm^2.</p>
+  </div>
+
+</div>
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.sample.Fluorophore.all_spectra" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">all_spectra</span><span class="p">()</span></code>
+
+<a href="#microsim.schema.sample.Fluorophore.all_spectra" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return a DataArray with both excitation and emission spectra.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.sample.FluorophoreDistribution" class="doc doc-heading">
+          <code>FluorophoreDistribution</code>
+
+
+<a href="#microsim.schema.sample.FluorophoreDistribution" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema._base_model.SimBaseModel">SimBaseModel</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>distribution</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.sample._distributions.matslines.MatsLines" href="#microsim.schema.sample.MatsLines">MatsLines</a> | <span title="microsim.schema.sample._distributions.cosem.CosemLabel">CosemLabel</span> | <span title="microsim.schema.sample._distributions.direct.FixedArrayTruth">FixedArrayTruth</span> | Annotated[<span title="microsim.schema.sample._distributions._base.Renderable">Renderable</span>, _IsInstanceAnySer]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>fluorophore</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.sample.fluorophore.Fluorophore" href="#microsim.schema.sample.Fluorophore">Fluorophore</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>Fluorophore(name=&#39;mockFluorophore&#39;, excitation_spectrum=Spectrum(wavelength=ndarray&lt;shape=(500,) dtype=int64&gt;, intensity=ndarray&lt;shape=(500,) dtype=int64&gt;, scalar=1.0), emission_spectrum=Spectrum(wavelength=ndarray&lt;shape=(500,) dtype=int64&gt;, intensity=ndarray&lt;shape=(500,) dtype=int64&gt;, scalar=1.0), bleaching_half_life_s=None, extinction_coefficient=50000.0, quantum_yield=1.0, lifetime_ns=1.0)</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>concentration</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | <a class="autorefs autorefs-external" title="collections.abc.Callable" href="https://docs.python.org/3/library/collections.abc.html#collections.abc.Callable">Callable</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>, DataArray] | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>None</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.sample.FluorophoreDistribution.__str__" class="doc doc-heading">
+          <code class="highlight language-python"><span class="fm">__str__</span><span class="p">()</span></code>
+
+<a href="#microsim.schema.sample.FluorophoreDistribution.__str__" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return a string representation of the fluorophore distribution.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.sample.FluorophoreDistribution.from_array" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">from_array</span><span class="p">(</span><span class="n">array</span><span class="p">)</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-classmethod"><code>classmethod</code></small>
+  </span>
+
+<a href="#microsim.schema.sample.FluorophoreDistribution.from_array" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Create a FluorophoreDistribution from a fixed array.</p>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.sample.FluorophoreDistribution.render" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">render</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">xp</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+<a href="#microsim.schema.sample.FluorophoreDistribution.render" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Render the fluorophore distribution into the given space.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.sample.MatsLines" class="doc doc-heading">
+          <code>MatsLines</code>
+
+
+<a href="#microsim.schema.sample.MatsLines" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><a class="autorefs autorefs-internal" title="microsim.schema.sample._distributions._base.BaseDistribution" href="#microsim.schema.sample.BaseDistribution">BaseDistribution</a></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>type</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>&#39;matslines&#39;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>density</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>1</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>length</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>10</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>azimuth</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>10</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>max_r</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>0.9</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.sample.Sample" class="doc doc-heading">
+          <code>Sample</code>
+
+
+<a href="#microsim.schema.sample.Sample" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema._base_model.SimBaseModel">SimBaseModel</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>labels</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#list">list</a>[<a class="autorefs autorefs-internal" title="microsim.schema.sample.sample.FluorophoreDistribution" href="#microsim.schema.sample.FluorophoreDistribution">FluorophoreDistribution</a>]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+
+
+
+  </div>
+
+  </div>
+
+</div><h2 id="modality">Modality<a class="headerlink" href="#modality" title="Permanent link">#</a></h2>
+<p>Modalities define the imaging modality used in the simulation,
+such as "widefield", "confocal", "3D-SIM", etc.  This object
+has a lot of control over how other parts of the simulation
+are combined to render the final image.</p>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="microsim.schema.modality" class="doc doc-heading">
+          <code>microsim.schema.modality</code>
+
+
+<a href="#microsim.schema.modality" class="headerlink" title="Permanent link">#</a></h2>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.modality.Confocal" class="doc doc-heading">
+          <code>Confocal</code>
+
+
+<a href="#microsim.schema.modality.Confocal" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema.modality._simple_psf._PSFModality">_PSFModality</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>type</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>&#39;confocal&#39;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>pinhole_au</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>1</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.modality.Identity" class="doc doc-heading">
+          <code>Identity</code>
+
+
+<a href="#microsim.schema.modality.Identity" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema.modality._simple_psf._PSFModality">_PSFModality</span></code></p>
+
+  
+      <p>Optical modality in which PSF is not applied.</p>
+<p>The idea is to use this modality when the ground truth flurophore distribution is
+generated from a light micorscope image, i.e., the PSF convolution is already
+applied on the image.  This is useful primarily when you are more interested in the
+spectral properties (fluorophores, filters, bleedthrough, etc.) than the spatial
+properties (PSF, modality, etc.) in the simulation.</p>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h4 id="microsim.schema.modality.Identity.render" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">render</span><span class="p">(</span><span class="n">truth</span><span class="p">,</span> <span class="n">em_rates</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></code>
+
+<a href="#microsim.schema.modality.Identity.render" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Render a 3D image of the truth for F fluorophores, in C channels.</p>
+<p>In this case we don't apply the PSF convolution, as the truth is assumed to be
+already convolved with the PSF. Therefore, we simply compute the emission flux
+for each fluorophore and each channel.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.modality.Widefield" class="doc doc-heading">
+          <code>Widefield</code>
+
+
+<a href="#microsim.schema.modality.Widefield" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema.modality._simple_psf._PSFModality">_PSFModality</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>type</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" title="typing.Literal" href="https://docs.python.org/3/library/typing.html#typing.Literal">Literal</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>&#39;widefield&#39;</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+
+
+
+  </div>
+
+  </div>
+
+</div><h2 id="settings">Settings<a class="headerlink" href="#settings" title="Permanent link">#</a></h2>
+<p>Various global settings for the simulation, such as the calculation
+backend (<code>numpy</code>, <code>cupy</code>, <code>jax</code>, etc...) and an optional random seed,
+which can be used to reproduce the same simulation multiple times.</p>
+<p>Note that all of these settings can also be defined using environment
+variables prefixed with <code>MICROSIM_</code>.  For example, to globally
+disallow caching, you can set <code>MICROSIM_CACHE=0</code>.  Nested settings
+can be defined using <code>__</code> as a separator, such as <code>MICROSIM_CACHE__WRITE=0</code>,
+which would disable writing to the cache (but still allow reading).</p>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="microsim.schema.settings" class="doc doc-heading">
+          <code>microsim.schema.settings</code>
+
+
+<a href="#microsim.schema.settings" class="headerlink" title="Permanent link">#</a></h2>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.settings.CacheSettings" class="doc doc-heading">
+          <code>CacheSettings</code>
+
+
+<a href="#microsim.schema.settings.CacheSettings" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema._base_model.SimBaseModel">SimBaseModel</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>read</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>True</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>write</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>True</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>in_mem_size</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.settings.InMemoryCacheSizes" href="#microsim.schema.settings.InMemoryCacheSizes">InMemoryCacheSizes</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>InMemoryCacheSizes(psf=64)</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.settings.InMemoryCacheSizes" class="doc doc-heading">
+          <code>InMemoryCacheSizes</code>
+
+
+<a href="#microsim.schema.settings.InMemoryCacheSizes" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema._base_model.SimBaseModel">SimBaseModel</span></code></p>
+
+  
+      <p>Parameters that control the in-memory cache size of various cached functions.</p>
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>psf</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              <p>The maximum number of PSFs that will be stored in the in-memory cache, which follows the LRU caching strategy. Note, this setting will only take effect by modifying the equivalent environment variable prior to importing microsim.</p>
+            </div>
+          </td>
+          <td>
+                <code>64</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.settings.Settings" class="doc doc-heading">
+          <code>Settings</code>
+
+
+<a href="#microsim.schema.settings.Settings" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema._base_model.SimBaseModel">SimBaseModel</span></code>, <code><span title="pydantic_settings.BaseSettings">BaseSettings</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>np_backend</code></td>
+          <td>
+                <code>Literal[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>&#39;auto&#39;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>device</code></td>
+          <td>
+                <code>Literal[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>, <a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a>]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>&#39;auto&#39;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>float_dtype</code></td>
+          <td>
+                <code>dtype[floating]</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              <p>Floating-point precision to use for simulations.</p>
+            </div>
+          </td>
+          <td>
+                <code>&#39;float32&#39;</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>random_seed</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a> | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>1486789417</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>max_psf_radius_aus</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              <p>When simulating, restrict generated lateral PSF size to no more than this many Airy units. Decreasing this can <em>dramatically</em> speed up simulations, but will decrease accuracy. If <code>None</code>, no restriction is applied, and the psf will be generated to the full extent of the simulated space.</p>
+            </div>
+          </td>
+          <td>
+                <code>6</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>cache</code></td>
+          <td>
+                <code><a class="autorefs autorefs-internal" title="microsim.schema.settings.CacheSettings" href="#microsim.schema.settings.CacheSettings">CacheSettings</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>CacheSettings(read=True, write=True, in_mem_size=InMemoryCacheSizes(psf=64))</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>spectral_bins_per_emission_channel</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              <p>Number of wavelengths to use (per channel) when simulating the optical image. By default, a single centroid wavelength is used to approximatethe emission wavelength.  Increasing this will make the simulation more realistic, by superposing multiple different PSFs, but will also increase memory usage and time.</p>
+            </div>
+          </td>
+          <td>
+                <code>1</code>
+          </td>
+        </tr>
+        <tr>
+          <td><code>spectral_bin_threshold_percentage</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              <p>Percentage of the total intensity to use as a threshold when binning the emission spectrum. This is used to determine the range of wavelengths to consider when simulating the optical image.  First, the spectrum is trimmed to include only relevant wavelengths (those with intensity above this threshold). Then, the spectrum is discretized into spectral_bins_per_emission_channel bins.</p>
+            </div>
+          </td>
+          <td>
+                <code>1</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+
+
+
+  </div>
+
+  </div>
+
+</div><h2 id="other-types">Other Types<a class="headerlink" href="#other-types" title="Permanent link">#</a></h2>
+<p>Types used in the schema that may be used across categories.</p>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="microsim.schema.spectrum" class="doc doc-heading">
+          <code>microsim.schema.spectrum</code>
+
+
+<a href="#microsim.schema.spectrum" class="headerlink" title="Permanent link">#</a></h2>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h3 id="microsim.schema.spectrum.Spectrum" class="doc doc-heading">
+          <code>Spectrum</code>
+
+
+<a href="#microsim.schema.spectrum.Spectrum" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+          <p class="doc doc-class-bases">
+            Bases: <code><span title="microsim.schema._base_model.SimBaseModel">SimBaseModel</span></code></p>
+
+  
+      
+
+
+
+  <p><strong>Parameters:</strong></p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Default</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>wavelength</code></td>
+          <td>
+                <code>ndarray</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>intensity</code></td>
+          <td>
+                <code>ndarray</code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+              <em>required</em>
+          </td>
+        </tr>
+        <tr>
+          <td><code>scalar</code></td>
+          <td>
+                <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a></code>
+          </td>
+          <td>
+            <div class="doc-md-description">
+              
+            </div>
+          </td>
+          <td>
+                <code>1</code>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="microsim.schema.spectrum.Spectrum.max_intensity" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">max_intensity</span><span class="p">:</span> <span class="nb">float</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#microsim.schema.spectrum.Spectrum.max_intensity" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Maximum intensity.</p>
+  </div>
+
+</div>
+
+<div class="doc doc-object doc-attribute">
+
+
+
+<h4 id="microsim.schema.spectrum.Spectrum.peak_wavelength" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">peak_wavelength</span><span class="p">:</span> <span class="nb">float</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-property"><code>property</code></small>
+  </span>
+
+<a href="#microsim.schema.spectrum.Spectrum.peak_wavelength" class="headerlink" title="Permanent link">#</a></h4>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Wavelength corresponding to maximum intensity.</p>
+  </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+  </div>
+
+
+</div>
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h3 id="microsim.schema.spectrum.get_overlapping_indices" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">get_overlapping_indices</span><span class="p">(</span><span class="n">ary1</span><span class="p">,</span> <span class="n">ary2</span><span class="p">)</span></code>
+
+<a href="#microsim.schema.spectrum.get_overlapping_indices" class="headerlink" title="Permanent link">#</a></h3>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Return slices of overlapping subset of arrays.</p>
+<p>This assumes that the arrays are sorted 1d arrays.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var tab,labels=set.querySelector(".tabbed-labels");for(tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: microsim">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                microsim
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../concept/" class="md-footer__link md-footer__link--next" aria-label="Next: Conceptual Overview">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Conceptual Overview
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
+    
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "..", "features": ["content.tabs.link", "content.code.annotate", "content.code.copy", "navigation.footer"], "search": "../assets/javascripts/workers/search.b8dbb3d2.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.1e8ae164.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
