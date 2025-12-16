@@ -51,7 +51,7 @@ jobs:
 
       - run: uv run coverage run -p -m pytest --color=yes -v
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: covreport-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.min }}
           path: ./.coverage*
