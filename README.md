@@ -5,6 +5,7 @@
 [![Python Version](https://img.shields.io/pypi/pyversions/microsim.svg?color=green)](https://python.org)
 [![CI](https://github.com/tlambert03/microsim/actions/workflows/ci.yml/badge.svg)](https://github.com/tlambert03/microsim/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/tlambert03/microsim/branch/main/graph/badge.svg)](https://codecov.io/gh/tlambert03/microsim)
+[![DOI](https://zenodo.org/badge/483645397.svg)](https://doi.org/10.5281/zenodo.18942661)
 
 Light microscopy simulation in python.
 
