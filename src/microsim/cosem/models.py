@@ -38,6 +38,7 @@ ContentType = Literal[
 ImageFormat = Literal[
     "n5",
     "zarr",
+    "zarr3",
     "precomputed",
     "neuroglancer_precomputed",
     "neuroglancer_multilod_draco",
