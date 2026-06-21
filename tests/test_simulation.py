@@ -166,3 +166,17 @@ def test_simulation_write_from_ground_truth(tmp_path: Path) -> None:
     )
     sim.run()
     assert (tmp_path / "output.zarr").exists()
+
+
+def test_identity_modality_backend_conversion(np_backend: ms.BackendName) -> None:
+    """Regression test for #124: em_rates must be converted to the active
+    backend before use in Identity.render(), same as truth already is."""
+    sim = ms.Simulation(
+        truth_space=ms.ShapeScaleSpace(shape=(8, 32, 32), scale=(0.2, 0.1, 0.1)),
+        output_space={"downscale": 1},
+        sample=ms.Sample(labels=[MATSLINES]),
+        modality=ms.Identity(),
+        settings=ms.Settings(np_backend=np_backend),
+    )
+    result = sim.optical_image()
+    assert result.shape[1:] == sim.truth_space.shape
