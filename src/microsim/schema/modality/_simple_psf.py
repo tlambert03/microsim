@@ -208,9 +208,9 @@ class Identity(_PSFModality):
         self,
         truth: xrDataArray,  # (F, Z, Y, X)
         em_rates: xrDataArray,  # (C, F, W)
-        *args: Any,
+        objective_lens: ObjectiveLens,
+        settings: Settings,
         xp: NumpyAPI,
-        **kwargs: Any,
     ) -> xrDataArray:
         """Render a 3D image of the truth for F fluorophores, in C channels.
 
