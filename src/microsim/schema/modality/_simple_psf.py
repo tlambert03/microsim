@@ -209,6 +209,7 @@ class Identity(_PSFModality):
         truth: xrDataArray,  # (F, Z, Y, X)
         em_rates: xrDataArray,  # (C, F, W)
         *args: Any,
+        xp: NumpyAPI,
         **kwargs: Any,
     ) -> xrDataArray:
         """Render a 3D image of the truth for F fluorophores, in C channels.
@@ -217,7 +218,9 @@ class Identity(_PSFModality):
         already convolved with the PSF. Therefore, we simply compute the emission flux
         for each fluorophore and each channel.
         """
-        em_image = em_rates.sum(Axis.W) * truth
+        em_rates = em_rates.sum(Axis.W)
+        em_rates = em_rates.copy(data=xp.asarray(em_rates.data))
+        em_image = em_rates * truth
         return DataArray(
             em_image,
             dims=[Axis.C, Axis.F, Axis.Z, Axis.Y, Axis.X],
