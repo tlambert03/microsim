@@ -184,6 +184,10 @@ filterwarnings = [
     "ignore:__array__ implementation doesn't accept a copy keyword",
     # xarray triggers this numpy>=2.4 deprecation at import time (xarray/core/dtypes.py)
     "ignore:The 'generic' unit for NumPy timedelta is deprecated:DeprecationWarning",
+    # py3.14's GC surfaces unclosed sockets/responses from third-party network
+    # clients (supabase/s3fs/urllib) as fatal unraisable ResourceWarnings.
+    "ignore::ResourceWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
 ]
 
 # https://coverage.readthedocs.io/en/6.4/config.html

@@ -7,7 +7,8 @@ import pytest
 try:
     if os.getenv("MICROSIM_TEST_NO_INTERNET"):
         raise OSError("Skipping internet test due to MICROSIM_TEST_NO_INTERNET")
-    socket.create_connection(("8.8.8.8", 53), timeout=1)
+    with socket.create_connection(("8.8.8.8", 53), timeout=1):
+        pass
     HAVE_INTERNET = True
 except OSError:
     HAVE_INTERNET = False
