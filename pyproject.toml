@@ -17,21 +17,20 @@ name = "microsim"
 dynamic = ["version"]
 description = "Light microscopy simulation in python"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = { text = "BSD-3-Clause" }
 authors = [{ name = "Talley Lambert", email = "talley.lambert@gmail.com" }]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Typing :: Typed",
 ]
 dependencies = [
     "annotated-types >=0.7.0",
-    "numpy >=1.26,<2.0",             # something still breaks with 2+
+    "numpy >=2.0",
     "pint >=0.23",
     "platformdirs >=4.3.6",
     "pydantic >=2.8",
@@ -42,6 +41,12 @@ dependencies = [
     "tqdm >=4.67.1",
     "xarray >=2024.1.0",
     "zarr >=2.17,<3.0",
+    # microsim is now JAX-only and differentiable; jax + the chromatix
+    # wave-optics core + optax are hard dependencies.
+    "jax >=0.5.2",
+    "chromatix",
+    "optax >=0.2.0",
+    "dm-tree >=0.1.7",       # for the vendored xarray_jax pytree registration
 ]
 
 [project.urls]
@@ -60,19 +65,13 @@ cosem = [
     "s3fs>=0.4.2",
     "xarray-datatree>=0.0.14",
 ]
-torch = ["torch>=2.6.0", "torchaudio>=2.7.0"]
-jax = [
-    "jax[cpu]>=0.5.2",
-    "dm-tree ==0.1.8; sys_platform == 'darwin'",
-    "dm-tree >=0.1.7",
-]
 all = ["microsim[view,io,cosem]", "rich>=13"]
 
 [dependency-groups]
 test = ["pytest>=8.3.5", "pytest-cov>=6.0.0"]
 dev = [
     { include-group = "test" },
-    "microsim[all,jax,torch]",
+    "microsim[all]",
     "boto3-stubs[s3]",
     "ipython",
     "mypy",
@@ -95,6 +94,11 @@ docs = [
 
 [tool.uv.sources]
 microsim = { workspace = true }
+# The modern (Equinox-based) chromatix is not published to PyPI — PyPI's
+# `chromatix` is a stale 0.0.1 Flax release. Pin the GitHub commit for
+# reproducibility. NOTE: this git source must be resolved (chromatix released
+# to PyPI, or vendored) before microsim itself can be published to PyPI.
+chromatix = { git = "https://github.com/chromatix-team/chromatix", rev = "d24bdf0022835bb8ce1cdcc6aeafbc7fcb39daee" }
 
 
 [tool.ruff]
@@ -154,6 +158,11 @@ init_typed = false
 [[tool.mypy.overrides]]
 module = ["microsim.xarray_jax.*"]
 ignore_errors = true
+
+# chromatix (and a few jax-ecosystem deps) ship without type information
+[[tool.mypy.overrides]]
+module = ["chromatix.*", "optax.*", "equinox.*"]
+ignore_missing_imports = true
 
 [tool.pyright]
 reportArgumentType = false  # too hard with pydantic

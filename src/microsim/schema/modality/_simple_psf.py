@@ -1,14 +1,15 @@
 import warnings
 from typing import Annotated, Any, Literal
 
+import jax.numpy as jnp
 import numpy as np
 from annotated_types import Ge
+from jax.scipy.signal import fftconvolve
 
 from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
 from microsim._logger import logger, logging_indented
-from microsim.psf import make_psf
+from microsim.optics import make_psf
 from microsim.schema._base_model import SimBaseModel
-from microsim.schema.backend import NumpyAPI
 from microsim.schema.dimensions import Axis
 from microsim.schema.lens import ObjectiveLens
 from microsim.schema.settings import Settings
@@ -24,7 +25,6 @@ class _PSFModality(SimBaseModel):
         dx: float,
         dz: float,
         objective_lens: ObjectiveLens,
-        xp: NumpyAPI,
         ex_wvl_nm: float | None = None,
         em_wvl_nm: float | None = None,
     ) -> ArrayProtocol:
@@ -37,7 +37,7 @@ class _PSFModality(SimBaseModel):
             objective=objective_lens,
             ex_wvl_nm=ex_wvl_nm,
             em_wvl_nm=em_wvl_nm,
-            xp=xp,
+            aberration=objective_lens.aberration,
         )
 
     def render(
@@ -46,7 +46,6 @@ class _PSFModality(SimBaseModel):
         em_rates: xrDataArray,  # (C, F, W)
         objective_lens: ObjectiveLens,
         settings: Settings,
-        xp: NumpyAPI,
     ) -> xrDataArray:
         """Render a 3D image of the truth for F fluorophores, in C channels."""
         # for every channel in the emission rates...
@@ -71,7 +70,7 @@ class _PSFModality(SimBaseModel):
 
                         if not (em_spectrum > 1e-12).any():
                             # no emission at all for this fluorophore in this channel
-                            fluors.append(xp.zeros_like(f_truth))
+                            fluors.append(jnp.zeros(f_truth.shape))
                             continue
 
                         summed_psf = self._summed_weighted_psf(
@@ -79,16 +78,16 @@ class _PSFModality(SimBaseModel):
                             settings,
                             truth.attrs["space"],
                             objective_lens,
-                            xp,
                         )
-                        fluor_sum = xp.fftconvolve(f_truth, summed_psf, mode="same")
+                        truth_arr = jnp.asarray(f_truth.data)
+                        fluor_sum = fftconvolve(truth_arr, summed_psf, mode="same")
                         fluors.append(fluor_sum)
 
             # stack the fluorophores together to create the channel
-            channels.append(xp.stack(fluors, axis=0))
+            channels.append(jnp.stack(fluors, axis=0))
 
         return DataArray(
-            channels,
+            jnp.stack(channels, axis=0),
             dims=[Axis.C, Axis.F, Axis.Z, Axis.Y, Axis.X],
             coords={
                 Axis.C: em_rates.coords[Axis.C],
@@ -110,7 +109,6 @@ class _PSFModality(SimBaseModel):
         settings: Settings,
         space: SpaceProtocol,
         objective_lens: ObjectiveLens,
-        xp: NumpyAPI,
     ) -> ArrayProtocol:
         """Create a weighted sum of PSFs based on the emission spectrum.
 
@@ -132,7 +130,7 @@ class _PSFModality(SimBaseModel):
         # maximum wavelength in the emission spectrum and `settings.max_psf_radius_aus`
         nz, _ny, _nx = space.shape
         dz, _dy, dx = space.scale
-        max_wave = binned.coords[Axis.W].max().item()
+        max_wave = float(binned.coords[Axis.W].max())
         nx = _pick_nx(
             _nx,
             dx,
@@ -144,7 +142,7 @@ class _PSFModality(SimBaseModel):
         summed_psf: Any = 0
         for em_rate in binned:
             em_wvl_nm = em_rate.w.item()
-            if em_rate.isnull().any() or em_rate == 0 or xp.isnan(em_wvl_nm):
+            if em_rate.isnull().any() or em_rate == 0 or np.isnan(em_wvl_nm):
                 continue
             weight = em_rate.item()
             logger.info(f"Need PSF ({nz},{nx}) @ {em_wvl_nm:.1f} nm ({weight=:.2f})")
@@ -155,9 +153,8 @@ class _PSFModality(SimBaseModel):
                 dz=dz,
                 objective_lens=objective_lens,
                 em_wvl_nm=em_wvl_nm,
-                xp=xp,
             )
-            summed_psf += psf * weight
+            summed_psf = summed_psf + psf * weight
         return summed_psf  # type: ignore [no-any-return]
 
 
@@ -173,7 +170,6 @@ class Confocal(_PSFModality):
         dx: float,
         dz: float,
         objective_lens: ObjectiveLens,
-        xp: NumpyAPI,
         ex_wvl_nm: float | None = None,
         em_wvl_nm: float | None = None,
     ) -> ArrayProtocol:
@@ -186,7 +182,7 @@ class Confocal(_PSFModality):
             em_wvl_nm=em_wvl_nm,
             ex_wvl_nm=ex_wvl_nm,
             pinhole_au=self.pinhole_au,
-            xp=xp,
+            aberration=objective_lens.aberration,
         )
 
 
@@ -265,7 +261,9 @@ def bin_spectrum(
     # a bin length of at least min_bin_length and at most max_bin_length
     if isinstance(bins, int):
         num_bins = bins
-        w_min, w_max = masked.w.min(), masked.w.max()
+        # coerce to plain floats: under numpy>=2, np.linspace on 0-d xarray
+        # scalars routes through xarray.__array_wrap__ and raises.
+        w_min, w_max = float(masked.w.min()), float(masked.w.max())
         w_range = w_max - w_min
         bin_length = w_range / num_bins
         if max_bin_length is not None:

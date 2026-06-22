@@ -9,6 +9,13 @@
 
 Light microscopy simulation in python.
 
+microsim is **JAX-based and differentiable**: you describe a microscope with
+declarative (pydantic) models and get a simulated image out, but because the
+whole forward model — including a vectorial, Zernike-pupil PSF — is written in
+JAX, you can also differentiate through it and solve physics-based optimization
+problems with gradient descent (phase retrieval, deconvolution, adaptive optics;
+see [`examples/inverse/`](examples/inverse)).
+
 The goal of this library is to generate highly realistic simulated data such as the following:
 
 ![Montage2](https://github.com/tlambert03/microsim/assets/1609449/4bc9eb85-b275-4315-b60d-2cb3d003b7f1)
@@ -56,13 +63,18 @@ To get the bleeding edge version, which will change rapidly, you can install fro
 pip install "microsim[all] @ git+https://github.com/tlambert03/microsim"
 ```
 
+> [!NOTE]
+> microsim is JAX-only and requires Python ≥ 3.12. The PSF model is backed by
+> [chromatix](https://github.com/chromatix-team/chromatix); until its modern
+> release is on PyPI, that dependency is pinned to a GitHub commit (see
+> `pyproject.toml`).
+
 ### With GPU support
 
-If available, microsim can use either Jax or Cupy to accelerate computations.
-These are not installed by default, see the
-[jax](https://jax.readthedocs.io/en/latest/installation.html)
-or [cupy](https://docs.cupy.dev/en/stable/install.html) installation instructions,
-paying attention to your GPU requirements.  Support for torch is planned.
+microsim runs on the CPU by default. For GPU acceleration, install the
+appropriate `jax` wheel for your platform following the
+[jax installation instructions](https://jax.readthedocs.io/en/latest/installation.html);
+the rest of microsim will then run on the GPU automatically.
 
 ## Usage
 
@@ -91,3 +103,47 @@ result = sim.run()
 # optionally plot the result
 ortho_plot(result)
 ```
+
+### Aberrations (Zernike pupil)
+
+The PSF is built from a complex pupil, so you can add arbitrary aberrations as
+Zernike coefficients (wavefront OPD in microns, ANSI/OSA indexing) on the
+objective lens:
+
+```python
+from microsim import schema as ms
+
+objective = ms.ObjectiveLens(
+    numerical_aperture=1.4,
+    aberration=ms.ZernikeAberration(
+        ansi_indices=(5, 12),      # vertical astigmatism, primary spherical
+        coefficients=(0.05, 0.03), # microns RMS wavefront
+    ),
+)
+```
+
+### Differentiable optimization
+
+Because the forward model is JAX, you can take gradients with respect to its
+parameters and solve inverse problems with [optax](https://optax.readthedocs.io).
+`microsim.optics.vectorial_psf` builds a differentiable PSF and
+`microsim.inverse` has small helpers (losses, an Adam fit loop). For example,
+recovering a pupil aberration from a measured PSF z-stack:
+
+```python
+from microsim.optics import vectorial_psf
+from microsim.inverse import fit, normalized_mse, zernike_coeffs
+
+ANSI = (5, 6, 7, 8, 9, 12)
+cfg = dict(nz=11, nx=48, dxy=0.05, dz=0.15, wvl=0.55, na=1.3, ni=1.515)
+measured = vectorial_psf(**cfg, ansi_indices=ANSI, coefficients=[0.05, -0.03, 0.04, 0.02, 0, 0.04])
+
+def loss(c):
+    return normalized_mse(vectorial_psf(**cfg, ansi_indices=ANSI, coefficients=c), measured)
+
+result = fit(loss, zernike_coeffs(ANSI), steps=150)  # -> result.params recovers the coefficients
+```
+
+See [`examples/inverse/`](examples/inverse) for complete, runnable scripts:
+**phase retrieval**, **deconvolution / sample estimation**, and
+**sensorless adaptive optics**.

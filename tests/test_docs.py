@@ -33,13 +33,17 @@ def test_docs(doc: Path, tmp_path: Path) -> None:
                 lines = [x[3:] for x in lines]
 
     blocks = [dedent(match.group(1)) for match in CODE_BLOCK.finditer(source)]
+    # one namespace shared across all blocks in a doc: blocks may build on names
+    # defined earlier (e.g. imports in stages.md), and using an explicit globals
+    # dict lets functions defined in a block see that block's imports.
+    ns: dict = {}
     for n, block in enumerate(blocks):
         lines = [x for x in block.splitlines() if not x.lstrip().startswith("#")]
         if doc.name == "stages.md":
             lines = _fill_in_stages(lines)
         block = "\n".join(lines)
         try:
-            exec(block)
+            exec(block, ns)
         except Exception as e:
             raise ValueError(
                 f"Error in docs file {doc}\n"

@@ -1,7 +1,7 @@
 import logging
 from typing import TYPE_CHECKING, Any
 
-from .backend import BackendName, DeviceName, NumpyAPI
+from .aberration import ZernikeAberration
 from .detectors import CameraCCD, CameraCMOS, CameraEMCCD
 from .lens import ObjectiveLens
 from .modality import Confocal, Identity, Modality, Widefield
@@ -24,14 +24,12 @@ if TYPE_CHECKING:
 
 logging.getLogger().setLevel(logging.INFO)
 __all__ = [
-    "BackendName",
     "Bandpass",
     "CameraCCD",
     "CameraCMOS",
     "CameraEMCCD",
     "Confocal",
     "CosemLabel",
-    "DeviceName",
     "DownscaledSpace",
     "ExtentScaleSpace",
     "Fluorophore",
@@ -41,7 +39,6 @@ __all__ = [
     "Longpass",
     "MatsLines",
     "Modality",
-    "NumpyAPI",
     "ObjectiveLens",
     "OpticalConfig",
     "Sample",
@@ -53,6 +50,7 @@ __all__ = [
     "Spectrum",
     "SpectrumFilter",
     "Widefield",
+    "ZernikeAberration",
 ]
 
 

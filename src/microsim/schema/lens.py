@@ -4,6 +4,7 @@ import numpy as np
 from pydantic import Field, model_validator
 
 from ._base_model import SimBaseModel
+from .aberration import ZernikeAberration
 
 
 class ObjectiveKwargs(TypedDict, total=False):
@@ -31,6 +32,9 @@ class ObjectiveLens(SimBaseModel):
     coverslip_thickness_spec_um: float = 170.0  # um, coverslip thickness design (tg0)
 
     magnification: float = Field(1, description="magnification of objective lens.")
+
+    # pupil-phase aberration (Zernike), the differentiable optical knob
+    aberration: ZernikeAberration | None = None
 
     def cache_key(self) -> str:
         """Persistent identifier for the model."""

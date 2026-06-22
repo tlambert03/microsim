@@ -558,7 +558,9 @@ class JaxArrayWrapper(np.lib.mixins.NDArrayOperatorsMixin):
         return FlagsObj(c_contiguous=True, f_contiguous=False, owndata=False)
 
     def __len__(self) -> int:
-        return len(self.jax_array)
+        if self.jax_array.ndim == 0:
+            raise TypeError("len() of unsized object")
+        return int(self.jax_array.shape[0])
 
     def __setitem__(self, key, value):
         self.jax_array[key] = value

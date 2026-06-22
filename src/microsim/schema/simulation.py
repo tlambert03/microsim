@@ -233,7 +233,6 @@ class Simulation(SimBaseModel):
             self.filtered_emission_rates(),  # (C, F, W)
             objective_lens=self.objective_lens,
             settings=self.settings,
-            xp=self._xp,
         )
 
     def optical_image(self) -> xr.DataArray:
@@ -334,8 +333,8 @@ class Simulation(SimBaseModel):
     def _write(self, result: xr.DataArray) -> None:
         if not self.output_path:
             return
-        if hasattr(result.data, "get"):
-            result = result.copy(data=result.data.get(), deep=False)
+        # coerce device array (jax/cupy) -> contiguous numpy for serialization
+        result = result.copy(data=np.ascontiguousarray(np.asarray(result.data)))
         with suppress(Exception):
             try:
                 sim_data = self.model_dump_json()

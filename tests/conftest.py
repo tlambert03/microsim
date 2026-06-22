@@ -9,32 +9,11 @@ import pytest
 import microsim.schema as ms
 from microsim import util
 from microsim.schema.optical_config.lib import FITC
-from microsim.schema.settings import BackendName
 
 TRUTH_SPACE = ms.ShapeScaleSpace(shape=(64, 128, 128), scale=(0.04, 0.02, 0.02))
 MATSLINES = ms.MatsLines(density=0.4, length=30, azimuth=5, max_r=1)
 GREEN_MATSLINES = ms.FluorophoreDistribution(distribution=MATSLINES)
 NA1_4 = ms.ObjectiveLens(numerical_aperture=1.4)
-
-
-AVAILABLE_BACKENDS = ["numpy"]
-with suppress(ImportError):
-    import cupy  # noqa
-
-    AVAILABLE_BACKENDS.append("cupy")
-with suppress(ImportError):
-    import jax  # noqa
-
-    AVAILABLE_BACKENDS.append("jax")
-# with suppress(ImportError):
-#     import torch
-
-#     AVAILABLE_BACKENDS.append("torch")
-
-
-@pytest.fixture(params=AVAILABLE_BACKENDS)
-def np_backend(request: pytest.FixtureRequest) -> BackendName:
-    return request.param  # type: ignore
 
 
 @pytest.fixture(autouse=True, scope="module")

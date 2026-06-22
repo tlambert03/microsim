@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from microsim._field_types import FloatDtype
 
 from ._base_model import SimBaseModel
-from .backend import BackendName, DeviceName, NumpyAPI
+from .backend import NumpyAPI
 
 
 class InMemoryCacheSizes(SimBaseModel):
@@ -41,8 +41,6 @@ class CacheSettings(SimBaseModel):
 
 
 class Settings(SimBaseModel, BaseSettings):
-    np_backend: BackendName = "auto"
-    device: DeviceName = "auto"
     float_dtype: FloatDtype = Field(
         "float32",  # type: ignore[arg-type]
         description="Floating-point precision to use for simulations.",
@@ -86,7 +84,7 @@ class Settings(SimBaseModel, BaseSettings):
     )
 
     def backend_module(self) -> NumpyAPI:
-        backend = NumpyAPI.create(self.np_backend)
+        backend = NumpyAPI.create()
         backend.float_dtype = self.float_dtype
         if self.random_seed is not None:
             backend.set_random_seed(self.random_seed)

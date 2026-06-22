@@ -33,13 +33,11 @@ def test_model_dump(sim1: ms.Simulation) -> None:
 @pytest.mark.parametrize("modality", [WIDEFIELD, CONFOCAL_AU0_2], ids=lambda x: x.type)
 def test_schema(
     sim1: ms.Simulation,
-    np_backend: ms.BackendName,
     modality: ms.Modality,
     tmp_path: Path,
     precision: str,
     seed: int | None,
 ) -> None:
-    sim1.settings.np_backend = np_backend
     sim1.settings.float_dtype = precision  # type: ignore
     sim1.modality = modality
     sim1.output_path = tmp_path / "output.zarr"
@@ -50,22 +48,12 @@ def test_schema(
     assert out1.squeeze().shape == sim1.output_space.shape
     assert sim1.ground_truth().dtype == np.dtype(precision)
 
-    # ensure we have the right datatype
-    if np_backend == "jax":
-        # for jax, we will end up with the xarray_jax.JaxArrayWrapper
-        assert "xarray_jax" in type(out1.data).__module__
-    else:
-        assert type(out1.data).__module__.split(".")[0].startswith(np_backend)
+    # microsim is JAX-only: data is carried by the xarray_jax wrapper
+    assert "xarray_jax" in type(out1.data).__module__
 
+    # the simulation is deterministic given a fixed random_seed (set on Settings)
     out2 = sim1.run()
-    if hasattr(out1.data, "get"):
-        out1 = out1.copy(data=out1.data.get(), deep=False)
-    if hasattr(out2.data, "get"):
-        out2 = out2.copy(data=out2.data.get(), deep=False)
-    if seed is None and np_backend != "jax":
-        assert not np.allclose(out1, out2)
-    else:
-        np.testing.assert_allclose(out1, out2)
+    np.testing.assert_allclose(np.asarray(out1.data), np.asarray(out2.data))
 
 
 EXTENSIONS = [".zarr", ".nc"]
@@ -132,14 +120,14 @@ def test_simulation_custom_distribution() -> None:
     """Test that we can use any class with a render method as a distribution."""
 
     class BadDistribution:
-        def have_no_render_method(self, space, xp: ms.NumpyAPI | None = None):
+        def have_no_render_method(self, space, xp=None):
             return space
 
     with pytest.raises(ValidationError):
         ms.Sample(labels=[BadDistribution()])
 
     class GoodDistribution:
-        def render(self, space, xp: ms.NumpyAPI | None = None):
+        def render(self, space, xp=None):
             return space
 
     sim = ms.Simulation(

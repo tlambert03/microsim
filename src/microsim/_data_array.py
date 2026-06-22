@@ -77,11 +77,13 @@ def from_cache(path: Path, xp: NumpyAPI | None = None) -> xrDataArray:
 
 
 def to_cache(da: xrDataArray, path: Path, dtype: npt.DTypeLike | None = None) -> None:
+    import numpy as np
+
     path.mkdir(parents=True, exist_ok=True)
     da = da.copy(deep=False)
     da.attrs = _serializable_attrs(da.attrs)
-    if hasattr(da.data, "get"):
-        da.data = da.data.get()
+    # coerce to a contiguous host array (jax/cupy -> numpy) so zarr can write it
+    da.data = np.ascontiguousarray(np.asarray(da.data), dtype=dtype)
     da.to_zarr(path, mode="w")
 
 

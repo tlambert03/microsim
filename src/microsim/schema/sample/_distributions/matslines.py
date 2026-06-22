@@ -4,13 +4,13 @@ from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 
-from microsim.schema.backend import NumpyAPI
 from microsim.schema.sample._distributions._base import BaseDistribution
 
 if TYPE_CHECKING:
     import numpy.typing as npt
 
     from microsim._data_array import xrDataArray
+    from microsim.schema.backend import NumpyAPI
 
 
 class MatsLines(BaseDistribution):
@@ -25,51 +25,48 @@ class MatsLines(BaseDistribution):
         return ("matslines", *(f"{k}_{v}" for k, v in data if k != "type"))
 
     def _gen_vertices(
-        self, xp: NumpyAPI, shape: tuple[int, ...], xypad: int = 1, zpad: int = 1
+        self, shape: tuple[int, ...], xypad: int = 1, zpad: int = 1
     ) -> tuple[npt.NDArray, npt.NDArray]:
+        # host-side (numpy) random line generation; this is a synthetic-data
+        # generator and is not part of the differentiable forward model.
         *nz, ny, nx = shape
         numlines = int(shape[-1] * self.density)
 
         # random set of angles
-        alpha = xp.random.rand(numlines) * 2 * np.pi
+        alpha = np.random.rand(numlines) * 2 * np.pi
         if nz:
-            alphaz = np.pi / 2 + xp.random.rand(numlines) * np.pi / self.azimuth
+            alphaz = np.pi / 2 + np.random.rand(numlines) * np.pi / self.azimuth
         else:
             alphaz = np.pi / 2
 
         # random set of x, y, z centers
-        x1 = xp.random.randint(xypad, nx - xypad, size=numlines)
-        y1 = xp.random.randint(xypad, ny - xypad, size=numlines)
+        x1 = np.random.randint(xypad, nx - xypad, size=numlines)
+        y1 = np.random.randint(xypad, ny - xypad, size=numlines)
         if nz:
-            z1 = xp.random.randint(zpad, nz[0] - zpad, size=numlines)
+            z1 = np.random.randint(zpad, nz[0] - zpad, size=numlines)
 
         # find other end of line given alpha and length
-        lens = nx / 20 + self.length * ny / 20 * xp.random.rand(numlines)
-        x2 = xp.clip(
-            xp.round(x1 + xp.sin(alphaz) * xp.cos(alpha) * lens), xypad, nx - xypad
+        lens = nx / 20 + self.length * ny / 20 * np.random.rand(numlines)
+        x2 = np.clip(
+            np.round(x1 + np.sin(alphaz) * np.cos(alpha) * lens), xypad, nx - xypad
         )
-        y2 = xp.clip(
-            xp.round(y1 + xp.sin(alphaz) * xp.sin(alpha) * lens), xypad, nx - xypad
+        y2 = np.clip(
+            np.round(y1 + np.sin(alphaz) * np.sin(alpha) * lens), xypad, nx - xypad
         )
 
         if nz:
-            z2 = xp.clip(np.round(z1 + np.cos(alphaz) * lens), zpad, nz[0] - zpad)
-            return xp.stack([z1, y1, x1]).T, xp.stack([z2, y2, x2]).T
-        return xp.stack([y1, x1]).T, xp.stack([y2, x2]).T
+            z2 = np.clip(np.round(z1 + np.cos(alphaz) * lens), zpad, nz[0] - zpad)
+            return np.stack([z1, y1, x1]).T, np.stack([z2, y2, x2]).T
+        return np.stack([y1, x1]).T, np.stack([y2, x2]).T
 
     def render(self, space: xrDataArray, xp: NumpyAPI | None = None) -> xrDataArray:
-        xp = xp or NumpyAPI()
-
-        start, end = self._gen_vertices(xp, space.shape)
-        c = xp.concatenate([start, end], axis=1).astype(np.int32)
+        start, end = self._gen_vertices(space.shape)
+        c = np.concatenate([start, end], axis=1).astype(np.int32)
         data = np.zeros(space.shape).astype(np.int32)
-        # TODO: make bresenham work on GPU
-        if hasattr(c, "get"):
-            c = c.get()
         drawlines_bresenham(c, data, self.max_r)
         # TODO: Multi-fluorophore setup: this addition should be replaced by setting
         # data in a specific dimension and index of space.
-        return space + xp.asarray(data).astype(space.dtype)
+        return space + np.asarray(data).astype(space.dtype)
 
 
 def drawlines_bresenham(

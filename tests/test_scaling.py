@@ -1,3 +1,5 @@
+import numpy as np
+
 from microsim import schema as ms
 
 
@@ -21,5 +23,13 @@ def test_downscale_truth() -> None:
         settings=ms.Settings(random_seed=100, max_psf_radius_aus=1),
     )
 
-    assert sim_down.ground_truth().equals(sim_up.ground_truth())
-    assert sim_down.digital_image().identical(sim_up.digital_image())
+    # NB: compare via numpy — xarray's .equals/.identical can misbehave on
+    # JAX-backed (xarray_jax-wrapped) data arrays.
+    np.testing.assert_array_equal(
+        np.asarray(sim_down.ground_truth().data),
+        np.asarray(sim_up.ground_truth().data),
+    )
+    np.testing.assert_allclose(
+        np.asarray(sim_down.digital_image().data),
+        np.asarray(sim_up.digital_image().data),
+    )
