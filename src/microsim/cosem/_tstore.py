@@ -32,6 +32,7 @@ DRIVERS = {
     "precomputed": "neuroglancer_precomputed",
     "n5": "n5",
     "zarr": "zarr",
+    "zarr3": "zarr3",
 }
 
 
