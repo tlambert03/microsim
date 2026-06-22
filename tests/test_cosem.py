@@ -54,6 +54,20 @@ def test_cosem_image() -> None:
 
 
 @skipif_no_internet
+def test_cosem_zarr3() -> None:
+    # COSEM now serves some images as zarr v3; make sure we can validate,
+    # resolve scales, and read them. See #140 / #141.
+    dataset = CosemDataset.fetch("jrc_mus-skel-muscle-1")
+    img = dataset.image(name="fibsem-uint8")
+    assert img.format == "zarr3"
+    assert img.scales  # multiscale metadata nested under the "ome" namespace
+    # read a mid-pyramid level (all dims > 1) to exercise the zarr3 driver
+    store = img.read(level=8, bin_mode="standard")
+    assert isinstance(store, ts.TensorStore)
+    assert store.ndim == 3
+
+
+@skipif_no_internet
 def test_cosem_view() -> None:
     orgs = organelles()
     assert "Centrosome" in orgs
