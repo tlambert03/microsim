@@ -104,8 +104,11 @@ class CosemImage(BaseModel):
         """Fetch all available scales for the image from s3."""
         if not getattr(self, "_scales", None):
             scales = []
+            # n5/zarr v2 multiscale lives at the top level, while zarr v3
+            # (OME-NGFF 0.5) nests it under the "ome" namespace.
+            ome = self.attrs.get("ome", {})
             # n5 multiscale
-            if multi := self.attrs.get("multiscales"):
+            if multi := (self.attrs.get("multiscales") or ome.get("multiscales")):
                 for scale in multi:
                     if dsets := scale.get("datasets"):
                         for dset in dsets:
@@ -185,10 +188,16 @@ class CosemImage(BaseModel):
                 attr = "/attributes.json"
             elif self.format == "zarr":
                 attr = "/.zattrs"
+            elif self.format == "zarr3":
+                attr = "/zarr.json"
             elif self.format == "precomputed":
                 attr = "/info"
             try:
-                self._attrs = json.load(fetch_s3(self.url + attr))
+                data = json.load(fetch_s3(self.url + attr))
+                # zarr v3 nests user attributes under an "attributes" namespace
+                if self.format == "zarr3":
+                    data = data.get("attributes", {})
+                self._attrs = data
             except Exception:
                 self._attrs = {}
         return self._attrs  # type: ignore [no-any-return]
