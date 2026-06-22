@@ -1,8 +1,17 @@
 import os
 import socket
+import sys
 from collections.abc import Callable
 
 import pytest
+
+# matplotlib's marker/Agg deepcopy recurses infinitely on CPython 3.14 (even a
+# bare `ax.plot(...)` raises RecursionError). Skip plotting until matplotlib ships
+# a fix. https://github.com/matplotlib/matplotlib
+skipif_mpl_py314 = pytest.mark.skipif(
+    sys.version_info >= (3, 14),
+    reason="matplotlib plotting recurses on CPython 3.14 (upstream bug)",
+)
 
 try:
     if os.getenv("MICROSIM_TEST_NO_INTERNET"):

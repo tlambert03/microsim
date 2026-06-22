@@ -12,16 +12,16 @@ import numpy.typing as npt
 if TYPE_CHECKING:
     from collections.abc import Sequence
     from types import ModuleType
-    from typing import SupportsIndex, TypeAlias
+    from typing import SupportsIndex
 
     import jax
 
     from microsim._data_array import ArrayProtocol
 
-    _Shape: TypeAlias = tuple[int, ...]
+    type _Shape = tuple[int, ...]
 
     # Anything that can be coerced to a shape tuple
-    _ShapeLike: TypeAlias = SupportsIndex | Sequence[SupportsIndex]
+    type _ShapeLike = SupportsIndex | Sequence[SupportsIndex]
 
 DeviceName = Literal["cpu", "gpu", "auto"]
 BackendName = Literal["numpy", "torch", "jax", "cupy", "auto"]
@@ -93,14 +93,14 @@ class NumpyAPI:
         return self.xp.asarray(x, dtype=dtype)
 
     def zeros(
-        self, shape: int | Sequence[int], dtype: npt.DTypeLike = None
+        self, shape: int | Sequence[int], dtype: npt.DTypeLike | None = None
     ) -> npt.NDArray:
         if dtype is None:
             dtype = self.float_dtype
         return self.xp.zeros(shape, dtype=dtype)
 
     def ones(
-        self, shape: int | Sequence[int], dtype: npt.DTypeLike = None
+        self, shape: int | Sequence[int], dtype: npt.DTypeLike | None = None
     ) -> npt.NDArray:
         if dtype is None:
             dtype = self.float_dtype

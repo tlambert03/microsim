@@ -1,5 +1,6 @@
 import json
 import runpy
+import sys
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,9 @@ skip = {
     "fftconv_bench",
     "sim3d",  # very slow, and not really used yet
 }
+if sys.version_info >= (3, 14):
+    # plots via matplotlib, which recurses on CPython 3.14 (upstream bug)
+    skip.add("fpbase_scope")
 examples = [
     f
     for f in EXAMPLE_DIR.glob("*")

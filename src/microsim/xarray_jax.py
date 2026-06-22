@@ -123,12 +123,24 @@ import jax.numpy as jnp
 import numpy as np
 import xarray
 
-try:
-    import tree
-except ImportError:
-    raise ImportError(
-        "dm-tree is required when using jax.  Please `pip install dm-tree`."
-    )
+
+def _map_structure(func, structure):
+    """Minimal replacement for ``dm-tree``'s ``tree.map_structure``.
+
+    Recurses through (possibly nested) list/tuple/dict/namedtuple containers,
+    applying ``func`` to every leaf (anything that isn't one of those
+    containers). This lets us avoid the dm-tree dependency, which lags on new
+    Python versions.
+    """
+    if isinstance(structure, tuple) and hasattr(structure, "_fields"):  # namedtuple
+        return type(structure)(*(_map_structure(func, v) for v in structure))
+    if isinstance(structure, (list, tuple)):
+        return type(structure)(_map_structure(func, v) for v in structure)
+    if isinstance(structure, dict):
+        return type(structure)(
+            (k, _map_structure(func, v)) for k, v in structure.items()
+        )
+    return func(structure)
 
 
 def Variable(dims, data, **kwargs) -> xarray.Variable:  # pylint:disable=invalid-name
@@ -381,11 +393,11 @@ def _wrapped(func):
     """Surrounds a function with JAX array unwrapping/wrapping."""
 
     def wrapped_func(*args, **kwargs):
-        args, kwargs = tree.map_structure(unwrap, (args, kwargs))
+        args, kwargs = _map_structure(unwrap, (args, kwargs))
         if "order" in kwargs and kwargs["order"] == "A":
             kwargs.pop("order")
         result = func(*args, **kwargs)
-        return tree.map_structure(wrap, result)
+        return _map_structure(wrap, result)
 
     return wrapped_func
 

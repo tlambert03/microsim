@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 
+import numpy as np
 import xarray
 from pydantic import BaseModel
 
@@ -10,7 +11,6 @@ if TYPE_CHECKING:
     from collections.abc import Hashable, Iterable, Mapping, Sequence
     from pathlib import Path
 
-    import numpy as np
     import numpy.typing as npt
 
     from microsim.schema.backend import NumpyAPI
@@ -82,6 +82,9 @@ def to_cache(da: xrDataArray, path: Path, dtype: npt.DTypeLike | None = None) ->
     da.attrs = _serializable_attrs(da.attrs)
     if hasattr(da.data, "get"):
         da.data = da.data.get()
+    # coerce to a contiguous numpy array: numcodecs calls np.array(..., copy=False),
+    # which raises on numpy>=2 for non-contiguous or non-numpy (e.g. jax) buffers.
+    da.data = np.ascontiguousarray(da.data)
     da.to_zarr(path, mode="w")
 
 

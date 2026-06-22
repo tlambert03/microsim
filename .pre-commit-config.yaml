@@ -27,7 +27,7 @@ repos:
       - id: mypy
         files: "^src/"
         additional_dependencies:
-          - numpy<2.0
+          - numpy
           - pydantic
           - pydantic-settings
           - xarray

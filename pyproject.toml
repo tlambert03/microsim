@@ -17,27 +17,35 @@ name = "microsim"
 dynamic = ["version"]
 description = "Light microscopy simulation in python"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = { text = "BSD-3-Clause" }
 authors = [{ name = "Talley Lambert", email = "talley.lambert@gmail.com" }]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "License :: OSI Approved :: BSD License",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
 ]
 dependencies = [
     "annotated-types >=0.7.0",
-    "numpy >=1.26,<2.0",             # something still breaks with 2+
+    # min pins per-python reflect the first release shipping a wheel for that
+    # interpreter (newer pythons need newer compiled deps).
+    "numpy >=2.3.2; python_version >= '3.14'",
+    "numpy >=2.1.0; python_version >= '3.13'",
+    "numpy >=2.0",
     "pint >=0.23",
     "platformdirs >=4.3.6",
+    "pydantic >=2.12; python_version >= '3.14'",
     "pydantic >=2.8",
     "fpbase",
     "pydantic-settings >2.5.0",
+    "scipy >=1.16.1; python_version >= '3.14'",
     "scipy >=1.15.2",
+    "tensorstore >=0.1.79; python_version >= '3.14'",
+    "tensorstore >=0.1.71; python_version >= '3.13'",
     "tensorstore >=0.1.70,!=0.1.72",
     "tqdm >=4.67.1",
     "xarray >=2024.1.0",
@@ -50,7 +58,13 @@ repository = "https://github.com/tlambert03/microsim"
 
 # # https://peps.python.org/pep-0621/#dependencies-optional-dependencies
 [project.optional-dependencies]
-view = ["ndv[pyqt,vispy]", "matplotlib>=3.10.1", "pyopengl-accelerate"]
+view = [
+    "ndv[pyqt,vispy]",
+    "matplotlib>=3.10.5; python_version >= '3.14'",
+    "matplotlib>=3.10.1",
+    # optional OpenGL speedup; no cp314 wheel and fails to build from source
+    "pyopengl-accelerate>=3.1.9; python_version < '3.14'",
+]
 io = ["tifffile>=2025.2.18", "imageio[ffmpeg]>=2.22"]
 cosem = [
     "dask>=2024.1.0",
@@ -61,11 +75,7 @@ cosem = [
     "xarray-datatree>=0.0.14",
 ]
 torch = ["torch>=2.6.0", "torchaudio>=2.7.0"]
-jax = [
-    "jax[cpu]>=0.5.2",
-    "dm-tree ==0.1.8; sys_platform == 'darwin'",
-    "dm-tree >=0.1.7",
-]
+jax = ["jax[cpu]>=0.5.2"]
 all = ["microsim[view,io,cosem]", "rich>=13"]
 
 [dependency-groups]
@@ -99,6 +109,7 @@ microsim = { workspace = true }
 
 [tool.ruff]
 line-length = 88
+target-version = "py312"
 src = ["src"]
 fix = true
 unsafe-fixes = true
@@ -167,6 +178,8 @@ filterwarnings = [
     "ignore:unclosed transport:ResourceWarning",                     # only on py3.10... not sure why
     "ignore:Clipping negative intensity values:UserWarning",         # when importing FPbase spectra
     "ignore:__array__ implementation doesn't accept a copy keyword",
+    # xarray triggers this numpy>=2.4 deprecation at import time (xarray/core/dtypes.py)
+    "ignore:The 'generic' unit for NumPy timedelta is deprecated:DeprecationWarning",
 ]
 
 # https://coverage.readthedocs.io/en/6.4/config.html

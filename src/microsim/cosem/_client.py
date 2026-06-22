@@ -206,7 +206,7 @@ def _collect_fields(model: type[BaseModel]) -> Iterator[str | tuple]:
 T = TypeVar("T", bound=BaseModel)
 
 
-def fetch_all(type_: type[T]) -> tuple[T, ...]:
+def fetch_all[T: BaseModel](type_: type[T]) -> tuple[T, ...]:
     table_name = type_.__name__.lower().replace("cosem", "")
     query = model_query(type_)
     try:

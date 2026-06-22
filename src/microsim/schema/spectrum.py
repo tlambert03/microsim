@@ -46,7 +46,7 @@ class Spectrum(SimBaseModel):
     @model_validator(mode="before")
     def _cast_spectrum(cls, value: Any) -> Any:
         if isinstance(value, list | tuple):
-            data = np.asarray(value)
+            data: np.ndarray = np.asarray(value)
             if not data.ndim == 2:
                 raise ValueError("Spectrum data must be 2D")
             if not data.shape[1] == 2:
@@ -99,7 +99,8 @@ class Spectrum(SimBaseModel):
         return self.model_copy(update={"intensity": 1 - self.intensity})
 
     def integral(self) -> float:
-        return np.trapz(self.intensity, self.wavelength)  # type: ignore [no-any-return]
+        # np.trapz was removed in numpy 2.0 in favor of np.trapezoid
+        return np.trapezoid(self.intensity, self.wavelength)  # type: ignore [no-any-return]
 
     def __mul__(self, other: "float | pint.Quantity | Spectrum") -> "Spectrum":
         if isinstance(other, pint.Quantity):

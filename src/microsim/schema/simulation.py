@@ -336,6 +336,9 @@ class Simulation(SimBaseModel):
             return
         if hasattr(result.data, "get"):
             result = result.copy(data=result.data.get(), deep=False)
+        # coerce backend arrays (e.g. jax) to a contiguous numpy array; numcodecs
+        # calls np.array(..., copy=False), which raises on numpy>=2 otherwise.
+        result = result.copy(data=np.ascontiguousarray(result.data), deep=False)
         with suppress(Exception):
             try:
                 sim_data = self.model_dump_json()
