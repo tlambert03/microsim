@@ -59,15 +59,6 @@ jobs:
       - if: ${{ matrix.min != 'minimal' }}
         run: uv sync --no-dev --group test --all-extras
 
-      # TEMP diagnostic: which active backend fails Py_FinalizeEx on Windows?
-      - if: ${{ matrix.min != 'minimal' }}
-        shell: bash
-        run: |
-          uv run python -c "import jax, torch, tensorstore, numcodecs, scipy, numpy, xarray"; echo ">>> import-all -> exit $?"
-          uv run python -c "import jax.numpy as j; j.ones(4).sum().block_until_ready()"; echo ">>> jax-compute -> exit $?"
-          uv run python -c "import torch; (torch.ones(4)*2).sum()"; echo ">>> torch-compute -> exit $?"
-          uv run python -c "import tensorstore as ts; ts.array(__import__('numpy').zeros((4,4)))"; echo ">>> tensorstore-use -> exit $?"
-
       - run: uv run coverage run -p -m pytest --color=yes -v
 
       - uses: actions/upload-artifact@v6
