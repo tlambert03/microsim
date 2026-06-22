@@ -52,6 +52,14 @@ jobs:
       - if: ${{ matrix.min != 'minimal' }}
         run: uv sync --no-dev --group test --all-extras
 
+      # TEMP diagnostic: which C-extension fails Py_FinalizeEx on Windows?
+      - if: ${{ matrix.min != 'minimal' }}
+        shell: bash
+        run: |
+          for mod in numpy scipy tensorstore jax jaxlib torch numcodecs pydantic_core; do
+            uv run python -c "import $mod"; echo ">>> $mod -> exit $?"
+          done
+
       - run: uv run coverage run -p -m pytest --color=yes -v
 
       - uses: actions/upload-artifact@v6
