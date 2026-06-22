@@ -1693,7 +1693,8 @@ dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "scipy" },
-    { name = "tensorstore" },
+    { name = "tensorstore", version = "0.1.76", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.14' and sys_platform == 'win32'" },
+    { name = "tensorstore", version = "0.1.84", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.14' or sys_platform != 'win32'" },
     { name = "tqdm" },
     { name = "xarray" },
     { name = "zarr" },
@@ -1803,9 +1804,9 @@ requires-dist = [
     { name = "scipy", marker = "python_full_version >= '3.14'", specifier = ">=1.16.1" },
     { name = "supabase", marker = "extra == 'all'", specifier = ">=2.13.0" },
     { name = "supabase", marker = "extra == 'cosem'", specifier = ">=2.13.0" },
-    { name = "tensorstore", specifier = ">=0.1.70,!=0.1.72" },
-    { name = "tensorstore", marker = "python_full_version >= '3.13'", specifier = ">=0.1.71" },
+    { name = "tensorstore", specifier = ">=0.1.76" },
     { name = "tensorstore", marker = "python_full_version >= '3.14'", specifier = ">=0.1.79" },
+    { name = "tensorstore", marker = "python_full_version < '3.14' and sys_platform == 'win32'", specifier = "<0.1.77" },
     { name = "tifffile", marker = "extra == 'all'", specifier = ">=2025.2.18" },
     { name = "tifffile", marker = "extra == 'io'", specifier = ">=2025.2.18" },
     { name = "torch", marker = "extra == 'torch'", specifier = ">=2.6.0" },
@@ -3924,11 +3925,41 @@ wheels = [
 
 [[package]]
 name = "tensorstore"
+version = "0.1.76"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version == '3.13.*' and sys_platform == 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'win32'",
+]
+dependencies = [
+    { name = "ml-dtypes", marker = "python_full_version < '3.14' and sys_platform == 'win32'" },
+    { name = "numpy", marker = "python_full_version < '3.14' and sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ff/ae/947a9f232de7319b664ed8d278e9e0363e9294da73fd422c687ac4eb070e/tensorstore-0.1.76.tar.gz", hash = "sha256:ed0d565e7a038a84b1b5b5d9f7397caec200b53941d8889f44b7f63dd6abffe7", size = 6869230, upload-time = "2025-07-02T21:34:03.773Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/5a/3e/c264cf1435c04fb998a1f30dd1f066deb370b841412f89e1cb36d37ee4fc/tensorstore-0.1.76-cp312-cp312-win_amd64.whl", hash = "sha256:f66ac63d0c63c3336ac4dc61f1f97b6afe8b512e586ddfdbc91f19175787f321", size = 12611059, upload-time = "2025-07-02T21:33:49.596Z" },
+    { url = "https://files.pythonhosted.org/packages/10/45/43d387027b3eac9f09de8bb736b1b432de287fbd807716877fe5fbaeee56/tensorstore-0.1.76-cp313-cp313-win_amd64.whl", hash = "sha256:e84fc11b36fcd55cfd1c5dfc60de9d54d7d95c3de074f4d854914067e82a6740", size = 12610851, upload-time = "2025-07-02T21:34:01.505Z" },
+]
+
+[[package]]
+name = "tensorstore"
 version = "0.1.84"
 source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version >= '3.15' and sys_platform == 'win32'",
+    "python_full_version >= '3.15' and sys_platform == 'emscripten'",
+    "python_full_version >= '3.15' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.14.*' and sys_platform == 'win32'",
+    "python_full_version == '3.14.*' and sys_platform == 'emscripten'",
+    "python_full_version == '3.14.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
+    "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version < '3.13' and sys_platform == 'emscripten'",
+    "python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+]
 dependencies = [
-    { name = "ml-dtypes" },
-    { name = "numpy" },
+    { name = "ml-dtypes", marker = "python_full_version >= '3.14' or sys_platform != 'win32'" },
+    { name = "numpy", marker = "python_full_version >= '3.14' or sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/83/18/c8e8b4faffab1a434b6c013d54cf7f5b754a6849429d9dbb718297705796/tensorstore-0.1.84.tar.gz", hash = "sha256:3cb091dfde68600e6d8f03a389ccc92ffa7c0798a0c600d1013c0138d7163e6b", size = 7208048, upload-time = "2026-05-16T06:17:58.448Z" }
 wheels = [

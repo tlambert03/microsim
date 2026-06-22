@@ -44,9 +44,13 @@ dependencies = [
     "pydantic-settings >2.5.0",
     "scipy >=1.16.1; python_version >= '3.14'",
     "scipy >=1.15.2",
+    # tensorstore >=0.1.77 crashes at interpreter shutdown on Windows when the
+    # S3/HTTP transport has been used (google/tensorstore#275). Pin below it on
+    # Windows where a clean wheel exists (no cp314 wheel before 0.1.79, so
+    # py3.14 can't be pinned and is unaffected by this cap).
+    "tensorstore <0.1.77; sys_platform == 'win32' and python_version < '3.14'",
     "tensorstore >=0.1.79; python_version >= '3.14'",
-    "tensorstore >=0.1.71; python_version >= '3.13'",
-    "tensorstore >=0.1.70,!=0.1.72",
+    "tensorstore >=0.1.76",
     "tqdm >=4.67.1",
     "xarray >=2024.1.0",
     "zarr >=2.17,<3.0",
