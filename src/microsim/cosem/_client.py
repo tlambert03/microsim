@@ -26,7 +26,7 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import cache
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, TypeVar, get_args
+from typing import TYPE_CHECKING, Any, get_args
 
 import tqdm
 from pydantic import BaseModel
@@ -201,9 +201,6 @@ def _collect_fields(model: type[BaseModel]) -> Iterator[str | tuple]:
             yield (f"{field}:{name}", _collect_fields(anno))
         else:
             yield field
-
-
-T = TypeVar("T", bound=BaseModel)
 
 
 def fetch_all[T: BaseModel](type_: type[T]) -> tuple[T, ...]:
