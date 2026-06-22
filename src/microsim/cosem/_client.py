@@ -5,7 +5,7 @@ import logging
 import os
 import urllib.response
 from contextlib import suppress
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 try:
     import boto3
@@ -107,7 +107,12 @@ def _guess_cosem_url_key() -> tuple[str, str]:
                     url = js_text.split("SUPABASE_URL:")[1].split(",")[0].strip("\"'")
                     key = js_text.split("SUPABASE_KEY:")[1].split(",")[0].strip("\"'")
                     return url, key
-            except URLError:
+            except URLError as e:
+                # HTTPError (raised by urlopen on e.g. a 404) is a file-like
+                # object holding an open socket; close it so it isn't reclaimed
+                # later as a ResourceWarning (fatal under filterwarnings=error).
+                if isinstance(e, HTTPError):
+                    e.close()
                 continue
     except Exception as e:
         raise ValueError(f"Failed to fetch Supabase URL and key: {e}") from e

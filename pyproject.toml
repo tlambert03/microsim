@@ -103,6 +103,10 @@ docs = [
     "griffe-fieldz",
 ]
 
+[tool.uv]
+# pillow (transitive via matplotlib/imageio) only ships cp314 wheels from 11.3.0
+constraint-dependencies = ["pillow>=11.3.0; python_version >= '3.14'"]
+
 [tool.uv.sources]
 microsim = { workspace = true }
 
