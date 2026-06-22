@@ -188,6 +188,8 @@ filterwarnings = [
     # clients (supabase/s3fs/urllib) as fatal unraisable ResourceWarnings.
     "ignore::ResourceWarning",
     "ignore::pytest.PytestUnraisableExceptionWarning",
+    # supabase>=2.31 passes now-deprecated params (timeout/verify/proxy) to postgrest
+    "ignore:The '.*' parameter is deprecated:DeprecationWarning",
 ]
 
 # https://coverage.readthedocs.io/en/6.4/config.html
