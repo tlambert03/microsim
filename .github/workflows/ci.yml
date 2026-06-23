@@ -45,9 +45,6 @@ jobs:
     env:
       UV_PYTHON: ${{ matrix.python-version }}
       UV_NO_SYNC: 1
-      # use sys.monitoring (py3.12+) instead of coverage's C tracer, which
-      # exits non-zero at interpreter teardown on Windows with our C-extensions
-      COVERAGE_CORE: sysmon
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
