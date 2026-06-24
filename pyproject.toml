@@ -31,16 +31,16 @@ classifiers = [
 ]
 dependencies = [
     "annotated-types >=0.7.0",
-    # min pins per-python reflect the first release shipping a wheel for that
-    # interpreter (newer pythons need newer compiled deps).
+    # min pins per-python reflect the first release shipping a wheel
     "numpy >=2.3.2; python_version >= '3.14'",
     "numpy >=2.1.0; python_version >= '3.13'",
     "numpy >=2.0",
-    "pint >=0.23",
+    "pint >=0.24.4",
     "platformdirs >=4.3.6",
-    "pydantic >=2.12; python_version >= '3.14'",
+    # pydantic 2.12.0/.1 mis-build some models under py3.14 (deferred annotations).
+    "pydantic >=2.12.2; python_version >= '3.14'",
     "pydantic >=2.8",
-    "fpbase",
+    "fpbase >=0.1.2",
     "pydantic-settings >2.5.0",
     "scipy >=1.16.1; python_version >= '3.14'",
     "scipy >=1.15.2",
@@ -52,8 +52,9 @@ dependencies = [
     "tensorstore >=0.1.79; python_version >= '3.14'",
     "tensorstore >=0.1.76",
     "tqdm >=4.67.1",
-    "xarray >=2024.1.0",
-    "zarr >=2.17,<3.0",
+    "xarray >=2025.7.0; python_version >= '3.14'",
+    "xarray >=2025.1.1",
+    "zarr >=3",
 ]
 
 [project.urls]
@@ -64,22 +65,30 @@ repository = "https://github.com/tlambert03/microsim"
 [project.optional-dependencies]
 view = [
     "ndv[pyqt,vispy]",
-    "matplotlib>=3.10.5; python_version >= '3.14'",
-    "matplotlib>=3.10.1",
+    # matplotlib <3.10.7 calls pyparsing's deprecated `oneOf` (warns with
+    # pyparsing >=3.3).
+    "matplotlib>=3.10.7",
     # optional OpenGL speedup; no cp314 wheel and fails to build from source
     "pyopengl-accelerate>=3.1.9; python_version < '3.14'",
 ]
 io = ["tifffile>=2025.2.18", "imageio[ffmpeg]>=2.22"]
 cosem = [
-    "dask>=2024.1.0",
     "imageio>=2.22",
     "boto3>=1.32",
-    "supabase>=2.13.0",
+    # supabase <2.17 bundles the deprecated `gotrue` (warns at import; renamed
+    # to supabase_auth in 2.17).
+    "supabase>=2.17.0",
     "s3fs>=0.4.2",
-    "xarray-datatree>=0.0.14",
 ]
-torch = ["torch>=2.6.0", "torchaudio>=2.7.0"]
-jax = ["jax[cpu]>=0.5.2"]
+torch = [
+    # torch/torchaudio only ship cp314 wheels from 2.9.0.
+    "torch>=2.9.0; python_version >= '3.14'",
+    "torchaudio>=2.9.0; python_version >= '3.14'",
+    "torch>=2.6.0",
+    "torchaudio>=2.7.0",
+]
+# jaxlib only ships cp314 wheels from 0.7.1 (jax/jaxlib versions are coupled).
+jax = ["jax[cpu]>=0.7.1; python_version >= '3.14'", "jax[cpu]>=0.5.2"]
 all = ["microsim[view,io,cosem]", "rich>=13"]
 
 [dependency-groups]
@@ -194,6 +203,13 @@ filterwarnings = [
     "ignore::pytest.PytestUnraisableExceptionWarning",
     # supabase>=2.31 passes now-deprecated params (timeout/verify/proxy) to postgrest
     "ignore:The '.*' parameter is deprecated:DeprecationWarning",
+    # zarr v3 (esp. 3.0.x) warns that the string-coord dtype / vlen-utf8 codec
+    # used for channel names isn't in the v3 spec yet; intentional and benign.
+    "ignore:The data type .* does not have a Zarr V3 specification:FutureWarning",
+    "ignore:The \\w+ .* is currently not part in the Zarr format 3 specification:UserWarning",
+    # numcodecs >=0.16.4 (pulled in with older zarr 3.x) deprecates its bundled
+    # crc32c at import time; harmless and outside our control.
+    "ignore:crc32c usage is deprecated:DeprecationWarning",
 ]
 
 # https://coverage.readthedocs.io/en/6.4/config.html

@@ -62,7 +62,7 @@ class ArrayProtocol(Protocol):
 
 
 def from_cache(path: Path, xp: NumpyAPI | None = None) -> xrDataArray:
-    data_set = xarray.open_zarr(path)
+    data_set = xarray.open_zarr(path, consolidated=False)
     # get the first data variable
     first_da = next(iter(data_set.data_vars))
     # xarray.open_zarr uses dask by default.  we may want that eventually
@@ -85,7 +85,9 @@ def to_cache(da: xrDataArray, path: Path, dtype: npt.DTypeLike | None = None) ->
     # coerce to a contiguous numpy array: numcodecs calls np.array(..., copy=False),
     # which raises on numpy>=2 for non-contiguous or non-numpy (e.g. jax) buffers.
     da.data = np.ascontiguousarray(da.data)
-    da.to_zarr(path, mode="w")
+    # consolidated metadata is not part of the zarr v3 spec (zarr emits a warning);
+    # skip it so reads/writes stay spec-compliant across zarr 2 and 3.
+    da.to_zarr(path, mode="w", consolidated=False)
 
 
 def _serializable_attrs(attrs: Any) -> Any:
