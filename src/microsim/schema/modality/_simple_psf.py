@@ -268,7 +268,10 @@ def bin_spectrum(
     # a bin length of at least min_bin_length and at most max_bin_length
     if isinstance(bins, int):
         num_bins = bins
-        w_min, w_max = masked.w.min(), masked.w.max()
+        # cast to float: passing 0-d xarray DataArrays to np.linspace triggers
+        # __array_wrap__ on numpy >=2, which rewraps the result into a Variable
+        # with mismatched dims.
+        w_min, w_max = float(masked.w.min()), float(masked.w.max())
         w_range = w_max - w_min
         bin_length = w_range / num_bins
         if max_bin_length is not None:

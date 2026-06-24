@@ -14,7 +14,7 @@ T = TypeVar("T", bound=pint.Unit)
 
 def validate_np_dtype(x: Any) -> np.dtype:
     try:
-        return np.dtype(x)
+        return np.dtype(x)  # type: ignore [no-any-return]
     except Exception as e:
         raise ValueError(f"Cannot cast {x!r} to a numpy dtype: {e}") from e
 

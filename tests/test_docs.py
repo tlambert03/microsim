@@ -33,13 +33,17 @@ def test_docs(doc: Path, tmp_path: Path) -> None:
                 lines = [x[3:] for x in lines]
 
     blocks = [dedent(match.group(1)) for match in CODE_BLOCK.finditer(source)]
+    # share a single namespace across blocks so names (e.g. imports) from earlier
+    # blocks stay visible in later ones. Bare `exec(block)` used to leak through
+    # the function's locals, but PEP 667 ended that on py3.13+.
+    namespace: dict[str, object] = {}
     for n, block in enumerate(blocks):
         lines = [x for x in block.splitlines() if not x.lstrip().startswith("#")]
         if doc.name == "stages.md":
             lines = _fill_in_stages(lines)
         block = "\n".join(lines)
         try:
-            exec(block)
+            exec(block, namespace)
         except Exception as e:
             raise ValueError(
                 f"Error in docs file {doc}\n"
