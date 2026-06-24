@@ -22,14 +22,14 @@ jobs:
       - run: pipx run check-manifest
 
   test:
-    name: Test ${{ matrix.os }} py${{ matrix.python-version }} ${{ matrix.min }}
+    name: Test ${{ matrix.os }} py${{ matrix.python-version }} ${{ matrix.min }} ${{ matrix.resolution }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python-version: ["3.12", "3.13", "3.14"]
-        min: [""]
+        resolution: ["highest"]
         exclude:
           # tensorstore has no clean cp314 Windows wheel: the first one (0.1.79)
           # and everything >=0.1.77 crash at interpreter shutdown on Windows
@@ -41,6 +41,16 @@ jobs:
           - os: ubuntu-latest
             python-version: "3.12"
             min: "minimal"
+          # test the lowest dependency versions we claim to support
+          - os: ubuntu-latest
+            python-version: "3.12"
+            resolution: "lowest-direct"
+          - os: ubuntu-latest
+            python-version: "3.13"
+            resolution: "lowest-direct"
+          - os: ubuntu-latest
+            python-version: "3.14"
+            resolution: "lowest-direct"
 
     env:
       UV_PYTHON: ${{ matrix.python-version }}
@@ -54,13 +64,13 @@ jobs:
       - if: ${{ matrix.min == 'minimal' }}
         run: uv sync --no-dev --group test
       - if: ${{ matrix.min != 'minimal' }}
-        run: uv sync --no-dev --group test --all-extras
+        run: uv sync --no-dev --group test --all-extras --resolution ${{ matrix.resolution }}
 
       - run: uv run coverage run -p -m pytest --color=yes -v
 
       - uses: actions/upload-artifact@v7
         with:
-          name: covreport-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.min }}
+          name: covreport-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.min }}-${{ matrix.resolution }}
           path: ./.coverage*
           include-hidden-files: true
 
