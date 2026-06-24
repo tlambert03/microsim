@@ -347,7 +347,9 @@ class Simulation(SimBaseModel):
             result.attrs = {"microsim.Simulation": sim_data}
         result.coords[Axis.C] = [c.name for c in result.coords[Axis.C].values]
         if self.output_path.suffix == ".zarr":
-            result.to_zarr(self.output_path, mode="w")
+            # consolidated metadata is not part of the zarr v3 spec (zarr warns);
+            # skip it so reads/writes stay spec-compliant across zarr 2 and 3.
+            result.to_zarr(self.output_path, mode="w", consolidated=False)
         elif self.output_path.suffix in (".nc",):
             result.to_netcdf(self.output_path)
         elif self.output_path.suffix in (".tif", ".tiff"):

@@ -24,8 +24,6 @@ from ._tstore import BinMode
 
 if TYPE_CHECKING:
     import numpy as np
-    import xarray as xr
-    from datatree import DataTree
     from tensorstore import TensorStore
 
 # ------------------------ MODELS ------------------------
@@ -171,15 +169,6 @@ class CosemImage(BaseModel):
             transpose=transpose,
             bin_mode=_bin_mode,
         )
-
-    def read_xarray(self) -> "xr.DataArray | DataTree":
-        """Read image as xarray or DataTree.
-
-        This is less tested and used than `read`.  Let me know if you need it.
-        """
-        from microsim.cosem._xarray import read_xarray
-
-        return read_xarray(self.url)
 
     @property
     def attrs(self) -> dict[str, Any]:
