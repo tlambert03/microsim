@@ -22,7 +22,7 @@ jobs:
       - run: pipx run check-manifest
 
   test:
-    name: Test ${{ matrix.os }} py${{ matrix.python-version }} ${{ matrix.min }}
+    name: Test ${{ matrix.os }} py${{ matrix.python-version }} ${{ matrix.min }} ${{ matrix.resolution }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -70,7 +70,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: covreport-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.min }}
+          name: covreport-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.min }}-${{ matrix.resolution }}
           path: ./.coverage*
           include-hidden-files: true
 
