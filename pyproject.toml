@@ -87,14 +87,14 @@ test = ["pytest>=8.3.5", "pytest-cov>=6.0.0"]
 dev = [
     { include-group = "test" },
     "microsim[all,jax,torch]",
-    "boto3-stubs[s3]",
-    "ipython",
-    "mypy",
     "pdbpp; sys_platform == 'darwin'",
-    "pre-commit-uv",
-    "rich",
-    "ruff",
-    "types-tqdm",
+    "prek>=0.4.5",
+    "rich>=15.0.0",
+    "ruff>=0.15.18",
+    "types-tqdm>=4.68.0.20260608",
+    "mypy>=2.1.0",
+    "ipython>=9.14.1",
+    "boto3-stubs[s3]>=1.43.34",
 ]
 docs = [
     "mkdocs >=1.5.3",
