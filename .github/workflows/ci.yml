@@ -28,8 +28,15 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.12", "3.13", "3.14"]
         min: [""]
+        exclude:
+          # tensorstore has no clean cp314 Windows wheel: the first one (0.1.79)
+          # and everything >=0.1.77 crash at interpreter shutdown on Windows
+          # (google/tensorstore#275), and there's no earlier cp314 wheel to pin
+          # to. Drop this leg until tensorstore ships a fix.
+          - os: windows-latest
+            python-version: "3.14"
         include:
           - os: ubuntu-latest
             python-version: "3.12"
@@ -51,7 +58,7 @@ jobs:
 
       - run: uv run coverage run -p -m pytest --color=yes -v
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: covreport-${{ matrix.os }}-py${{ matrix.python-version }}-${{ matrix.min }}
           path: ./.coverage*
@@ -82,7 +89,7 @@ jobs:
       contents: write
     steps:
       - name: Download built artifact to dist/
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: Packages
           path: dist

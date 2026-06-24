@@ -7,8 +7,10 @@ from scipy.signal._signaltools import _centered
 
 
 @no_type_check
-def _apply_conv_mode_no_copy(ret, s1, s2, mode, axes):
-    # same as scipy.signal._signaltools._apply_conv_mode but without the .copy() call
+def _apply_conv_mode_no_copy(ret, s1, s2, mode, axes, xp=None):
+    # same as scipy.signal._signaltools._apply_conv_mode but without the copy.
+    # `xp` is accepted (and ignored) for compatibility with scipy >=1.15, which
+    # added an array-namespace argument and copies via `xp_copy(..., xp=xp)`.
     if mode == "full":
         return ret
     elif mode == "same":

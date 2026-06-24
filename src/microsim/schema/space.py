@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import Any, Protocol, TypeVar, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
 from pydantic import (
@@ -15,6 +15,9 @@ from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
 
 from ._base_model import SimBaseModel
 from .dimensions import Axis
+
+if TYPE_CHECKING:
+    from typing import Self
 
 
 class FloatArray(Sequence[float]):
@@ -111,10 +114,10 @@ class _AxesSpace(_Space):
         return tuple(value)
 
     @model_validator(mode="after")
-    def _validate_axes_space(cls, value: Any) -> Any:
-        shape = getattr(value, "shape", ())
-        scale = getattr(value, "scale", ())
-        axes = getattr(value, "axes", ())
+    def _validate_axes_space(self) -> "Self":
+        shape = getattr(self, "shape", ())
+        scale = getattr(self, "scale", ())
+        axes = getattr(self, "axes", ())
         ndim = len(shape)
         if len(scale) != ndim:
             raise ValueError(
@@ -122,8 +125,8 @@ class _AxesSpace(_Space):
             )
         if len(axes) < ndim:
             raise ValueError(f"Only {len(axes)} axes provided but got {ndim} dims")
-        object.__setattr__(value, "axes", axes[-ndim:] if ndim else ())
-        return value
+        object.__setattr__(self, "axes", axes[-ndim:] if ndim else ())
+        return self
 
 
 class ShapeScaleSpace(_AxesSpace):

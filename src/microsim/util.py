@@ -470,7 +470,7 @@ def _colorize(
 
     # add them all together
     summed = np.sum(np.stack(colorized), axis=0)[..., :3]  # drop alpha channel
-    return (summed * 255).astype(np.uint8)  # type: ignore
+    return (summed * 255).astype(np.uint8)
 
 
 def animate(

@@ -15,7 +15,7 @@
     - here intensity values correspond to gray values (0-255) in the image.
 """
 
-from enum import Enum
+from enum import StrEnum
 from typing import NamedTuple
 
 
@@ -31,7 +31,7 @@ class AxisInfo(NamedTuple):
         return self.category_type is not None
 
 
-class Axis(str, Enum):
+class Axis(StrEnum):
     """Named axes used in microsim."""
 
     X = "x"
