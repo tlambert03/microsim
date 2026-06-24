@@ -64,6 +64,9 @@ These are not installed by default, see the
 or [cupy](https://docs.cupy.dev/en/stable/install.html) installation instructions,
 paying attention to your GPU requirements.  Support for torch is planned.
 
+See [DEV_NOTES.md](DEV_NOTES.md) for real setup issues hit on this fork
+(numpy/cupy version conflicts, CUDA header errors, zarr/numcodecs mismatch).
+
 ## Usage
 
 Construct and run a
