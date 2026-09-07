@@ -37,7 +37,7 @@ stage, this volume will be downsampled to the final image shape and scale
     from microsim import Simulation
 
     sim = Simulation(
-        truth_space={'shape': (512, 1024, 1024), 'scale': (0.04, 0.02, 0.02)},
+        truth_space={"shape": (512, 1024, 1024), "scale": (0.04, 0.02, 0.02)},
         output_space={"downscale": 4},
     )
     ```
@@ -75,10 +75,15 @@ fluorophores present at each voxel in the volume.
     sim = Simulation(
         # ...,
         sample={
-            'labels': [
+            "labels": [
                 {
-                    'distribution': {'type': 'matslines', 'density': 0.5, 'length': 30, 'azimuth': 5},
-                    'fluorophore': 'EGFP'
+                    "distribution": {
+                        "type": "matslines",
+                        "density": 0.5,
+                        "length": 30,
+                        "azimuth": 5,
+                    },
+                    "fluorophore": "EGFP",
                 }
             ],
         },
@@ -240,9 +245,19 @@ channel 1. This is why both F and C remain at this stage.
             {
                 "name": "Green",
                 "filters": [
-                    {"type": "bandpass", "bandcenter": 470, "bandwidth": 40, "placement": "EX"},
+                    {
+                        "type": "bandpass",
+                        "bandcenter": 470,
+                        "bandwidth": 40,
+                        "placement": "EX",
+                    },
                     {"type": "longpass", "cuton": 495, "placement": "BS"},
-                    {"type": "bandpass", "bandcenter": 525, "bandwidth": 50, "placement": "EM"}
+                    {
+                        "type": "bandpass",
+                        "bandcenter": 525,
+                        "bandwidth": 50,
+                        "placement": "EM",
+                    },
                 ],
             }
         ],
@@ -350,8 +365,12 @@ bin in the detector.
     sim = Simulation(
         # ...,
         channels=["4yL4ggAo::491"],
-        objective_lens={"numerical_aperture": 1.4, "immersion_medium_ri": 1.515, 'specimen_ri': 1.33},
-        modality={"type": "confocal", 'pinhole_au': 1.2},
+        objective_lens={
+            "numerical_aperture": 1.4,
+            "immersion_medium_ri": 1.515,
+            "specimen_ri": 1.33,
+        },
+        modality={"type": "confocal", "pinhole_au": 1.2},
     )
     ```
 
