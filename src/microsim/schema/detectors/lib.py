@@ -3,6 +3,7 @@
 import numpy as np
 
 from microsim.schema.detectors._camera import CameraCCD
+from microsim.schema.detectors._point import PMT, HyD
 from microsim.schema.spectrum import Spectrum
 
 # fmt: off
@@ -22,4 +23,19 @@ ICX285 = CameraCCD(
     offset=100,
     # npixels_h=1344,
     # npixels_v=1024,
+)
+
+# Point-scanning detectors.  QE values are scalar peak values (spectral curves TBD).
+# Dark count rates for PMTs are from a Zeiss lecture (Oxford Micron course 2020);
+# HyD values are uncooled Becker & Hickl HPM-100-40/-42 figures for the Hamamatsu
+# R10467U-40/-42 tubes, which are inferred (not confirmed) to be Leica's OEM parts.
+PMT_MULTIALKALI = PMT(name="Multialkali PMT", qe=0.2, dark_current=3000, enf=1.3)
+PMT_GAASP = PMT(name="GaAsP PMT", qe=0.45, dark_current=800, enf=1.3)
+HYD_SP8 = HyD(name="Leica HyD (GaAsP)", qe=0.45, dark_current=560, dead_time_ns=1.5)
+POWER_HYD_R = HyD(
+    # extended-red GaAsP: 25% QE @ 660 nm (R10467U-42)
+    name="Leica Power HyD R",
+    qe=0.25,
+    dark_current=800,
+    dead_time_ns=1.5,
 )
