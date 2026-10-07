@@ -7,7 +7,7 @@ from typing import Any, TypeVar
 import numpy as np
 import pint
 from pint._typing import UnitLike
-from pint.facets.plain.quantity import MagnitudeT, PlainQuantity
+from pint.facets.plain.quantity import PlainQuantity
 
 T = TypeVar("T", bound=pint.Unit)
 
@@ -36,7 +36,7 @@ def validate_np_integer_dtype(x: Any) -> np.dtype[np.integer]:
 def make_unit_validator(units: UnitLike) -> Callable[[Any], PlainQuantity]:
     """Return a function that casts a value to a pint.Quantity with the given units."""
 
-    def validate_unit(value: Any) -> PlainQuantity[MagnitudeT]:
+    def validate_unit(value: Any) -> PlainQuantity:
         """Cast a `value` to a pint.Quantity with the given units."""
         quant: PlainQuantity = pint.Quantity(value)
         if quant.dimensionless:

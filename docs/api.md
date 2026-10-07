@@ -29,7 +29,7 @@ Simulation(
     truth_space=ms.ShapeScaleSpace(shape=(256, 1024, 1024), scale=(0.02, 0.01, 0.01)),
     # downscale output to 160nm x 80nm x 80nm pixels with shape (32, 128, 128)
     output_space=ms.DownscaledSpace(downscale=8),
-    sample=ms.Sample(labels=[])  # ...
+    sample=ms.Sample(labels=[]),  # ...
 )
 ```
 

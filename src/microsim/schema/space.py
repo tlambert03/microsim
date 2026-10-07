@@ -107,7 +107,7 @@ class _AxesSpace(_Space):
             raise NotImplementedError(
                 f"Can only downscale an image. Got downscale factors {dims}."
             )
-        return img.coarsen(dims).sum()  # type: ignore
+        return img.coarsen(dims).sum()
 
     @field_validator("axes", mode="before")
     def _cast_axes(cls, value: Any) -> tuple[Axis, ...]:
@@ -215,7 +215,7 @@ class DownscaledSpace(_RelativeSpace):
         elif isinstance(self.downscale, Sequence):
             axes = dict(zip(self.axes, self.downscale, strict=False))
 
-        return img.coarsen(axes).sum()  # type: ignore
+        return img.coarsen(axes).sum()
 
     @computed_field  # type: ignore
     @property
