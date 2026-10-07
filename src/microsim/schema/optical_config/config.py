@@ -93,6 +93,13 @@ class OpticalConfig(SimBaseModel):
         path. It's a vector with a single axis W, and singleton dimensions F and C
         """
         tot_absorption_rate = self.absorption_rate(fluorophore).sum()
+        if fluorophore.lifetime_ns:
+            # steady-state excitation saturation of a two-level system:
+            # emission rate saturates at 1/lifetime as absorption rate grows
+            tau_s = fluorophore.lifetime_ns * 1e-9
+            tot_absorption_rate = tot_absorption_rate / (
+                1 + tot_absorption_rate * tau_s
+            )
         em_rate = fluorophore.emission_spectrum.as_xarray()
         # norm area to 1
         em_rate = em_rate / em_rate.sum()

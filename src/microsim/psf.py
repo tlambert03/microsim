@@ -268,6 +268,10 @@ def make_confocal_psf(
     This function creates a confocal PSF by multiplying the excitation PSF with
     the emission PSF convolved with a pinhole mask.
 
+    If `normalize` is False, the result is physically scaled: the relative excitation
+    intensity (1 at focus) times the fraction of collected emission that passes the
+    pinhole, for a point source at each position.
+
     All extra keyword arguments are passed to `vectorial_psf_centered`.
     """
     xp = NumpyAPI.create(xp)
@@ -285,7 +289,7 @@ def make_confocal_psf(
         objective=objective,
         xp=xp,
         sf=sf,
-        normalize=normalize,
+        normalize="max",  # relative irradiance: 1 at focus
     )
     em_psf = vectorial_psf_centered(
         nz=nz,
@@ -299,8 +303,12 @@ def make_confocal_psf(
         objective=objective,
         xp=xp,
         sf=sf,
-        normalize=normalize,
+        normalize=False,
     )
+    # each z-plane is the image of a (defocused) point source, and the vectorial
+    # model conserves energy across planes; scale by the in-focus plane so that
+    # values are the fraction of collected emission landing on each pixel.
+    em_psf = em_psf / xp.max(xp.sum(em_psf, axis=(-2, -1)))
 
     # The effective emission PSF is the regular emission PSF convolved with the
     # pinhole mask. The pinhole mask is a disk with diameter equal to the pinhole
@@ -321,6 +329,8 @@ def make_confocal_psf(
         eff_em_psf = xp._array_assign(eff_em_psf, i, plane)
 
     # The final PSF is the excitation PSF multiplied by the effective emission PSF.
+    # Before normalization, this is the relative excitation times the fraction of
+    # collected emission that passes the pinhole, for a fluorophore at each position.
     out = xp.asarray(ex_psf) * eff_em_psf
     out = _norm_psf(out, normalize, xp)
     return out
@@ -456,7 +466,7 @@ def cached_psf(
             dxy=dx,
             objective=objective,
             xp=xp,
-            normalize="sum",
+            normalize=False,  # keep physical scale (pinhole throughput)
         )
 
     if use_cache:
@@ -476,9 +486,10 @@ def _psf_cache_path(
     objective: ObjectiveLens,
 ) -> Path:
     """Return the cache location for these PSF parameters."""
-    cache_key = [nz, nx, dz, dx, em_wvl_um]
+    cache_key: list[float | str] = [nz, nx, dz, dx, em_wvl_um]
     if pinhole_au is not None:
-        cache_key.extend([ex_wvl_um, pinhole_au])
+        # "v2": confocal PSFs are no longer sum-normalized
+        cache_key.extend([ex_wvl_um, pinhole_au, "v2"])
     cache_path = microsim_cache("psf") / objective.cache_key()
     cache_path = cache_path / "_".join([str(x).replace(".", "-") for x in cache_key])
     return cache_path.with_suffix(".npy")

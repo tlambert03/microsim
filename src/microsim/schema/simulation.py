@@ -2,7 +2,7 @@ import time
 import warnings
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import numpy as np
 import pandas as pd
@@ -176,15 +176,17 @@ class Simulation(SimBaseModel):
             [oc.filtered_emission_rate(f, detector_qe=qe) for f in fluors]
             for oc in self.channels
         ]
+        collection = self.objective_lens.collection_efficiency
 
         # combine xarray objects along the C and F axes, with outer join on W
-        return xr.combine_nested(  # type: ignore [return-value]  # typing is wrong here
+        rates = xr.combine_nested(
             nested_rates,
             concat_dim=[Axis.C, Axis.F],
             combine_attrs="override",
             join="outer",
             fill_value=0,
         ).transpose(Axis.C, Axis.F, Axis.W)
+        return rates * collection  # type: ignore [return-value]
 
     def emission_flux(self) -> xr.DataArray:
         """Return the spatial emission in photons per second (after emission filters).
@@ -273,7 +275,12 @@ class Simulation(SimBaseModel):
         # rather than a user-specified output space
         if self.output_space is not None:
             logger.info(f"Rescaling to output space {self.output_space.shape}")
-            image = self.output_space.rescale(image)
+            # point-scanning: each output pixel is the signal at its scan position,
+            # (averaged over sub-positions), not a sum over a camera pixel's area.
+            mode: Literal["sum", "mean"] = (
+                "mean" if self.modality.point_scanning else "sum"
+            )
+            image = self.output_space.rescale(image, mode=mode)
 
         # simulate detector
         if exposure_ms is None:
@@ -306,7 +313,7 @@ class Simulation(SimBaseModel):
     def run(self) -> xr.DataArray:
         """Run the complete simulation and return the result.
 
-        This will also write a file to disk if `output` is set.
+        This will also write a file to disk if `output_path` is set.
         """
         self._write(image := self.digital_image())
         return image

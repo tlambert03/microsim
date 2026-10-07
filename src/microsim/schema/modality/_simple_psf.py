@@ -1,5 +1,5 @@
 import warnings
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 import numpy as np
 from annotated_types import Ge
@@ -16,6 +16,9 @@ from microsim.schema.space import SpaceProtocol
 
 
 class _PSFModality(SimBaseModel):
+    # whether the image is formed by scanning a focused spot (vs. a camera)
+    point_scanning: ClassVar[bool] = False
+
     def psf(
         self,
         *,
@@ -162,7 +165,16 @@ class _PSFModality(SimBaseModel):
 
 
 class Confocal(_PSFModality):
+    """Point-scanning confocal.
+
+    The PSF is the probability that a photon emitted by a fluorophore at a given
+    position (relative to the scan spot) passes the pinhole, times the relative
+    excitation intensity there.  Light source `power` is therefore interpreted as
+    the peak irradiance at the focus.
+    """
+
     type: Literal["confocal"] = "confocal"
+    point_scanning: ClassVar[bool] = True
     pinhole_au: Annotated[float, Ge(0)] = 1
 
     def psf(
