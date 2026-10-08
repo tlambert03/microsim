@@ -62,6 +62,8 @@ class Simulation(SimBaseModel):
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC])
     # TODO: channels should also include `lights: list[LightSource]`
     detector: Detector | None = Field(default=None, discriminator="camera_type")
+    # Per-pixel integration time: camera exposure, or pixel dwell time for
+    # point-scanning modalities (e.g. Confocal). May be renamed `integration_time`.
     exposure_ms: float = 100
     settings: Settings = Field(default_factory=Settings)
     output_path: OutPath | None = None
@@ -290,6 +292,9 @@ class Simulation(SimBaseModel):
             image = self.output_space.rescale(image, mode=mode)
 
         # simulate detector
+        # NOTE: exposure is a per-pixel integration time (camera exposure, or pixel
+        # dwell time for point-scanning). It must NOT be divided by the number of
+        # pixels, even for point-scanning modalities.
         if exposure_ms is None:
             _cfg_exposures = {ch: ch.exposure_ms for ch in self.channels}
             ch_exposures: float | xr.DataArray = xr.DataArray(

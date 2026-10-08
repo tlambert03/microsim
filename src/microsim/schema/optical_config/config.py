@@ -55,7 +55,7 @@ class OpticalConfig(SimBaseModel):
     filters: list[Filter] = Field(default_factory=list)
     lights: list[LightSource] = Field(default_factory=list)
     detector: Detector | None = None
-    exposure_ms: float | None = None
+    exposure_ms: float | None = None  # per-pixel; see `Simulation.exposure_ms`
 
     # seemingly duplicate of power in LightSource
     # but it depends on where the power is being measured
