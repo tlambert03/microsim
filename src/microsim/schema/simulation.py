@@ -181,6 +181,8 @@ class Simulation(SimBaseModel):
             [oc.filtered_emission_rate(f, detector_qe=qe, saturate=sat) for f in fluors]
             for oc in self.channels
         ]
+        # fraction of isotropic emission entering the objective. PSFs are normalized
+        # to collected light, so this is not double-counted (see `make_confocal_psf`)
         collection = self.objective_lens.collection_efficiency
 
         # combine xarray objects along the C and F axes, with outer join on W

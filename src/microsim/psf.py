@@ -317,6 +317,8 @@ def make_confocal_psf(
     # each z-plane is the image of a (defocused) point source, and the vectorial
     # model conserves energy across planes; scale by the in-focus plane so that
     # values are the fraction of collected emission landing on each pixel.
+    # (collection efficiency itself is applied to the rates, in
+    # `Simulation.filtered_emission_rates`)
     em_psf = em_psf / xp.max(xp.sum(em_psf, axis=(-2, -1)))
 
     # The effective emission PSF is the regular emission PSF convolved with the
