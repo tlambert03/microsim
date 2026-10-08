@@ -9,7 +9,7 @@ from microsim import schema as ms
 from microsim.schema.detectors import lib
 from microsim.schema.optical_config.lib import FITC
 
-DWELL_MS = 0.002  # 2 µs pixel dwell
+DWELL_MS = 0.001  # 1 µs pixel dwell
 
 sim = ms.Simulation(
     truth_space={"upscale": 4},
@@ -18,14 +18,13 @@ sim = ms.Simulation(
         ms.FluorophoreDistribution(
             distribution=ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1),
             fluorophore="EGFP",
-            concentration=5,
+            # fluorophores per truth voxel: a sparse label, chosen to give realistic
+            # count rates (tens of Mcps at the brightest pixels)
+            concentration=0.025,
         )
     ],
-    # NOTE: real confocal irradiances approach ~1 MW/cm^2, but microsim does not yet
-    # model excitation saturation, so emission scales linearly with power and would
-    # be ~200x too bright.  5 kW/cm^2 is a stand-in that yields realistic detector
-    # count rates (tens of Mcps at the brightest pixels).
-    channels=[FITC.model_copy(update={"power": 5_000})],  # W/cm^2
+    # peak irradiance at focus.  ~1 MW/cm^2 partially saturates EGFP (k*tau ~ 1)
+    channels=[FITC.model_copy(update={"power": 1e6})],  # W/cm^2
     modality=ms.Confocal(pinhole_au=1),
     settings=ms.Settings(random_seed=100, max_psf_radius_aus=8),
 )
