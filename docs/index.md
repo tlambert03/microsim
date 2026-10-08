@@ -46,10 +46,8 @@ Construct and run a [`microsim.Simulation`][] object.
 
     sim = ms.Simulation(
         truth_space=ms.ShapeScaleSpace(shape=(128, 512, 512), scale=(0.02, 0.01, 0.01)),
-        output_space={'downscale': 8},
-        sample=ms.Sample(
-            labels=[ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1)]
-        ),
+        output_space={"downscale": 8},
+        sample=ms.Sample(labels=[ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1)]),
         modality=ms.Confocal(pinhole_au=0.2),
     )
     result = sim.run()
@@ -67,20 +65,20 @@ Construct and run a [`microsim.Simulation`][] object.
     from microsim.util import ortho_plot
 
     sim = Simulation(
-        truth_space={'shape': (128, 512, 512), 'scale': (0.02, 0.01, 0.01)},
-        output_space={'downscale': 8},
+        truth_space={"shape": (128, 512, 512), "scale": (0.02, 0.01, 0.01)},
+        output_space={"downscale": 8},
         sample=dict(
             labels=[
-                {   
-                    'type': 'matslines',
-                    'density': 0.5,
-                    'length': 30,
-                    'azimuth': 5,
-                    'max_r': 1,
+                {
+                    "type": "matslines",
+                    "density": 0.5,
+                    "length": 30,
+                    "azimuth": 5,
+                    "max_r": 1,
                 }
             ]
         ),
-        modality={'type': 'confocal', 'pinhole_au': 0.2}
+        modality={"type": "confocal", "pinhole_au": 0.2},
     )
     result = sim.run()
     ortho_plot(result)
@@ -126,7 +124,7 @@ the result of the simulation to a file.
 from microsim import Simulation
 from pathlib import Path
 
-spec = Path('confocal.json').read_text()
+spec = Path("confocal.json").read_text()
 sim = Simulation.model_validate_json(spec)
 sim.run()
 ```

@@ -112,7 +112,7 @@ class _AxesSpace(_Space):
                 f"Can only downscale an image. Got downscale factors {dims}."
             )
         coarse = img.coarsen(dims)
-        return coarse.mean() if mode == "mean" else coarse.sum()  # type: ignore
+        return coarse.mean() if mode == "mean" else coarse.sum()
 
     @field_validator("axes", mode="before")
     def _cast_axes(cls, value: Any) -> tuple[Axis, ...]:
@@ -223,7 +223,7 @@ class DownscaledSpace(_RelativeSpace):
             axes = dict(zip(self.axes, self.downscale, strict=False))
 
         coarse = img.coarsen(axes)
-        return coarse.mean() if mode == "mean" else coarse.sum()  # type: ignore
+        return coarse.mean() if mode == "mean" else coarse.sum()
 
     @computed_field  # type: ignore
     @property
