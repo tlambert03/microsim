@@ -201,3 +201,20 @@ def test_spinning_disk_simulation() -> None:
     # camera: sum in xy when downscaling, but each z-plane is one measurement
     assert sim.modality.rescale_mean_axes == ("z",)
     assert sim.modality.local_saturation  # saturation applied in the PSF
+
+
+def test_spinning_disk_underfilled_excitation() -> None:
+    # low-NA excitation beamlets stay localized out of focus, so a defocused point
+    # images as an array of pinhole spots rather than a smooth blur
+    nx, dxy = 161, 0.08
+    kw = {"nz": 7, "dz": 1.0, "nx": nx, "dxy": dxy, "em_wvl_um": 0.52}
+    kw.update(ex_wvl_um=0.488, pinhole_spacing_um=2.53)
+    kw["pinhole_mask"] = pinhole_mask(nx=nx, dxy_um=dxy, magnification=100)
+    c, pitch = nx // 2, round(2.53 / dxy)  # tangential neighbor at (c, c + pitch)
+
+    def contrast(psf: np.ndarray) -> float:
+        plane = psf[0]  # 3 um defocus
+        return float(plane[c, c + pitch] / plane[c, c + pitch // 2])
+
+    assert contrast(make_spinning_disk_psf(**kw, excitation_na=0.3)) > 3
+    assert contrast(make_spinning_disk_psf(**kw)) < 1.5  # full NA 1.4: smooth

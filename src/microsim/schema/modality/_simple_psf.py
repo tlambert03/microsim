@@ -261,6 +261,9 @@ class SpinningDiskConfocal(_PSFModality):
     pinhole_spacing_um: Annotated[float, Gt(0)] = 253  # on the disk
     disk_radii_mm: tuple[float, float] = (15, 25)  # inner/outer pinhole radii
     frames_per_rev: Annotated[float, Gt(0)] = 12  # interleaved spirals
+    # effective NA of each excitation beamlet (scan heads typically underfill the
+    # objective; not published by Yokogawa).  None = objective NA.
+    excitation_na: Annotated[float, Gt(0)] | None = None
 
     def _saturation_parameter(self, em_spectrum: xrDataArray) -> float:
         # `s` at the time-averaged irradiance (converted to peak in the PSF)
@@ -299,6 +302,7 @@ class SpinningDiskConfocal(_PSFModality):
             frames_per_rev=self.frames_per_rev,
             magnification=self.magnification,
             saturation=saturation,
+            excitation_na=self.excitation_na,
             xp=xp,
         )
 

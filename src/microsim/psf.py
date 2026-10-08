@@ -359,6 +359,7 @@ def make_spinning_disk_psf(
     dxy: float = 0.05,
     objective: ObjectiveKwargs | ObjectiveLens | None = None,
     saturation: float = 0,
+    excitation_na: float | None = None,
     xp: NumpyAPI | None = None,
 ) -> np.ndarray:
     """Create a time-averaged spinning-disk confocal PSF, imaged onto a camera.
@@ -374,16 +375,27 @@ def make_spinning_disk_psf(
     source power is interpreted as the time-averaged irradiance at the sample; each
     spot's peak irradiance is `power * spacing**2 / A_spot`.  `saturation` is the
     saturation parameter (`k * tau`) at the time-averaged irradiance.
+
+    `excitation_na` is the effective NA of each excitation beamlet (default: the
+    objective NA).  Spinning-disk scan heads typically underfill the objective, so
+    each beamlet is narrower in angle and stays localized out of focus (which is why
+    defocused points image as an array of pinhole spots).  Modeled as a uniformly
+    filled pupil of that NA.
     """
     xp = NumpyAPI.create(xp)
     objective = _cast_objective(objective)
+    ex_objective = objective
+    if excitation_na is not None:
+        ex_objective = objective.model_copy(
+            update={"numerical_aperture": excitation_na}
+        )
     ex_psf = vectorial_psf_centered(
         nz=nz,
         dz=dz,
         nx=nx,
         dxy=dxy,
         wvl=ex_wvl_um,
-        objective=objective,
+        objective=ex_objective,
         normalize="max",
         xp=xp,
     )
@@ -433,6 +445,7 @@ def cached_spinning_disk_psf(
     frames_per_rev: float,
     magnification: float,
     saturation: float,
+    excitation_na: float | None,
     xp: NumpyAPI,
 ) -> ArrayProtocol:
     """Cached `make_spinning_disk_psf` for a Nipkow disk (disk-plane units)."""
@@ -456,6 +469,7 @@ def cached_spinning_disk_psf(
         dxy=dx,
         objective=objective,
         saturation=saturation,
+        excitation_na=excitation_na,
         xp=xp,
     )
 
