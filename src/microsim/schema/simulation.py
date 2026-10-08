@@ -2,7 +2,7 @@ import time
 import warnings
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Literal
 
 import numpy as np
 import pandas as pd
@@ -62,6 +62,8 @@ class Simulation(SimBaseModel):
     channels: list[OpticalConfig] = Field(default_factory=lambda: [FITC])
     # TODO: channels should also include `lights: list[LightSource]`
     detector: Detector | None = Field(default=None, discriminator="camera_type")
+    # Per-pixel integration time: camera exposure, or pixel dwell time for
+    # point-scanning modalities (e.g. Confocal). May be renamed `integration_time`.
     exposure_ms: float = 100
     settings: Settings = Field(default_factory=Settings)
     output_path: OutPath | None = None
@@ -163,6 +165,9 @@ class Simulation(SimBaseModel):
         of wavelengths will encompass the union of all the fluorophores' emission
         spectra, and the rates will be zero where the fluorophore does not emit.
 
+        For point-scanning modalities (e.g. `Confocal`), these rates are *not*
+        saturated: excitation saturation is applied locally in the PSF instead.
+
         Examples
         --------
         >>> sim = Simulation(...)
@@ -172,19 +177,25 @@ class Simulation(SimBaseModel):
         """
         qe = self.detector.qe if self.detector else None
         fluors = list({lbl.fluorophore: None for lbl in self.sample.labels})
+        # point-scanning modalities apply saturation spatially, in the PSF
+        sat = not self.modality.point_scanning
         nested_rates: list[list[xr.DataArray]] = [
-            [oc.filtered_emission_rate(f, detector_qe=qe) for f in fluors]
+            [oc.filtered_emission_rate(f, detector_qe=qe, saturate=sat) for f in fluors]
             for oc in self.channels
         ]
+        # fraction of isotropic emission entering the objective. PSFs are normalized
+        # to collected light, so this is not double-counted (see `make_confocal_psf`)
+        collection = self.objective_lens.collection_efficiency
 
         # combine xarray objects along the C and F axes, with outer join on W
-        return xr.combine_nested(  # type: ignore [return-value]  # typing is wrong here
+        rates = xr.combine_nested(
             nested_rates,
             concat_dim=[Axis.C, Axis.F],
             combine_attrs="override",
             join="outer",
             fill_value=0,
         ).transpose(Axis.C, Axis.F, Axis.W)
+        return rates * collection  # type: ignore [return-value]
 
     def emission_flux(self) -> xr.DataArray:
         """Return the spatial emission in photons per second (after emission filters).
@@ -273,9 +284,17 @@ class Simulation(SimBaseModel):
         # rather than a user-specified output space
         if self.output_space is not None:
             logger.info(f"Rescaling to output space {self.output_space.shape}")
-            image = self.output_space.rescale(image)
+            # point-scanning: each output pixel is the signal at its scan position,
+            # (averaged over sub-positions), not a sum over a camera pixel's area.
+            mode: Literal["sum", "mean"] = (
+                "mean" if self.modality.point_scanning else "sum"
+            )
+            image = self.output_space.rescale(image, mode=mode)
 
         # simulate detector
+        # NOTE: exposure is a per-pixel integration time (camera exposure, or pixel
+        # dwell time for point-scanning). It must NOT be divided by the number of
+        # pixels, even for point-scanning modalities.
         if exposure_ms is None:
             _cfg_exposures = {ch: ch.exposure_ms for ch in self.channels}
             ch_exposures: float | xr.DataArray = xr.DataArray(
@@ -306,7 +325,7 @@ class Simulation(SimBaseModel):
     def run(self) -> xr.DataArray:
         """Run the complete simulation and return the result.
 
-        This will also write a file to disk if `output` is set.
+        This will also write a file to disk if `output_path` is set.
         """
         self._write(image := self.digital_image())
         return image
@@ -436,7 +455,7 @@ def plot_simulation_summary(
                 em_rate = oc.total_emission_rate(fluor)
                 em_rate.isel({Axis.F: 0, Axis.C: 0}).plot.line(
                     ax=ab_ax[ch_idx],
-                    label=f"{fluor.name} emission",
+                    label=f"{fluor.name} emission (at peak)",
                     alpha=0.4,
                     linestyle="--",
                 )
@@ -475,6 +494,7 @@ def plot_simulation_summary(
             for lbl in sim.sample.labels:
                 if fluor := lbl.fluorophore:
                     final = oc.filtered_emission_rate(fluor, detector_qe=qe)
+                    final = final * sim.objective_lens.collection_efficiency
                     final.isel({Axis.F: 0, Axis.C: 0}).plot.line(
                         ax=f_ax[ch_idx],
                         label=f"{fluor.name} collection ({final.sum():.2f} phot/s tot)",

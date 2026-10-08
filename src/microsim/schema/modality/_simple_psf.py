@@ -1,5 +1,5 @@
 import warnings
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 import numpy as np
 from annotated_types import Ge
@@ -16,6 +16,9 @@ from microsim.schema.space import SpaceProtocol
 
 
 class _PSFModality(SimBaseModel):
+    # whether the image is formed by scanning a focused spot (vs. a camera)
+    point_scanning: ClassVar[bool] = False
+
     def psf(
         self,
         *,
@@ -27,8 +30,10 @@ class _PSFModality(SimBaseModel):
         xp: NumpyAPI,
         ex_wvl_nm: float | None = None,
         em_wvl_nm: float | None = None,
+        saturation: float = 0,
     ) -> ArrayProtocol:
-        # default implementation is a widefield PSF
+        # default implementation is a widefield PSF (uniform illumination, so
+        # `saturation` is already applied to the emission rates and ignored here)
         return make_psf(
             nz=nz,
             nx=nx,
@@ -141,6 +146,7 @@ class _PSFModality(SimBaseModel):
             objective_lens.numerical_aperture,
         )
 
+        saturation = self._saturation_parameter(em_spectrum)
         summed_psf: Any = 0
         for em_rate in binned:
             em_wvl_nm = em_rate.w.item()
@@ -155,15 +161,42 @@ class _PSFModality(SimBaseModel):
                 dz=dz,
                 objective_lens=objective_lens,
                 em_wvl_nm=em_wvl_nm,
+                saturation=saturation,
                 xp=xp,
             )
             summed_psf += psf * weight
         return summed_psf  # type: ignore [no-any-return]
 
+    def _saturation_parameter(self, em_spectrum: xrDataArray) -> float:
+        """Saturation parameter to apply in the PSF (0 if not applied spatially)."""
+        return 0.0
+
 
 class Confocal(_PSFModality):
+    """Point-scanning confocal.
+
+    The PSF is the probability that a photon emitted by a fluorophore at a given
+    position (relative to the scan spot) passes the pinhole, times the relative
+    excitation intensity there.  Light source `power` is therefore interpreted as
+    the peak irradiance at the focus, and `exposure_ms` as the per-pixel integration
+    (dwell) time (it is not divided by the number of pixels).  Excitation saturation
+    is applied locally (per position in the excitation PSF), rather than to the
+    emission rates.
+    """
+
     type: Literal["confocal"] = "confocal"
+    point_scanning: ClassVar[bool] = True
     pinhole_au: Annotated[float, Ge(0)] = 1
+
+    def _saturation_parameter(self, em_spectrum: xrDataArray) -> float:
+        # emission rates are unsaturated for point-scanning modalities;
+        # saturation is applied locally to the excitation PSF instead.
+        oc = em_spectrum.coords[Axis.C].item()
+        fluor = em_spectrum.coords[Axis.F].item()
+        s = oc.saturation_parameter(fluor)
+        # ignore negligible saturation (reuses the unsaturated PSF), and round to
+        # keep PSF cache keys stable
+        return float(f"{s:.4g}") if s > 1e-4 else 0.0
 
     def psf(
         self,
@@ -176,6 +209,7 @@ class Confocal(_PSFModality):
         xp: NumpyAPI,
         ex_wvl_nm: float | None = None,
         em_wvl_nm: float | None = None,
+        saturation: float = 0,
     ) -> ArrayProtocol:
         return make_psf(
             nz=nz,
@@ -186,6 +220,7 @@ class Confocal(_PSFModality):
             em_wvl_nm=em_wvl_nm,
             ex_wvl_nm=ex_wvl_nm,
             pinhole_au=self.pinhole_au,
+            saturation=saturation,
             xp=xp,
         )
 

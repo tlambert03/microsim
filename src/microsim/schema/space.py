@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
 from pydantic import (
@@ -51,7 +51,9 @@ ArrayType = TypeVar("ArrayType")
 
 
 class _Space(SimBaseModel):
-    def rescale(self, img: xrDataArray) -> xrDataArray:
+    def rescale(
+        self, img: xrDataArray, mode: Literal["sum", "mean"] = "sum"
+    ) -> xrDataArray:
         return img
 
     def create(
@@ -98,7 +100,9 @@ class _AxesSpace(_Space):
             if ax in img_scales
         }
 
-    def rescale(self, img: xrDataArray) -> xrDataArray:
+    def rescale(
+        self, img: xrDataArray, mode: Literal["sum", "mean"] = "sum"
+    ) -> xrDataArray:
         if not (img_space := getattr(img, "space", None)):  # pragma: no cover
             raise ValueError("Input image must have a 'space' attribute.")
 
@@ -107,7 +111,8 @@ class _AxesSpace(_Space):
             raise NotImplementedError(
                 f"Can only downscale an image. Got downscale factors {dims}."
             )
-        return img.coarsen(dims).sum()
+        coarse = img.coarsen(dims)
+        return coarse.mean() if mode == "mean" else coarse.sum()
 
     @field_validator("axes", mode="before")
     def _cast_axes(cls, value: Any) -> tuple[Axis, ...]:
@@ -209,13 +214,16 @@ class _RelativeSpace(_Space):
 class DownscaledSpace(_RelativeSpace):
     downscale: tuple[int, ...] | int
 
-    def rescale(self, img: xrDataArray) -> xrDataArray:
+    def rescale(
+        self, img: xrDataArray, mode: Literal["sum", "mean"] = "sum"
+    ) -> xrDataArray:
         if isinstance(self.downscale, int | float):
             axes = dict.fromkeys(self.axes, self.downscale)
         elif isinstance(self.downscale, Sequence):
             axes = dict(zip(self.axes, self.downscale, strict=False))
 
-        return img.coarsen(axes).sum()
+        coarse = img.coarsen(axes)
+        return coarse.mean() if mode == "mean" else coarse.sum()
 
     @computed_field  # type: ignore
     @property

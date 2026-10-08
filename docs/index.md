@@ -114,7 +114,7 @@ the result of the simulation to a file.
         "type": "confocal",
         "pinhole_au": 0.2
     },
-    "output": "au02.tiff"
+    "output_path": "au02.tiff"
 }
 ```
 
