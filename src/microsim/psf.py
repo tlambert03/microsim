@@ -261,6 +261,7 @@ def make_confocal_psf(
     objective: ObjectiveKwargs | ObjectiveLens | None = None,
     sf: int = 3,
     normalize: bool | Literal["sum", "max"] = "sum",
+    saturation: float = 0,
     xp: NumpyAPI | None = None,
 ) -> np.ndarray:
     """Create a confocal PSF.
@@ -271,6 +272,10 @@ def make_confocal_psf(
     If `normalize` is False, the result is physically scaled: the relative excitation
     intensity (1 at focus) times the fraction of collected emission that passes the
     pinhole, for a point source at each position.
+
+    `saturation` is the excitation saturation parameter at the focus (`k * tau`, see
+    `OpticalConfig.saturation_parameter`).  If non-zero, the relative excitation `r`
+    is replaced by the relative emission of a two-level system, `r / (1 + s * r)`.
 
     All extra keyword arguments are passed to `vectorial_psf_centered`.
     """
@@ -291,6 +296,10 @@ def make_confocal_psf(
         sf=sf,
         normalize="max",  # relative irradiance: 1 at focus
     )
+    if saturation:
+        # local steady-state saturation: emission relative to the unsaturated
+        # emission at focus (see `OpticalConfig.total_emission_rate`)
+        ex_psf = ex_psf / (1 + saturation * ex_psf)
     em_psf = vectorial_psf_centered(
         nz=nz,
         wvl=em_wvl_um,
@@ -380,6 +389,7 @@ def make_psf(
     em_wvl_nm: float | None = None,
     pinhole_au: float | None = None,
     max_au_relative: float | None = None,
+    saturation: float = 0,
     xp: NumpyAPI | None = None,
 ) -> ArrayProtocol:
     if ex_wvl_nm is None:
@@ -401,6 +411,7 @@ def make_psf(
         objective=_cast_objective(objective),
         pinhole_au=pinhole_au,
         max_au_relative=max_au_relative,
+        saturation=saturation,
         xp=NumpyAPI.create(xp),
     )
 
@@ -418,6 +429,7 @@ def cached_psf(
     pinhole_au: float | None,
     max_au_relative: float | None,
     xp: NumpyAPI,
+    saturation: float = 0,
 ) -> ArrayProtocol:
     # now restrict nx to no more than max_au_relative
     if max_au_relative is not None:
@@ -432,7 +444,7 @@ def cached_psf(
     use_cache = os.getenv("MICROSIM_CACHE", "").lower() not in {"0", "false", "no", "n"}
     if use_cache:
         cache_path = _psf_cache_path(
-            nz, nx, dz, dx, em_wvl_um, pinhole_au, ex_wvl_um, objective
+            nz, nx, dz, dx, em_wvl_um, pinhole_au, ex_wvl_um, objective, saturation
         )
         if cache_path.exists():
             logger.info(
@@ -467,6 +479,7 @@ def cached_psf(
             objective=objective,
             xp=xp,
             normalize=False,  # keep physical scale (pinhole throughput)
+            saturation=saturation,
         )
 
     if use_cache:
@@ -484,12 +497,15 @@ def _psf_cache_path(
     pinhole_au: float | None,
     ex_wvl_um: float,
     objective: ObjectiveLens,
+    saturation: float = 0,
 ) -> Path:
     """Return the cache location for these PSF parameters."""
     cache_key: list[float | str] = [nz, nx, dz, dx, em_wvl_um]
     if pinhole_au is not None:
         # "v2": confocal PSFs are no longer sum-normalized
         cache_key.extend([ex_wvl_um, pinhole_au, "v2"])
+        if saturation:
+            cache_key.append(f"sat{saturation:.6g}")
     cache_path = microsim_cache("psf") / objective.cache_key()
     cache_path = cache_path / "_".join([str(x).replace(".", "-") for x in cache_key])
     return cache_path.with_suffix(".npy")

@@ -85,21 +85,41 @@ class OpticalConfig(SimBaseModel):
         abs_rate.attrs["units"] = "photons/s"
         return abs_rate
 
-    def total_emission_rate(self, fluorophore: Fluorophore) -> xr.DataArray:
+    def saturation_parameter(self, fluorophore: Fluorophore) -> float:
+        """Return `k * tau`: absorption rate relative to the excited-state decay rate.
+
+        This is `I / I_sat` for a two-level system. Returns 0 if the fluorophore
+        lifetime is unknown.
+        """
+        if not fluorophore.lifetime_ns:
+            return 0.0
+        k = self.absorption_rate(fluorophore).sum().item()
+        return float(k * fluorophore.lifetime_ns * 1e-9)
+
+    def total_emission_rate(
+        self, fluorophore: Fluorophore, *, saturate: bool = True
+    ) -> xr.DataArray:
         """Return the emission rate of a fluorophore with this configuration.
 
         The emission rate is the total number of photons emitted per second per
         fluorophore, as a function of wavelength, prior to any filtering in the emission
         path. It's a vector with a single axis W, and singleton dimensions F and C
+
+        If `saturate` is False, excitation saturation is not applied (e.g. because
+        it is handled spatially by the PSF, as in point-scanning modalities).
         """
         tot_absorption_rate = self.absorption_rate(fluorophore).sum()
-        if fluorophore.lifetime_ns:
-            # steady-state excitation saturation of a two-level system:
-            # emission rate saturates at 1/lifetime as absorption rate grows
-            tau_s = fluorophore.lifetime_ns * 1e-9
-            tot_absorption_rate = tot_absorption_rate / (
-                1 + tot_absorption_rate * tau_s
-            )
+        if saturate:
+            # steady-state excitation saturation of a two-level system, assuming
+            # uniform irradiance: emission saturates at QY/lifetime as k grows.
+            # Known omissions (not modeled):
+            # - triplet and other dark/intermediate states (S0 <-> S1 only)
+            # - stimulated emission
+            # - orientation: with polarized excitation, k varies per molecule and
+            #   <k/(1+k*tau)> != <k>/(1+<k>*tau); using mean k over-saturates
+            # - pulsed excitation: assumes CW (steady state), not pulses << lifetime
+            s = self.saturation_parameter(fluorophore)
+            tot_absorption_rate = tot_absorption_rate / (1 + s)
         em_rate = fluorophore.emission_spectrum.as_xarray()
         # norm area to 1
         em_rate = em_rate / em_rate.sum()
@@ -113,7 +133,11 @@ class OpticalConfig(SimBaseModel):
         return em_rate
 
     def filtered_emission_rate(
-        self, fluorophore: Fluorophore, detector_qe: float | Spectrum | None = None
+        self,
+        fluorophore: Fluorophore,
+        detector_qe: float | Spectrum | None = None,
+        *,
+        saturate: bool = True,
     ) -> xr.DataArray:
         """Return the emission rate of a fluorophore with this config, after filters.
 
@@ -128,6 +152,7 @@ class OpticalConfig(SimBaseModel):
             - the excitation spectrum and extinction coefficient of the fluorophore
             - the excitation filter/beamsplitter and light source spectra
             - the quantum yield and emission spectrum of the fluorophore
+            - excitation saturation (unless `saturate` is False)
             - the emission filter/beamsplitter spectra
             - camera QE, if passed
         """
@@ -141,7 +166,7 @@ class OpticalConfig(SimBaseModel):
                 em_spectrum = em_spectrum * detector_qe
             em_array = em_spectrum.as_xarray()
 
-        final = self.total_emission_rate(fluorophore) * em_array
+        final = self.total_emission_rate(fluorophore, saturate=saturate) * em_array
         final.name = "filtered_emission_rate"
         final.attrs["long_name"] = "Filtered Emission rate"
         final.attrs["units"] = "photons/s"

@@ -163,6 +163,9 @@ class Simulation(SimBaseModel):
         of wavelengths will encompass the union of all the fluorophores' emission
         spectra, and the rates will be zero where the fluorophore does not emit.
 
+        For point-scanning modalities (e.g. `Confocal`), these rates are *not*
+        saturated: excitation saturation is applied locally in the PSF instead.
+
         Examples
         --------
         >>> sim = Simulation(...)
@@ -172,8 +175,10 @@ class Simulation(SimBaseModel):
         """
         qe = self.detector.qe if self.detector else None
         fluors = list({lbl.fluorophore: None for lbl in self.sample.labels})
+        # point-scanning modalities apply saturation spatially, in the PSF
+        sat = not self.modality.point_scanning
         nested_rates: list[list[xr.DataArray]] = [
-            [oc.filtered_emission_rate(f, detector_qe=qe) for f in fluors]
+            [oc.filtered_emission_rate(f, detector_qe=qe, saturate=sat) for f in fluors]
             for oc in self.channels
         ]
         collection = self.objective_lens.collection_efficiency
@@ -443,7 +448,7 @@ def plot_simulation_summary(
                 em_rate = oc.total_emission_rate(fluor)
                 em_rate.isel({Axis.F: 0, Axis.C: 0}).plot.line(
                     ax=ab_ax[ch_idx],
-                    label=f"{fluor.name} emission",
+                    label=f"{fluor.name} emission (at peak)",
                     alpha=0.4,
                     linestyle="--",
                 )
@@ -482,6 +487,7 @@ def plot_simulation_summary(
             for lbl in sim.sample.labels:
                 if fluor := lbl.fluorophore:
                     final = oc.filtered_emission_rate(fluor, detector_qe=qe)
+                    final = final * sim.objective_lens.collection_efficiency
                     final.isel({Axis.F: 0, Axis.C: 0}).plot.line(
                         ax=f_ax[ch_idx],
                         label=f"{fluor.name} collection ({final.sum():.2f} phot/s tot)",

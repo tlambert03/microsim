@@ -89,3 +89,58 @@ def test_confocal_psf_pinhole_throughput() -> None:
     # 1 AU pinhole passes most of the in-focus emission
     assert 0.6 < peaks[1] < 0.95
     assert np.isclose(make_confocal_psf(**{**kw, "normalize": "sum"}).sum(), 1)
+
+
+def test_confocal_psf_saturation() -> None:
+    kw = {"nz": 9, "nx": 65, "dz": 0.1, "dxy": 0.03, "normalize": False}
+    linear = make_confocal_psf(**kw)
+    s = 10.0
+    sat = make_confocal_psf(**kw, saturation=s)
+    # peak reduced by exactly 1/(1+s); off-focus regions are reduced less
+    assert sat.max() == pytest.approx(linear.max() / (1 + s), rel=1e-6)
+    assert (sat / sat.max()).sum() > (linear / linear.max()).sum()
+
+
+def _green_fluor() -> ms.Fluorophore:
+    wvl = np.arange(400, 650)
+    return ms.Fluorophore(
+        name="green",
+        excitation_spectrum={
+            "wavelength": wvl,
+            "intensity": np.exp(-(((wvl - 488) / 20) ** 2)),
+        },
+        emission_spectrum={
+            "wavelength": wvl,
+            "intensity": np.exp(-(((wvl - 510) / 20) ** 2)),
+        },
+        extinction_coefficient=55_000,
+        quantum_yield=0.6,
+        lifetime_ns=2.6,
+    )
+
+
+def test_confocal_saturation_in_psf_not_rates() -> None:
+    fluor = _green_fluor()
+    oc = FITC.model_copy(update={"power": 1e7})
+    s = oc.saturation_parameter(fluor)
+    assert s > 1
+    assert oc.saturation_parameter(fluor.model_copy(update={"lifetime_ns": None})) == 0
+
+    kw = {
+        "truth_space": {"shape": (4, 4, 4), "scale": (1, 1, 1)},
+        "sample": [{"distribution": ms.MatsLines(), "fluorophore": fluor}],
+        "channels": [oc],
+    }
+    wf = ms.Simulation(**kw, modality=ms.Widefield())
+    cf = ms.Simulation(**kw, modality=ms.Confocal())
+
+    # confocal emission rates are unsaturated; widefield rates are saturated
+    cf_rates = cf.filtered_emission_rates()
+    np.testing.assert_allclose(
+        wf.filtered_emission_rates(), cf_rates / (1 + s), atol=1e-300
+    )
+
+    # confocal recovers the same saturation parameter from the rate coords
+    em_spectrum = cf_rates.isel(c=0, f=0)
+    assert cf.modality._saturation_parameter(em_spectrum) == pytest.approx(s, rel=1e-3)
+    assert wf.modality._saturation_parameter(em_spectrum) == 0
