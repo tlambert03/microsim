@@ -8,6 +8,7 @@ import numpy as np
 import numpy.typing as npt
 import tqdm
 
+from microsim.illum._spinning_disc import pinhole_mask
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.lens import ObjectiveKwargs, ObjectiveLens
 from microsim.schema.settings import Settings
@@ -345,6 +346,120 @@ def make_confocal_psf(
     out = xp.asarray(ex_psf) * eff_em_psf
     out = _norm_psf(out, normalize, xp)
     return out
+
+
+def make_spinning_disk_psf(
+    nz: int,
+    pinhole_mask: npt.NDArray,
+    pinhole_spacing_um: float,
+    ex_wvl_um: float = 0.475,
+    em_wvl_um: float = 0.525,
+    dz: float = 0.05,
+    nx: int = 31,
+    dxy: float = 0.05,
+    objective: ObjectiveKwargs | ObjectiveLens | None = None,
+    saturation: float = 0,
+    xp: NumpyAPI | None = None,
+) -> np.ndarray:
+    """Create a time-averaged spinning-disk confocal PSF, imaged onto a camera.
+
+    `pinhole_mask` is the (nx, nx) time-averaged pinhole transmission around a pinhole
+    in the sample plane, *including* its neighbors (which models crosstalk), e.g.
+    from `microsim.illum._spinning_disc.pinhole_mask`.  `pinhole_spacing_um` is the
+    pinhole pitch projected onto the sample.
+
+    The result is `em * (ex ⊗ mask) / A_spot`, where `ex` is the peak-normalized
+    excitation spot, `em` is the fraction of collected emission per pixel, and
+    `A_spot` (in pixels) is the integral of the in-focus excitation spot.  Light
+    source power is interpreted as the time-averaged irradiance at the sample; each
+    spot's peak irradiance is `power * spacing**2 / A_spot`.  `saturation` is the
+    saturation parameter (`k * tau`) at the time-averaged irradiance.
+    """
+    xp = NumpyAPI.create(xp)
+    objective = _cast_objective(objective)
+    ex_psf = vectorial_psf_centered(
+        nz=nz,
+        dz=dz,
+        nx=nx,
+        dxy=dxy,
+        wvl=ex_wvl_um,
+        objective=objective,
+        normalize="max",
+        xp=xp,
+    )
+    focal = int(xp.argmax(xp.max(ex_psf, axis=(-2, -1))))
+    spot_px = float(xp.sum(ex_psf[focal]))  # A_spot / dxy**2
+    if saturation:
+        # local saturation, at each spot's peak irradiance (per spot: ignores the
+        # summed irradiance of overlapping out-of-focus spots)
+        peak_sat = saturation * pinhole_spacing_um**2 / (spot_px * dxy**2)
+        ex_psf = ex_psf / (1 + peak_sat * ex_psf)
+
+    # fraction of collected emission per pixel (see `make_confocal_psf`)
+    em_psf = vectorial_psf_centered(
+        nz=nz,
+        dz=dz,
+        nx=nx,
+        dxy=dxy,
+        wvl=em_wvl_um,
+        objective=objective,
+        normalize=False,
+        xp=xp,
+    )
+    em_psf = em_psf / xp.max(xp.sum(em_psf, axis=(-2, -1)))
+
+    # the camera images the pinhole plane: a fluorophore at offset u from a pixel
+    # is detected if excited by a spot whose pinhole (or a neighbor) is at the pixel
+    mask = xp.asarray(pinhole_mask)
+    ex_p = xp.empty_like(ex_psf)
+    for i in range(len(ex_psf)):
+        plane = xp.fftconvolve(xp.asarray(ex_psf[i]), mask, mode="same")
+        ex_p = xp._array_assign(ex_p, i, plane)
+    return em_psf * xp.maximum(ex_p, 0) / spot_px  # type: ignore[no-any-return]
+
+
+@lru_cache(maxsize=Settings().cache.in_mem_size.psf)
+def cached_spinning_disk_psf(
+    nz: int,
+    nx: int,
+    dx: float,
+    dz: float,
+    ex_wvl_um: float,
+    em_wvl_um: float,
+    objective: ObjectiveLens,
+    pinhole_diameter_um: float,
+    pinhole_spacing_um: float,
+    disk_radii_mm: tuple[float, float],
+    frames_per_rev: float,
+    image_size_mm: tuple[float, float],
+    magnification: float,
+    saturation: float,
+    xp: NumpyAPI,
+) -> ArrayProtocol:
+    """Cached `make_spinning_disk_psf` for a Nipkow disk (disk-plane units)."""
+    mask = pinhole_mask(
+        nx=nx,
+        dxy_um=dx,
+        magnification=magnification,
+        pinhole_diameter_um=pinhole_diameter_um,
+        pinhole_spacing_um=pinhole_spacing_um,
+        disk_radii_mm=disk_radii_mm,
+        frames_per_rev=frames_per_rev,
+        image_size_mm=image_size_mm,
+    )
+    return make_spinning_disk_psf(
+        nz=nz,
+        pinhole_mask=mask,
+        pinhole_spacing_um=pinhole_spacing_um / magnification,
+        ex_wvl_um=ex_wvl_um,
+        em_wvl_um=em_wvl_um,
+        dz=dz,
+        nx=nx,
+        dxy=dx,
+        objective=objective,
+        saturation=saturation,
+        xp=xp,
+    )
 
 
 def _norm_psf(

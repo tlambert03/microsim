@@ -1,5 +1,5 @@
-from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, runtime_checkable
+from collections.abc import Callable, Collection, Mapping, Sequence
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
 from pydantic import (
@@ -51,9 +51,8 @@ ArrayType = TypeVar("ArrayType")
 
 
 class _Space(SimBaseModel):
-    def rescale(
-        self, img: xrDataArray, mode: Literal["sum", "mean"] = "sum"
-    ) -> xrDataArray:
+    def rescale(self, img: xrDataArray, mean_axes: Collection[str] = ()) -> xrDataArray:
+        """Downscale `img` to this space, summing (or averaging `mean_axes`)."""
         return img
 
     def create(
@@ -100,9 +99,7 @@ class _AxesSpace(_Space):
             if ax in img_scales
         }
 
-    def rescale(
-        self, img: xrDataArray, mode: Literal["sum", "mean"] = "sum"
-    ) -> xrDataArray:
+    def rescale(self, img: xrDataArray, mean_axes: Collection[str] = ()) -> xrDataArray:
         if not (img_space := getattr(img, "space", None)):  # pragma: no cover
             raise ValueError("Input image must have a 'space' attribute.")
 
@@ -111,8 +108,7 @@ class _AxesSpace(_Space):
             raise NotImplementedError(
                 f"Can only downscale an image. Got downscale factors {dims}."
             )
-        coarse = img.coarsen(dims)
-        return coarse.mean() if mode == "mean" else coarse.sum()
+        return _coarsen(img, dims, mean_axes)
 
     @field_validator("axes", mode="before")
     def _cast_axes(cls, value: Any) -> tuple[Axis, ...]:
@@ -214,16 +210,13 @@ class _RelativeSpace(_Space):
 class DownscaledSpace(_RelativeSpace):
     downscale: tuple[int, ...] | int
 
-    def rescale(
-        self, img: xrDataArray, mode: Literal["sum", "mean"] = "sum"
-    ) -> xrDataArray:
+    def rescale(self, img: xrDataArray, mean_axes: Collection[str] = ()) -> xrDataArray:
         if isinstance(self.downscale, int | float):
             axes = dict.fromkeys(self.axes, self.downscale)
         elif isinstance(self.downscale, Sequence):
             axes = dict(zip(self.axes, self.downscale, strict=False))
 
-        coarse = img.coarsen(axes)
-        return coarse.mean() if mode == "mean" else coarse.sum()
+        return _coarsen(img, axes, mean_axes)
 
     @computed_field  # type: ignore
     @property
@@ -284,3 +277,12 @@ class UpscaledSpace(_RelativeSpace):
 
 
 Space = ConcreteSpace | DownscaledSpace | UpscaledSpace
+
+
+def _coarsen(
+    img: xrDataArray, factors: Mapping[str, int], mean_axes: Collection[str]
+) -> xrDataArray:
+    """Sum `img` over blocks of `factors`, averaging along `mean_axes`."""
+    out = img.coarsen(factors).sum()
+    n_mean = np.prod([f for ax, f in factors.items() if ax in mean_axes])
+    return out / n_mean if n_mean != 1 else out

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any
 from .backend import BackendName, DeviceName, NumpyAPI
 from .detectors import CameraCCD, CameraCMOS, CameraEMCCD
 from .lens import ObjectiveLens
-from .modality import Confocal, Identity, Modality, Widefield
+from .modality import Confocal, Identity, Modality, SpinningDiskConfocal, Widefield
 from .optical_config import (
     Bandpass,
     LightSource,
@@ -52,6 +52,7 @@ __all__ = [
     "Simulation",
     "Spectrum",
     "SpectrumFilter",
+    "SpinningDiskConfocal",
     "Widefield",
 ]
 

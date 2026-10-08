@@ -2,11 +2,11 @@ import warnings
 from typing import Annotated, Any, ClassVar, Literal
 
 import numpy as np
-from annotated_types import Ge
+from annotated_types import Ge, Gt
 
 from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
 from microsim._logger import logger, logging_indented
-from microsim.psf import make_psf
+from microsim.psf import cached_spinning_disk_psf, make_psf
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.dimensions import Axis
@@ -16,8 +16,13 @@ from microsim.schema.space import SpaceProtocol
 
 
 class _PSFModality(SimBaseModel):
-    # whether the image is formed by scanning a focused spot (vs. a camera)
-    point_scanning: ClassVar[bool] = False
+    # axes that are averaged (rather than summed) when downscaling to the output
+    # space: a camera pixel integrates light over its area (sum), whereas each
+    # point-scanning pixel, and each z-plane, is a measurement at one position.
+    rescale_mean_axes: ClassVar[tuple[str, ...]] = ()
+    # whether excitation saturation is applied locally in the PSF (in which case
+    # the emission rates are left unsaturated)
+    local_saturation: ClassVar[bool] = False
 
     def psf(
         self,
@@ -185,18 +190,16 @@ class Confocal(_PSFModality):
     """
 
     type: Literal["confocal"] = "confocal"
-    point_scanning: ClassVar[bool] = True
+    rescale_mean_axes: ClassVar[tuple[str, ...]] = (Axis.Z, Axis.Y, Axis.X)
+    local_saturation: ClassVar[bool] = True
     pinhole_au: Annotated[float, Ge(0)] = 1
 
     def _saturation_parameter(self, em_spectrum: xrDataArray) -> float:
-        # emission rates are unsaturated for point-scanning modalities;
+        # emission rates are unsaturated for local_saturation modalities;
         # saturation is applied locally to the excitation PSF instead.
         oc = em_spectrum.coords[Axis.C].item()
         fluor = em_spectrum.coords[Axis.F].item()
-        s = oc.saturation_parameter(fluor)
-        # ignore negligible saturation (reuses the unsaturated PSF), and round to
-        # keep PSF cache keys stable
-        return float(f"{s:.4g}") if s > 1e-4 else 0.0
+        return _round_saturation(oc.saturation_parameter(fluor))
 
     def psf(
         self,
@@ -223,6 +226,88 @@ class Confocal(_PSFModality):
             saturation=saturation,
             xp=xp,
         )
+
+
+class SpinningDiskConfocal(_PSFModality):
+    """Spinning-disk (Nipkow disk) confocal, imaged onto a camera.
+
+    Pinhole positions follow the equal-pitch, multi-thread Archimedean spiral of a
+    Yokogawa CSU disk (see `microsim.illum._spinning_disc`), and the time-averaged
+    PSF includes crosstalk through neighboring pinholes (out-of-focus background in
+    thick samples).  Neighbors are only included within the PSF window (see
+    `Settings.max_psf_radius_aus`).
+
+    The signal is collected by a camera: output pixels are summed over sub-pixels in
+    xy (averaged in z), and `exposure_ms` is the camera exposure time.  Light source
+    `power` is the *time-averaged* irradiance at the sample; each spot's peak
+    irradiance is `power * pitch**2 / spot_area` (only relevant for saturation).
+
+    Defaults are for a CSU-X1 (50 um pinholes, 5x spacing, ~20,000 pinholes on
+    12 interleaved spirals, 10 x 7 mm image area).  Disk-plane sizes are projected
+    onto the sample by `magnification` (objective x any relay optics).
+
+    Approximations: saturation is per-spot (overlapping out-of-focus spots are not
+    summed); finite microlens focal spot is ignored.
+    """
+
+    type: Literal["spinning_disk"] = "spinning_disk"
+    local_saturation: ClassVar[bool] = True
+    rescale_mean_axes: ClassVar[tuple[str, ...]] = (Axis.Z,)
+
+    # total magnification from sample to the pinhole disk
+    magnification: Annotated[float, Gt(0)] = 100
+    pinhole_diameter_um: Annotated[float, Gt(0)] = 50  # on the disk
+    pinhole_spacing_um: Annotated[float, Gt(0)] = 253  # on the disk
+    disk_radii_mm: tuple[float, float] = (15, 25)  # inner/outer pinhole radii
+    frames_per_rev: Annotated[float, Gt(0)] = 12  # interleaved spirals
+    image_size_mm: tuple[float, float] = (10, 7)  # on the disk (tangential, radial)
+
+    def _saturation_parameter(self, em_spectrum: xrDataArray) -> float:
+        # `s` at the time-averaged irradiance (converted to peak in the PSF)
+        oc = em_spectrum.coords[Axis.C].item()
+        s = oc.saturation_parameter(em_spectrum.coords[Axis.F].item())
+        return _round_saturation(s, cutoff=1e-6)
+
+    def psf(
+        self,
+        *,
+        nz: int,
+        nx: int,
+        dx: float,
+        dz: float,
+        objective_lens: ObjectiveLens,
+        xp: NumpyAPI,
+        ex_wvl_nm: float | None = None,
+        em_wvl_nm: float | None = None,
+        saturation: float = 0,
+    ) -> ArrayProtocol:
+        ex_wvl_nm = ex_wvl_nm or em_wvl_nm
+        em_wvl_nm = em_wvl_nm or ex_wvl_nm
+        if ex_wvl_nm is None or em_wvl_nm is None:
+            raise ValueError("Either ex_wvl_nm or em_wvl_nm must be provided.")
+        return cached_spinning_disk_psf(
+            nz=nz,
+            nx=nx,
+            dx=dx,
+            dz=dz,
+            ex_wvl_um=ex_wvl_nm * 1e-3,
+            em_wvl_um=em_wvl_nm * 1e-3,
+            objective=objective_lens,
+            pinhole_diameter_um=self.pinhole_diameter_um,
+            pinhole_spacing_um=self.pinhole_spacing_um,
+            disk_radii_mm=self.disk_radii_mm,
+            frames_per_rev=self.frames_per_rev,
+            image_size_mm=self.image_size_mm,
+            magnification=self.magnification,
+            saturation=saturation,
+            xp=xp,
+        )
+
+
+def _round_saturation(s: float, cutoff: float = 1e-4) -> float:
+    # ignore negligible saturation (reuses the unsaturated PSF), and round to
+    # keep PSF cache keys stable
+    return float(f"{s:.4g}") if s > cutoff else 0.0
 
 
 class Widefield(_PSFModality):

@@ -1,5 +1,5 @@
-from ._simple_psf import Confocal, Identity, Widefield
+from ._simple_psf import Confocal, Identity, SpinningDiskConfocal, Widefield
 
-Modality = Confocal | Widefield | Identity
+Modality = Confocal | SpinningDiskConfocal | Widefield | Identity
 
-__all__ = ["Confocal", "Identity", "Modality", "Widefield"]
+__all__ = ["Confocal", "Identity", "Modality", "SpinningDiskConfocal", "Widefield"]

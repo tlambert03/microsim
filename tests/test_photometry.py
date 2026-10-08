@@ -5,7 +5,8 @@ import pytest
 from pydantic import ValidationError
 
 from microsim import schema as ms
-from microsim.psf import make_confocal_psf
+from microsim.illum._spinning_disc import pinhole_mask
+from microsim.psf import make_confocal_psf, make_spinning_disk_psf
 from microsim.schema.lens import ObjectiveLens
 from microsim.schema.optical_config.lib import FITC
 from tests._util import skipif_no_internet
@@ -150,3 +151,53 @@ def test_confocal_saturation_in_psf_not_rates() -> None:
     em_spectrum = cf_rates.isel(c=0, f=0)
     assert cf.modality._saturation_parameter(em_spectrum) == pytest.approx(s, rel=1e-3)
     assert wf.modality._saturation_parameter(em_spectrum) == 0
+
+
+def test_spinning_disk_psf() -> None:
+    # window must span the defocused PSF (~10 um at 5 um defocus) to see crosstalk
+    nx, dxy = 257, 0.1
+    kw = {"nz": 11, "dz": 1.0, "nx": nx, "dxy": dxy, "em_wvl_um": 0.52}
+    kw["ex_wvl_um"] = 0.52
+    grid = np.hypot(*np.meshgrid(*[np.arange(nx) - nx // 2] * 2))
+    nipkow = pinhole_mask(nx=nx, dxy_um=dxy, magnification=100)
+    single = (grid <= 0.25 / dxy).astype(float)  # one 50 um pinhole at 100x
+    focus, far = 5, 0  # z index of focal plane, and 5 um defocus
+
+    # wide-open pinhole: a uniform thin plane at focus gets the time-averaged
+    # irradiance everywhere and all collected light is detected (= widefield)
+    open_ = make_spinning_disk_psf(
+        pinhole_mask=np.ones((nx, nx)), **kw, pinhole_spacing_um=2.53
+    )
+    assert open_[focus].sum() == pytest.approx(1, abs=0.02)
+
+    # crosstalk: same in-focus signal, but out-of-focus background plateaus near the
+    # fill factor (pinhole area / pitch**2) instead of falling off
+    xtalk = make_spinning_disk_psf(pinhole_mask=nipkow, pinhole_spacing_um=2.53, **kw)
+    alone = make_spinning_disk_psf(pinhole_mask=single, pinhole_spacing_um=2.53, **kw)
+    assert xtalk[focus].sum() == pytest.approx(alone[focus].sum(), rel=0.02)
+    fill = np.pi * 25**2 / 253**2
+    assert alone[far].sum() < 0.1 * fill
+    assert xtalk[far].sum() == pytest.approx(fill, rel=0.3)
+
+    # pinhole pitch cancels out of the signal, except through saturation
+    wide = make_spinning_disk_psf(pinhole_mask=single, pinhole_spacing_um=5, **kw)
+    np.testing.assert_allclose(wide, alone)
+    sat = {
+        sp: make_spinning_disk_psf(
+            pinhole_mask=single, pinhole_spacing_um=sp, saturation=1e-3, **kw
+        )
+        for sp in (2.53, 5)
+    }
+    assert sat[5].max() < sat[2.53].max() < alone.max()
+
+
+def test_spinning_disk_simulation() -> None:
+    sim = ms.Simulation(
+        truth_space={"shape": (4, 4, 4), "scale": (1, 1, 1)},
+        sample=[{"distribution": ms.MatsLines(), "fluorophore": _green_fluor()}],
+        modality={"type": "spinning_disk"},
+    )
+    assert isinstance(sim.modality, ms.SpinningDiskConfocal)
+    # camera: sum in xy when downscaling, but each z-plane is one measurement
+    assert sim.modality.rescale_mean_axes == ("z",)
+    assert sim.modality.local_saturation  # saturation applied in the PSF

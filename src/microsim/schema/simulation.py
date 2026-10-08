@@ -2,7 +2,7 @@ import time
 import warnings
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import TYPE_CHECKING, Annotated
 
 import numpy as np
 import pandas as pd
@@ -165,7 +165,7 @@ class Simulation(SimBaseModel):
         of wavelengths will encompass the union of all the fluorophores' emission
         spectra, and the rates will be zero where the fluorophore does not emit.
 
-        For point-scanning modalities (e.g. `Confocal`), these rates are *not*
+        For confocal modalities (`modality.local_saturation`), these rates are *not*
         saturated: excitation saturation is applied locally in the PSF instead.
 
         Examples
@@ -177,8 +177,8 @@ class Simulation(SimBaseModel):
         """
         qe = self.detector.qe if self.detector else None
         fluors = list({lbl.fluorophore: None for lbl in self.sample.labels})
-        # point-scanning modalities apply saturation spatially, in the PSF
-        sat = not self.modality.point_scanning
+        # some modalities (e.g. confocal) apply saturation spatially, in the PSF
+        sat = not self.modality.local_saturation
         nested_rates: list[list[xr.DataArray]] = [
             [oc.filtered_emission_rate(f, detector_qe=qe, saturate=sat) for f in fluors]
             for oc in self.channels
@@ -284,12 +284,9 @@ class Simulation(SimBaseModel):
         # rather than a user-specified output space
         if self.output_space is not None:
             logger.info(f"Rescaling to output space {self.output_space.shape}")
-            # point-scanning: each output pixel is the signal at its scan position,
-            # (averaged over sub-positions), not a sum over a camera pixel's area.
-            mode: Literal["sum", "mean"] = (
-                "mean" if self.modality.point_scanning else "sum"
-            )
-            image = self.output_space.rescale(image, mode=mode)
+            # e.g. point-scanning pixels are averaged over sub-positions, not summed
+            mean_axes = self.modality.rescale_mean_axes
+            image = self.output_space.rescale(image, mean_axes=mean_axes)
 
         # simulate detector
         # NOTE: exposure is a per-pixel integration time (camera exposure, or pixel
