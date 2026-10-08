@@ -431,7 +431,6 @@ def cached_spinning_disk_psf(
     pinhole_spacing_um: float,
     disk_radii_mm: tuple[float, float],
     frames_per_rev: float,
-    image_size_mm: tuple[float, float],
     magnification: float,
     saturation: float,
     xp: NumpyAPI,
@@ -445,7 +444,6 @@ def cached_spinning_disk_psf(
         pinhole_spacing_um=pinhole_spacing_um,
         disk_radii_mm=disk_radii_mm,
         frames_per_rev=frames_per_rev,
-        image_size_mm=image_size_mm,
     )
     return make_spinning_disk_psf(
         nz=nz,

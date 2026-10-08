@@ -243,8 +243,9 @@ class SpinningDiskConfocal(_PSFModality):
     irradiance is `power * pitch**2 / spot_area` (only relevant for saturation).
 
     Defaults are for a CSU-X1 (50 um pinholes, 5x spacing, ~20,000 pinholes on
-    12 interleaved spirals, 10 x 7 mm image area).  Disk-plane sizes are projected
-    onto the sample by `magnification` (objective x any relay optics).
+    12 interleaved spirals).  Disk-plane sizes are projected onto the sample by
+    `magnification` (objective x any relay optics).  The crosstalk pattern is that
+    of the field center (it drifts slowly across the field).
 
     Approximations: saturation is per-spot (overlapping out-of-focus spots are not
     summed); finite microlens focal spot is ignored.
@@ -260,7 +261,6 @@ class SpinningDiskConfocal(_PSFModality):
     pinhole_spacing_um: Annotated[float, Gt(0)] = 253  # on the disk
     disk_radii_mm: tuple[float, float] = (15, 25)  # inner/outer pinhole radii
     frames_per_rev: Annotated[float, Gt(0)] = 12  # interleaved spirals
-    image_size_mm: tuple[float, float] = (10, 7)  # on the disk (tangential, radial)
 
     def _saturation_parameter(self, em_spectrum: xrDataArray) -> float:
         # `s` at the time-averaged irradiance (converted to peak in the PSF)
@@ -297,7 +297,6 @@ class SpinningDiskConfocal(_PSFModality):
             pinhole_spacing_um=self.pinhole_spacing_um,
             disk_radii_mm=self.disk_radii_mm,
             frames_per_rev=self.frames_per_rev,
-            image_size_mm=self.image_size_mm,
             magnification=self.magnification,
             saturation=saturation,
             xp=xp,

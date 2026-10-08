@@ -50,7 +50,7 @@ def pinhole_mask(
     pinhole_spacing_um: float = 253,
     disk_radii_mm: tuple[float, float] = (15, 25),
     frames_per_rev: float = 12,
-    image_size_mm: tuple[float, float] = (10, 7),
+    field_radius_mm: float | None = None,
 ) -> np.ndarray:
     """Time-averaged Nipkow-disk pinhole transmission around a pinhole.
 
@@ -59,22 +59,21 @@ def pinhole_mask(
     disk.  Disk-plane sizes are divided by `magnification` (sample -> disk).  Used to
     model pinhole crosstalk.
 
-    As the disk spins, the pinholes passing over a fixed point all share the local
-    (radial, tangential) lattice orientation there, but differ in the stagger of
-    neighboring spirals.  The mask therefore averages the neighborhoods of all
-    pinholes in the image area (`image_size_mm`, centered between `disk_radii_mm`),
-    each expressed in its own local frame.  Ignores the rotation of that frame
-    across the field of view (+/- width / (2 r), ~14 deg for the CSU-X1).
+    As the disk spins, the pinholes that pass over a fixed point in the field (at
+    radius `field_radius_mm` on the disk, default midway between `disk_radii_mm`) all
+    share the local (radial, tangential) lattice orientation there, and (because
+    each frame scans the point with one thread, at nearly the same stagger relative
+    to the adjacent threads) nearly the same neighborhood.  The mask averages the
+    neighborhoods of those pinholes, each in its own local frame; every frame is
+    identical, so this holds for any whole number of frames.  The stagger drifts
+    slowly with radius, so the mask is only exact near `field_radius_mm`.
     """
     pts = pinhole_coords(disk_radii_mm, pinhole_spacing_um * 1e-3, int(frames_per_rev))
-    # reference pinholes: those inside the image area (tangential x radial), which
-    # is assumed to be centered on the +x axis, midway between the disk radii
-    r_center = sum(disk_radii_mm) / 2
-    width, height = image_size_mm
-    in_image = (np.abs(pts[:, 1]) <= width / 2) & (
-        np.abs(pts[:, 0] - r_center) <= height / 2
-    )
-    refs = pts[in_image]
+    # reference pinholes: those that pass over the field point as the disk turns
+    if field_radius_mm is None:
+        field_radius_mm = sum(disk_radii_mm) / 2
+    radius = np.hypot(*pts.T)
+    refs = pts[np.abs(radius - field_radius_mm) <= pinhole_diameter_um * 5e-4]
     # neighbors within the (diagonal) half-width of the window, in disk mm
     half = (nx // 2 + 1) * dxy_um * magnification * 1e-3 * np.sqrt(2)
     nbrs = cKDTree(pts).query_ball_point(refs, half)
