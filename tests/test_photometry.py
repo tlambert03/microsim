@@ -16,6 +16,10 @@ def test_objective_numerical_aperture() -> None:
     assert ObjectiveLens.model_validate(lens.model_dump()) == lens
     with pytest.raises(ValidationError, match="cannot be greater"):
         ObjectiveLens(numerical_aperture=1.6)
+    with pytest.raises(ValidationError, match="immersion_medium_ri "):
+        ObjectiveLens(numerical_aperture=1.4, immersion_medium_ri=1.33)
+    with pytest.raises(ValidationError, match="cannot be greater"):
+        lens.immersion_medium_ri = 0.7  # validate_assignment
 
 
 def test_deprecated_na() -> None:
@@ -55,11 +59,13 @@ def test_computed_fields_round_trip() -> None:
 
 
 def test_collection_efficiency() -> None:
-    # NA 1.4 in oil (n=1.515): half angle ~67.5 deg -> (1 - cos) / 2 ~ 0.31
-    assert ObjectiveLens(numerical_aperture=1.4).collection_efficiency == pytest.approx(
-        0.309, abs=1e-3
-    )
+    # NA 1.4 into specimen n=1.47: theta ~72 deg -> (1 - cos) / 2 ~ 0.347
+    lens = ObjectiveLens(numerical_aperture=1.4)
+    assert lens.collection_efficiency == pytest.approx(0.347, abs=1e-3)
     assert ObjectiveLens(numerical_aperture=0.5).collection_efficiency < 0.03
+    # NA > specimen RI (e.g. oil objective into water): full hemisphere
+    water = ObjectiveLens(numerical_aperture=1.4, specimen_ri=1.33)
+    assert water.collection_efficiency == pytest.approx(0.5)
 
 
 @skipif_no_internet

@@ -60,12 +60,10 @@ class ObjectiveLens(SimBaseModel):
 
     @model_validator(mode="after")
     def _vroot(self) -> "ObjectiveLens":
-        na, ri = self.numerical_aperture, self.immersion_medium_ri_spec
-        if na > ri:
-            raise ValueError(
-                f"NA ({na}) cannot be greater than the immersion medium RI "
-                f"design value ({ri})"
-            )
+        na = self.numerical_aperture
+        for name in ("immersion_medium_ri", "immersion_medium_ri_spec"):
+            if na > (ri := getattr(self, name)):
+                raise ValueError(f"NA ({na}) cannot be greater than the {name} ({ri})")
         return self
 
     @property
@@ -75,7 +73,13 @@ class ObjectiveLens(SimBaseModel):
     @property
     def collection_efficiency(self) -> float:
         """Fraction of isotropic emission collected by the objective (solid angle)."""
-        return float((1 - np.cos(self.half_angle)) / 2)
+        # the emitter radiates isotropically in the specimen, so the acceptance angle
+        # is measured there (n*sin(theta) is conserved across interfaces).  If
+        # NA >= specimen RI, the full propagating hemisphere is collected.
+        # Ignores Fresnel losses, dipole emission patterns, and supercritical-angle
+        # fluorescence near the coverslip.
+        theta = np.arcsin(min(self.numerical_aperture / self.specimen_ri, 1))
+        return float((1 - np.cos(theta)) / 2)
 
     @property
     def ni(self) -> float:
