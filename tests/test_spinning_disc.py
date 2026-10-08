@@ -27,6 +27,7 @@ def test_pinhole_coords() -> None:
 
 def test_pinhole_mask_fill_factor() -> None:
     # time-averaged transmission ~ pinhole area / pitch**2 (50 um pinholes, 253 pitch)
-    mask = pinhole_mask(nx=257, dxy_um=0.04, magnification=100)
-    assert mask[128, 128] > 0.99
+    # (window must span many pitches for the mean to converge)
+    mask = pinhole_mask(nx=1025, dxy_um=0.04, magnification=100)
+    assert mask[512, 512] > 0.99
     np.testing.assert_allclose(mask.mean(), np.pi * 25**2 / 253**2, rtol=0.05)

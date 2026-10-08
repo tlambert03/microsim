@@ -51,15 +51,20 @@ def pinhole_mask(
     disk_radii_mm: tuple[float, float] = (15, 25),
     frames_per_rev: float = 12,
     image_size_mm: tuple[float, float] = (10, 7),
-    n_rotations: int = 12,
 ) -> np.ndarray:
     """Time-averaged Nipkow-disk pinhole transmission around a pinhole.
 
-    Returns an (nx, nx) mask in the sample plane (pixel size `dxy_um`), centered on a
-    pinhole: the pinhole itself plus its neighbors on the disk, averaged over all
-    pinholes in the image area (`image_size_mm`, centered between `disk_radii_mm`)
-    and over the disk rotation of one frame.  Disk-plane sizes are divided by
-    `magnification` (sample -> disk).  Used to model pinhole crosstalk.
+    Returns an (nx, nx) mask in the sample plane (pixel size `dxy_um`; x tangential,
+    y radial), centered on a pinhole: the pinhole itself plus its neighbors on the
+    disk.  Disk-plane sizes are divided by `magnification` (sample -> disk).  Used to
+    model pinhole crosstalk.
+
+    As the disk spins, the pinholes passing over a fixed point all share the local
+    (radial, tangential) lattice orientation there, but differ in the stagger of
+    neighboring spirals.  The mask therefore averages the neighborhoods of all
+    pinholes in the image area (`image_size_mm`, centered between `disk_radii_mm`),
+    each expressed in its own local frame.  Ignores the rotation of that frame
+    across the field of view (+/- width / (2 r), ~14 deg for the CSU-X1).
     """
     pts = pinhole_coords(disk_radii_mm, pinhole_spacing_um * 1e-3, int(frames_per_rev))
     # reference pinholes: those inside the image area (tangential x radial), which
@@ -73,17 +78,19 @@ def pinhole_mask(
     # neighbors within the (diagonal) half-width of the window, in disk mm
     half = (nx // 2 + 1) * dxy_um * magnification * 1e-3 * np.sqrt(2)
     nbrs = cKDTree(pts).query_ball_point(refs, half)
-    offsets = np.concatenate([pts[n] - r for n, r in zip(nbrs, refs, strict=True)])
-    offsets *= 1e3 / magnification / dxy_um  # disk mm -> sample pixels
+    # neighbor offsets in each reference pinhole's local (tangential, radial) frame
+    x_parts, y_parts = [], []
+    for nb, ref in zip(nbrs, refs, strict=True):
+        d = pts[nb] - ref
+        cos, sin = ref / np.hypot(*ref)  # radial unit vector
+        y_parts.append(d[:, 0] * cos + d[:, 1] * sin)  # radial
+        x_parts.append(-d[:, 0] * sin + d[:, 1] * cos)  # tangential
+    scale = 1e3 / magnification / dxy_um  # disk mm -> sample pixels
+    x = np.concatenate(x_parts) * scale + nx // 2
+    y = np.concatenate(y_parts) * scale + nx // 2
 
-    # average over the rotation of the disk during one frame, then splat the pinhole
-    # centers onto the grid (bilinear), weighted per reference pinhole
-    angles = np.linspace(0, 2 * np.pi / frames_per_rev, n_rotations, endpoint=False)
-    cos, sin = np.cos(angles)[:, None], np.sin(angles)[:, None]
-    # camera axes: x tangential (disk y), y radial (disk x)
-    x = (cos * offsets[:, 1] + sin * offsets[:, 0]).ravel() + nx // 2
-    y = (-sin * offsets[:, 1] + cos * offsets[:, 0]).ravel() + nx // 2
-    weight = 1 / (len(refs) * n_rotations)
+    # splat pinhole centers onto the grid (bilinear), weighted per reference pinhole
+    weight = 1 / len(refs)
     density = np.zeros((nx, nx))
     x0, y0 = np.floor(x).astype(int), np.floor(y).astype(int)
     fx, fy = x - x0, y - y0
