@@ -18,13 +18,12 @@ sim = ms.Simulation(
         ms.FluorophoreDistribution(
             distribution=ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1),
             fluorophore="EGFP",
-            # fluorophores per truth voxel: a sparse label, chosen to give realistic
-            # count rates (tens of Mcps at the brightest pixels)
-            concentration=0.025,
+            concentration=1,
         )
     ],
-    # peak irradiance at focus.  ~1 MW/cm^2 partially saturates EGFP (k*tau ~ 1)
-    channels=[FITC.model_copy(update={"power": 1e6})],  # W/cm^2
+    # peak irradiance at focus (~25 µW in a diffraction-limited spot).  Gives tens
+    # of Mcps at the brightest pixels; EGFP saturation is minor here (k*tau ~ 0.03)
+    channels=[FITC.model_copy(update={"power": 2e4})],  # W/cm^2
     modality=ms.Confocal(pinhole_au=1),
     settings=ms.Settings(random_seed=100, max_psf_radius_aus=8),
 )
