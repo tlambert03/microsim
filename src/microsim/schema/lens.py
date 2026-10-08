@@ -1,4 +1,4 @@
-from typing import Any, TypedDict
+from typing import ClassVar, TypedDict
 
 import numpy as np
 from pydantic import Field, model_validator
@@ -13,14 +13,16 @@ class ObjectiveKwargs(TypedDict, total=False):
     immersion_medium_ri: float
     immersion_medium_ri_spec: float
     specimen_ri: float
-    working_distance: float
-    coverslip_thickness: float
-    coverslip_thickness_spec: float
+    working_distance_um: float
+    coverslip_thickness_um: float
+    coverslip_thickness_spec_um: float
     magnification: float
 
 
 class ObjectiveLens(SimBaseModel):
-    numerical_aperture: float = Field(1.4, alias="na")
+    _renamed_fields: ClassVar[dict[str, str]] = {"na": "numerical_aperture"}
+
+    numerical_aperture: float = 1.4
     coverslip_ri: float = 1.515  # coverslip RI experimental value (ng)
     coverslip_ri_spec: float = 1.515  # coverslip RI design value (ng0)
     immersion_medium_ri: float = 1.515  # immersion medium RI experimental value (ni)
@@ -56,21 +58,28 @@ class ObjectiveLens(SimBaseModel):
             )
         )
 
-    @model_validator(mode="before")
-    def _vroot(cls, values: Any) -> Any:
-        if isinstance(values, dict):
-            na = values.get("numerical_aperture", 1.4)
-            ri = values.get("immersion_medium_ri_spec", 1.515)
-            if na > ri:
-                raise ValueError(
-                    f"NA ({na}) cannot be greater than the immersion medium RI "
-                    f"design value ({ri})"
-                )
-        return values
+    @model_validator(mode="after")
+    def _vroot(self) -> "ObjectiveLens":
+        na = self.numerical_aperture
+        for name in ("immersion_medium_ri", "immersion_medium_ri_spec"):
+            if na > (ri := getattr(self, name)):
+                raise ValueError(f"NA ({na}) cannot be greater than the {name} ({ri})")
+        return self
 
     @property
     def half_angle(self) -> float:
         return np.arcsin(self.numerical_aperture / self.immersion_medium_ri)  # type: ignore
+
+    @property
+    def collection_efficiency(self) -> float:
+        """Fraction of isotropic emission collected by the objective (solid angle)."""
+        # the emitter radiates isotropically in the specimen, so the acceptance angle
+        # is measured there (n*sin(theta) is conserved across interfaces).  If
+        # NA >= specimen RI, the full propagating hemisphere is collected.
+        # Ignores Fresnel losses, dipole emission patterns, and supercritical-angle
+        # fluorescence near the coverslip.
+        theta = np.arcsin(min(self.numerical_aperture / self.specimen_ri, 1))
+        return float((1 - np.cos(theta)) / 2)
 
     @property
     def ni(self) -> float:
