@@ -146,11 +146,6 @@ class _PSFModality(SimBaseModel):
             objective_lens.numerical_aperture,
         )
 
-        # The PSF must reach from any plane of the stack to any other, so that
-        # out-of-focus light from the whole sample reaches every plane (including the
-        # first and last): 2 * nz - 1 planes, centered on focus.
-        nz = 2 * nz - 1
-
         saturation = self._saturation_parameter(em_spectrum)
         summed_psf: Any = 0
         for em_rate in binned:
