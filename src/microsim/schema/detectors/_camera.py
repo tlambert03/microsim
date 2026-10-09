@@ -260,12 +260,12 @@ class _Camera(SimBaseModel):
         return int(2**self.bit_depth - 1)
 
     @property
-    def gain(self) -> float | None:
-        """Deprecated alias for `relative_gain`."""
+    def gain(self) -> float:
+        """Deprecated: the analog gain as a relative gain (see `relative_gain`)."""
         warnings.warn(
             "`gain` has been renamed to `relative_gain`.", FutureWarning, stacklevel=2
         )
-        return self.relative_gain
+        return self.full_well / (self.max_intensity * self.conversion_factor)
 
 
 def _bin_yx(array: npt.NDArray, binning: int, method: str) -> npt.NDArray:

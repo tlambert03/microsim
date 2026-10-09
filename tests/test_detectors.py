@@ -77,6 +77,9 @@ def test_gain_deprecated() -> None:
     assert cam.relative_gain == 2
     with pytest.warns(FutureWarning, match="renamed to `relative_gain`"):
         assert cam.gain == 2
+        assert CameraCCD().gain == 1  # default
+        cam = CameraCCD(full_well=4095, bit_depth=12, electrons_per_adu=0.5)
+        assert cam.gain == 2
 
 
 @pytest.mark.parametrize("cam_type", [CameraCCD, CameraEMCCD, CameraCMOS])
