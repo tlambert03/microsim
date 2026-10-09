@@ -186,6 +186,7 @@ class _Camera(SimBaseModel):
             electrons = xp.poisson_rvs(incident_photons, shape=incident_photons.shape)
         else:
             electrons = incident_photons
+        # dark current and clock-induced charge (mean electrons per pixel)
         avg_dark_e = self.dark_current * exposure_s + self.clock_induced_charge
         if not isinstance(avg_dark_e, float | int):  # per-channel exposure
             new_shape = avg_dark_e.shape + (1,) * (electrons.ndim - 1)
