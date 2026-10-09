@@ -178,6 +178,9 @@ class _Camera(SimBaseModel):
         exposure_s = exposure_ms / 1000
 
         # 1-2. expected signal, and shot noise
+        # NOTE: QE is applied upstream (Simulation.filtered_emission_rates), not here.
+        # This is only correct if the optical image was computed with this detector;
+        # see https://github.com/tlambert03/microsim/issues/152
         incident_photons = xp.maximum((photons_per_second * exposure_s).data, 0)
         if add_poisson:
             electrons = xp.poisson_rvs(incident_photons, shape=incident_photons.shape)
