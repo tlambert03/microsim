@@ -63,7 +63,10 @@ def apply_multiplication_gain(
     distributed, `Gamma(shape=n / (enf - 1), scale=gain * (enf - 1))`, so the whole
     pixel is drawn at once.  This matches the mean and variance of the true gain
     distribution, and is exact for an EMCCD at high gain, where each electron's gain
-    is exponential (`enf` = 2).
+    is exponential (`enf` = 2).  At low gain and few input electrons the shape of the
+    output distribution is only approximate (e.g. a real EM register rarely outputs
+    fewer electrons than it receives, but at `gain` = 2 this outputs 0 for ~9% of
+    single electrons), though its mean and variance remain correct.
     """
     electrons = np.asarray(electrons)
     if enf - 1 < 1e-9:  # noiseless gain
