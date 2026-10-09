@@ -176,7 +176,9 @@ def test_widefield_plane_brightness_independent_of_stack_depth(nz_out: int) -> N
             )
         ],
         modality=ms.Widefield(),
+        settings=ms.Settings(random_seed=0),
     )
+    assert sim.ground_truth().sum() > 0  # small samples can be empty by chance
     img = sim.digital_image(with_detector_noise=False, exposure_ms=1000)
     per_fluor = float(img[0, nz_out // 2].sum()) / sim.ground_truth().sum().item()
     rate = float(sim.filtered_emission_rates().sum())
