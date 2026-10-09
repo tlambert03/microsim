@@ -150,3 +150,35 @@ def test_confocal_saturation_in_psf_not_rates() -> None:
     em_spectrum = cf_rates.isel(c=0, f=0)
     assert cf.modality._saturation_parameter(em_spectrum) == pytest.approx(s, rel=1e-3)
     assert wf.modality._saturation_parameter(em_spectrum) == 0
+
+
+# flat spectra across the visible, so the fluorophore is excited and detected in FITC
+_WAVES = np.arange(350, 750)
+FLAT = ms.Fluorophore(
+    name="flat",
+    excitation_spectrum={"wavelength": _WAVES, "intensity": np.ones(_WAVES.size)},
+    emission_spectrum={"wavelength": _WAVES, "intensity": np.ones(_WAVES.size)},
+    extinction_coefficient=50_000,
+)
+
+
+@pytest.mark.parametrize("nz_out", [4, 8])
+def test_widefield_plane_brightness_independent_of_stack_depth(nz_out: int) -> None:
+    # every widefield exposure collects light from all fluorophores, so the photons
+    # in one plane must not depend on how many planes are simulated
+    sim = ms.Simulation(
+        truth_space={"upscale": 2},
+        output_space=ms.ShapeScaleSpace(shape=(nz_out, 32, 32), scale=(0.2, 0.1, 0.1)),
+        sample=[
+            ms.FluorophoreDistribution(
+                distribution=ms.MatsLines(density=0.5, length=10, max_r=0.5),
+                fluorophore=FLAT,
+            )
+        ],
+        modality=ms.Widefield(),
+    )
+    img = sim.digital_image(with_detector_noise=False, exposure_ms=1000)
+    per_fluor = float(img[0, nz_out // 2].sum()) / sim.ground_truth().sum().item()
+    rate = float(sim.filtered_emission_rates().sum())
+    assert rate > 0
+    assert per_fluor == pytest.approx(rate, rel=0.15)

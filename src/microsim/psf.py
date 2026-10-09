@@ -314,12 +314,7 @@ def make_confocal_psf(
         sf=sf,
         normalize=False,
     )
-    # each z-plane is the image of a (defocused) point source, and the vectorial
-    # model conserves energy across planes; scale by the in-focus plane so that
-    # values are the fraction of collected emission landing on each pixel.
-    # (collection efficiency itself is applied to the rates, in
-    # `Simulation.filtered_emission_rates`)
-    em_psf = em_psf / xp.max(xp.sum(em_psf, axis=(-2, -1)))
+    em_psf = _norm_to_collected_light(em_psf, xp)
 
     # The effective emission PSF is the regular emission PSF convolved with the
     # pinhole mask. The pinhole mask is a disk with diameter equal to the pinhole
@@ -345,6 +340,19 @@ def make_confocal_psf(
     out = xp.asarray(ex_psf) * eff_em_psf
     out = _norm_psf(out, normalize, xp)
     return out
+
+
+def _norm_to_collected_light(psf: np.ndarray, xp: NumpyAPI) -> np.ndarray:
+    """Scale an emission PSF to the fraction of collected light on each pixel.
+
+    Each z-plane is the image of a point source at that defocus.  The vectorial model
+    conserves energy across planes, so every plane holds the same total (apart from
+    light falling outside the window).  Dividing by the largest plane sum makes each
+    plane sum to ~1: a camera focused at any depth receives all the light collected
+    from the point source.  (Collection efficiency itself is applied to the emission
+    rates, in `Simulation.filtered_emission_rates`.)
+    """
+    return psf / xp.max(xp.sum(psf, axis=(-2, -1)))  # type: ignore[no-any-return]
 
 
 def _norm_psf(
@@ -467,8 +475,9 @@ def cached_psf(
             dxy=dx,
             objective=objective,
             xp=xp,
-            normalize="sum",
+            normalize=False,
         )
+        psf = _norm_to_collected_light(psf, xp)
     else:
         psf = make_confocal_psf(
             nz=nz,
@@ -502,10 +511,10 @@ def _psf_cache_path(
     saturation: float = 0,
 ) -> Path:
     """Return the cache location for these PSF parameters."""
-    cache_key: list[float | str] = [nz, nx, dz, dx, em_wvl_um]
+    # "v2": PSFs are scaled to collected light, no longer sum-normalized
+    cache_key: list[float | str] = [nz, nx, dz, dx, em_wvl_um, "v2"]
     if pinhole_au is not None:
-        # "v2": confocal PSFs are no longer sum-normalized
-        cache_key.extend([ex_wvl_um, pinhole_au, "v2"])
+        cache_key.extend([ex_wvl_um, pinhole_au])
         if saturation:
             cache_key.append(f"sat{saturation:.6g}")
     cache_path = microsim_cache("psf") / objective.cache_key()
