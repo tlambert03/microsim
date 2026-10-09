@@ -9,11 +9,12 @@ from pydantic import ValidationError
 from microsim._data_array import DataArray
 from microsim.schema import CameraCCD, CameraCMOS, CameraEMCCD
 from microsim.schema.backend import NumpyAPI
+from microsim.schema.detectors._camera import apply_multiplication_gain
 
 
 def _flat(photons: float, shape: tuple[int, ...] = (1, 1, 200, 200)) -> DataArray:
     """Uniform image with `photons` per pixel in a 1 s exposure."""
-    return DataArray(np.full(shape, photons), dims=("c", "z", "y", "x"))
+    return DataArray(np.full(shape, photons), dims=("c", "z", "y", "x")[-len(shape) :])
 
 
 @pytest.fixture
@@ -80,14 +81,31 @@ def test_gain_deprecated() -> None:
         assert CameraCCD().gain == 1  # default
         cam = CameraCCD(full_well=4095, bit_depth=12, electrons_per_adu=0.5)
         assert cam.gain == 2
+    with pytest.warns(FutureWarning, match="renamed to `relative_gain`"):
+        cam.gain = 3
+    assert cam.relative_gain == 3
+    assert cam.electrons_per_adu is None
 
 
+def test_em_gain_at_least_one() -> None:
+    with pytest.raises(ValidationError):
+        CameraEMCCD(em_gain=0.5)
+
+
+def test_multiplication_gain_fractional_input() -> None:
+    # without shot noise, fractional electrons are multiplied without bias
+    out = apply_multiplication_gain(np.full(100_000, 0.3), gain=100, enf=2)
+    assert out.mean() == pytest.approx(30, rel=0.03)
+    assert np.all(apply_multiplication_gain(np.zeros(10), gain=100, enf=2) == 0)
+
+
+@pytest.mark.parametrize("shape", [(2, 3, 64, 64), (1, 1, 64, 64), (64, 64)])
 @pytest.mark.parametrize("cam_type", [CameraCCD, CameraEMCCD, CameraCMOS])
-def test_binning(cam_type: type, xp: NumpyAPI) -> None:
+def test_binning(cam_type: type, shape: tuple[int, ...], xp: NumpyAPI) -> None:
     kwargs = {"em_gain": 10} if cam_type is CameraEMCCD else {}
     cam = _ideal(cam_type, **kwargs)
-    out = cam.render(_flat(100, (2, 3, 64, 64)), exposure_ms=1000, binning=4, xp=xp)
-    assert out.shape == (2, 3, 16, 16)
+    out = cam.render(_flat(100, shape), exposure_ms=1000, binning=4, xp=xp)
+    assert out.shape == (*shape[:-2], 16, 16)
     # charge binning (CCD) sums 16 pixels; digital binning (CMOS) averages them
     expected = 100 if cam_type is CameraCMOS else 1600 * cam.multiplication_gain
     assert np.mean(out) == pytest.approx(expected, rel=0.02)

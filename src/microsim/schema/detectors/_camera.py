@@ -71,9 +71,10 @@ def apply_multiplication_gain(
     electrons = np.asarray(electrons)
     if enf - 1 < 1e-9:  # noiseless gain
         return np.round(electrons * gain)
-    shape = np.maximum(electrons, 1) / (enf - 1)  # gamma shape must be > 0
-    out = stats.gamma.rvs(shape, scale=gain * (enf - 1), size=electrons.shape)
-    return np.where(electrons > 0, np.round(out), 0)
+    out = np.zeros(electrons.shape)
+    mask = electrons > 0  # gamma shape must be > 0; empty pixels stay empty
+    out[mask] = stats.gamma.rvs(electrons[mask] / (enf - 1), scale=gain * (enf - 1))
+    return np.round(out)
 
 
 class _Camera(SimBaseModel):
@@ -274,11 +275,21 @@ class _Camera(SimBaseModel):
         )
         return self.full_well / (self.max_intensity * self.conversion_factor)
 
+    @gain.setter
+    def gain(self, value: float) -> None:
+        warnings.warn(
+            "`gain` has been renamed to `relative_gain`.", FutureWarning, stacklevel=2
+        )
+        self.electrons_per_adu = None
+        self.relative_gain = value
+
 
 def _bin_yx(array: npt.NDArray, binning: int, method: str) -> npt.NDArray:
     """Bin the last two (Y, X) dimensions of `array`."""
-    window = (1,) * (array.ndim - 2) + (binning, binning)
-    return bin_window(np.asarray(array), window, method=method)
+    *rest, ny, nx = array.shape
+    window = (1,) * len(rest) + (binning, binning)
+    binned = bin_window(np.asarray(array), window, method=method)
+    return binned.reshape(*rest, ny // binning, nx // binning)  # undo squeeze
 
 
 class CameraCCD(_Camera):
