@@ -210,8 +210,8 @@ class _Camera(SimBaseModel):
             electrons = xp.minimum(electrons, self.serial_reg_full_well)
 
         # 5. readout: read noise, ADC conversion, offset, digital binning, clipping
-        electrons = xp.norm_rvs(electrons, self.read_noise)  # type: ignore[assignment]
-        gray = xp.maximum(xp.round(electrons / self.conversion_factor + self.offset), 0)
+        voltage = xp.norm_rvs(electrons, self.read_noise)  # analog signal, in electrons
+        gray = xp.maximum(xp.round(voltage / self.conversion_factor + self.offset), 0)  # type: ignore[operator]
         if binning > 1:
             gray = self.apply_post_quantization_binning(gray, binning)
         gray = xp.minimum(gray, self.max_intensity)
