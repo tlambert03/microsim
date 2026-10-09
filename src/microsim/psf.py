@@ -469,8 +469,8 @@ def cached_psf(
     if pinhole_au is None:
         psf = vectorial_psf_centered(
             wvl=em_wvl_um,
-            nz=nz + 1,
-            nx=nx + 1,
+            nz=nz | 1,  # odd sizes, so that the center pixel is in focus
+            nx=nx | 1,
             dz=dz,
             dxy=dx,
             objective=objective,
