@@ -14,7 +14,7 @@ ICX285 = CameraCCD(
     # photodiode_size=6.45,
     name="ICX285",
     qe=Spectrum(wavelength=np.arange(400, 400 + len(r2qe)), intensity=r2qe),
-    gain=1,
+    relative_gain=1,
     full_well=18000,
     dark_current=0.0005,
     clock_induced_charge=1,
