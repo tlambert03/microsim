@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from microsim._data_array import DataArray
 from microsim.schema import CameraCCD, CameraCMOS, CameraEMCCD
 from microsim.schema.backend import NumpyAPI
-from microsim.schema.detectors._camera import apply_multiplication_gain
+from microsim.schema.detectors._detector import apply_multiplication_gain
 
 
 def _flat(photons: float, shape: tuple[int, ...] = (1, 1, 200, 200)) -> DataArray:
