@@ -224,7 +224,9 @@ class Simulation(SimBaseModel):
             return truth
 
         # total photons/s emitted by each fluorophore in each channel
-        total_flux = self.filtered_emission_rates().sum(Axis.W) * truth
+        em_rates = self.filtered_emission_rates().sum(Axis.W)
+        em_rates = em_rates.copy(data=self._xp.asarray(em_rates.data))
+        total_flux = em_rates * truth
         total_flux.attrs.update(units="photon/sec", long_name="Emission Flux")
 
         # (C, F, Z, Y, X)
