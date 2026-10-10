@@ -27,7 +27,8 @@ sim = ms.Simulation(
     modality=ms.Confocal(pinhole_au=1),
     settings=ms.Settings(random_seed=100, max_psf_radius_aus=8),
     # QE is applied when the optical image is computed (see microsim#152).  All the
-    # detectors below are GaAsP (QE 0.45), so one optical image serves them all.
+    # detectors below are GaAsP (peak QE 0.45, nearly identical spectra), so one
+    # optical image serves them all.
     detector=lib.HYD_SP8,
 )
 optical_image = sim.optical_image()
