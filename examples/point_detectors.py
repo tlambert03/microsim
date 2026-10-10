@@ -34,10 +34,10 @@ sim = ms.Simulation(
 optical_image = sim.optical_image()
 
 detectors = {
-    # hv_gain / electrons_per_adu (1e5) = gray values per photoelectron
-    "GaAsP PMT (hv_gain=2e6)": lib.PMT_GAASP.model_copy(update={"hv_gain": 2e6}),
-    "GaAsP PMT (hv_gain=3e7, saturated)": lib.PMT_GAASP.model_copy(
-        update={"hv_gain": 3e7}
+    # hv is the control voltage of a Hamamatsu module (0.5-0.9 V)
+    "GaAsP PMT (hv=0.9 V)": lib.PMT_GAASP.model_copy(update={"hv": 0.9}),
+    "GaAsP PMT (hv=0.9 V, digital gain 20)": lib.PMT_GAASP.model_copy(
+        update={"hv": 0.9, "digital_gain": 20}
     ),
     "HyD counting": lib.HYD_SP8,
     "HyD counting, 4x averaging": lib.HYD_SP8.model_copy(update={"averaging": 4}),

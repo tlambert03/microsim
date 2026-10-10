@@ -25,9 +25,11 @@ and in which steps do nothing for them:
    have gain 1 and `F = 1`.
 5. **Readout.** The amplifier adds Gaussian read noise (`read_noise`, electrons
    rms, once per frame or pass).  The ADC then converts electrons to gray values
-   (the analog gain, `electrons_per_adu`), averages over `averaging` passes, adds
-   `offset`, rounds (which adds quantization noise), and clips to the range of
-   `bit_depth`.  Digital binning (CMOS) happens after this step.
+   (the analog gain, `electrons_per_adu`), averages over `averaging` passes, rounds
+   (which adds quantization noise), and clips at the top of the range of
+   `bit_depth`.  Then any digital gain is applied, `offset` is added, and the
+   result is clipped to the range again.  Digital binning (CMOS) happens after this
+   step.
 
 Read noise is modeled as a single term referred to the input, so it does not
 change with analog gain or readout rate.
@@ -182,6 +184,10 @@ class _Detector(SimBaseModel):
         """Mean electrons added once per frame, regardless of exposure (e.g. CIC)."""
         return 0
 
+    def _digital_gain(self) -> float:
+        """Factor applied to the digitized signal (before the offset)."""
+        return 1
+
     def _counting_efficiency(
         self, mean_events: npt.NDArray, time_s: "Any"
     ) -> "npt.NDArray | None":
@@ -264,7 +270,9 @@ class _Detector(SimBaseModel):
         # 5. readout: read noise, ADC conversion, averaging, offset, binning, clipping
         voltage = xp.norm_rvs(electrons, self.read_noise * n_avg**0.5)  # in electrons
         adu = self.conversion_factor * n_avg  # electrons per gray value, averaged
-        gray = xp.maximum(xp.round(voltage / adu + self.offset), 0)  # type: ignore[operator]
+        signal = xp.minimum(xp.round(voltage / adu), self.max_intensity)  # type: ignore[operator]
+        signal = xp.round(signal * self._digital_gain())
+        gray = xp.maximum(signal + self.offset, 0)
         if binning > 1:
             gray = self.apply_post_quantization_binning(gray, binning)
         gray = xp.minimum(gray, self.max_intensity)

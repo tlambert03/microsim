@@ -54,6 +54,35 @@ def test_pmt_excess_noise(xp: NumpyAPI) -> None:
     assert np.var(out) == pytest.approx(1.5 * 100 * 10, rel=0.1)
 
 
+def test_pmt_hv_gain_curve() -> None:
+    pmt = PMT(ref_hv=0.8, ref_gain=5e5, hv_exponent=6.7)
+    assert pmt.multiplication_gain == 5e5  # hv defaults to ref_hv
+    assert PMT(hv=0.5).multiplication_gain == pytest.approx(2.1e4, rel=0.05)
+    assert PMT(hv_gain=1e6).multiplication_gain == 1e6
+    with pytest.raises(ValidationError, match="not both"):
+        PMT(hv=0.8, hv_gain=1e6)
+    with pytest.warns(UserWarning, match="outside the usable range"):
+        PMT(hv=1.2)
+
+
+def test_pmt_digital_gain_leaves_gaps(xp: NumpyAPI) -> None:
+    det = PMT(hv_gain=1e6, digital_gain=4, offset=0, bit_depth=16)
+    out = np.asarray(det.render(_flat(1e6), exposure_ms=0.01, xp=xp))
+    assert np.all(out % 4 == 0)
+    # the ADC clips before digital gain
+    half = det.model_copy(update={"digital_gain": 0.5, "bit_depth": 8})
+    assert np.all(half.render(_flat(1e8), exposure_ms=0.01, xp=xp) == 128)
+
+
+def test_pmt_digital_gain(xp: NumpyAPI) -> None:
+    det = PMT(hv_gain=1e6, read_noise=0, bit_depth=16)
+    one = det.render(_flat(1e6), exposure_ms=0.01, xp=xp)
+    four = det.model_copy(update={"digital_gain": 4}).render(
+        _flat(1e6), exposure_ms=0.01, xp=xp
+    )
+    assert np.mean(four) == pytest.approx(4 * np.mean(one), rel=0.03)
+
+
 def test_pmt_offset_and_clipping(xp: NumpyAPI) -> None:
     det = PMT(offset=-1000, bit_depth=8)
     assert np.all(det.render(_flat(1e6), exposure_ms=0.01, xp=xp) == 0)

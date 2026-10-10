@@ -54,8 +54,18 @@ GAASP_PMT_QE = Spectrum(
 # Dark count rates for PMTs are from a Zeiss lecture (Oxford Micron course 2020);
 # HyD values are uncooled Becker & Hickl HPM-100-40/-42 figures for the Hamamatsu
 # R10467U-40/-42 tubes, which are inferred (not confirmed) to be Leica's OEM parts.
-PMT_MULTIALKALI = PMT(name="Multialkali PMT", qe=0.2, dark_current=3000, enf=1.3)
-PMT_GAASP = PMT(name="GaAsP PMT", qe=GAASP_PMT_QE, dark_current=800, enf=1.3)
+# PMT gain curves are read from the Hamamatsu H7422 series datasheet (gain at 0.8 V
+# from anode / cathode radiant sensitivity; slope from the typical gain plot):
+# -40 (GaAsP): 2e4 at 0.5 V to 1e6 at 0.9 V;  -01 (multialkali): 1.7e2 at 0.25 V to
+# 1.15e6 at 0.9 V.  Both are 5e5 at 0.8 V.
+PMT_MULTIALKALI = PMT(
+    name="Multialkali PMT",
+    qe=0.2,
+    dark_current=3000,
+    hv_exponent=6.9,
+    hv_range=(0.25, 0.9),
+)
+PMT_GAASP = PMT(name="GaAsP PMT", qe=GAASP_PMT_QE, dark_current=800, hv_exponent=6.7)
 HYD_SP8 = HyD(
     name="Leica HyD (GaAsP)", qe=GAASP_HPD_QE, dark_current=560, dead_time_ns=1.5
 )

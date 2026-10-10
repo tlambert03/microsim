@@ -7,13 +7,16 @@ that store charge, so they have no `full_well`, and their analog gain is set wit
 detectors.
 """
 
+import warnings
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from ._detector import PositiveFloat, _Detector
 
 if TYPE_CHECKING:
+    from typing import Self
+
     import numpy.typing as npt
 
 
@@ -23,10 +26,20 @@ class PMT(_Detector):
     A photon hitting the photocathode releases a photoelectron (with probability
     `qe`).  The photoelectron is accelerated onto a chain of 8-12 dynodes, each of
     which releases ~3-6 secondary electrons per incoming electron, for a total gain
-    of 1e5-1e7 electrons per photoelectron at the anode.  The gain rises steeply with
-    the high voltage (HV) across the tube, which is what microscope software calls
-    the PMT "gain" or "master gain".  The anode current is integrated over the pixel
-    dwell time, amplified, and digitized.
+    of 1e4-1e7 electrons per photoelectron at the anode.  The anode current is
+    integrated over the pixel dwell time, amplified, and digitized.
+
+    The gain is set by the high voltage (HV) across the tube, which is what
+    microscope software calls the PMT "gain", "HV", or "master gain".  Each dynode
+    multiplies by `delta ~ V**k` (k = 0.7-0.8), so the total gain follows a power law
+    (Hamamatsu PMT Handbook v4, Eq. 4-9):
+
+        gain = ref_gain * (hv / ref_hv) ** hv_exponent
+
+    `hv` is in whatever units `ref_hv` is.  The presets describe Hamamatsu
+    photosensor modules (as used in many confocals), whose HV is set by a 0.5-0.9 V
+    control voltage.  For a bare tube, use volts (e.g. `ref_hv=1000`).  Experts can
+    set `hv_gain` directly instead.
 
     Gain noise comes mostly from the first dynode, where the fewest electrons are
     involved: with a mean of `d` secondaries, `F` is about `d / (d - 1)`, i.e.
@@ -34,13 +47,28 @@ class PMT(_Detector):
 
     Attributes
     ----------
-    hv_gain : float
-        Mean number of electrons at the anode per photoelectron (set by the HV).
+    hv : float, optional
+        HV (or control voltage) setting.  Defaults to `ref_hv`.
+    hv_range : tuple[float, float], optional
+        Usable range of `hv`.  A warning is issued outside it.  The default is the
+        H7422-40's: 0.5 V (bottom of the recommended range) to 0.9 V (maximum
+        rating).
+    ref_hv, ref_gain, hv_exponent : float
+        Gain curve of the tube: `ref_gain` at `ref_hv`, rising as `hv**hv_exponent`.
+        The defaults are read from the Hamamatsu H7422-40 (GaAsP) datasheet: gain
+        5e5 at 0.8 V, and 2e4-1e6 over 0.5-0.9 V.
+    hv_gain : float, optional
+        Mean number of anode electrons per photoelectron.  Overrides `hv`.
     enf : float
         Excess noise factor of the dynode chain.
+    digital_gain : float
+        Multiplies the output after digitization, before `offset` (as in Zeiss ZEN).
+        Unlike `hv`, it amplifies signal and noise equally, and leaves gaps between
+        the gray values used.
     electrons_per_adu : float
-        Anode electrons per gray value (the amplifier/digitizer gain).  The default,
-        with the default `hv_gain`, gives 10 gray values per photoelectron.
+        Anode electrons per gray value (the amplifier/digitizer gain), before
+        `digital_gain`.  The default gives 5 gray values per photoelectron at the
+        default gain.
     read_noise : float
         Amplifier noise, in anode electrons rms.
     dark_current : float
@@ -48,20 +76,46 @@ class PMT(_Detector):
     """
 
     camera_type: Literal["PMT"] = "PMT"
-    hv_gain: Annotated[float, Field(ge=1)] = 1e6
+    hv: Annotated[float, Field(gt=0)] | None = None
+    hv_range: tuple[float, float] | None = (0.5, 0.9)
+    ref_hv: Annotated[float, Field(gt=0)] = 0.8
+    ref_gain: Annotated[float, Field(ge=1)] = 5e5
+    hv_exponent: Annotated[float, Field(gt=0)] = 6.7
+    hv_gain: Annotated[float, Field(ge=1)] | None = None
     enf: Annotated[float, Field(ge=1)] = 1.3
+    digital_gain: Annotated[float, Field(gt=0)] = 1
     electrons_per_adu: Annotated[float, Field(gt=0)] = 1e5
     read_noise: PositiveFloat = 1e5
     dark_current: PositiveFloat = 0
     offset: int = 0
 
+    @model_validator(mode="after")
+    def _check_hv(self) -> "Self":
+        if self.hv is not None and self.hv_gain is not None:
+            raise ValueError("Specify either `hv` or `hv_gain`, not both.")
+        if self.hv is not None and self.hv_range is not None:
+            lo, hi = self.hv_range
+            if not lo <= self.hv <= hi:
+                warnings.warn(
+                    f"hv={self.hv} is outside the usable range {self.hv_range} of "
+                    f"this PMT.",
+                    stacklevel=2,
+                )
+        return self
+
     @property
     def multiplication_gain(self) -> float:
-        return self.hv_gain
+        if self.hv_gain is not None:
+            return self.hv_gain
+        hv = self.ref_hv if self.hv is None else self.hv
+        return float(self.ref_gain * (hv / self.ref_hv) ** self.hv_exponent)
 
     @property
     def excess_noise_factor(self) -> float:
         return self.enf
+
+    def _digital_gain(self) -> float:
+        return self.digital_gain
 
 
 class HyD(_Detector):
