@@ -180,3 +180,5 @@ def test_identity_modality_backend_conversion(np_backend: ms.BackendName) -> Non
     )
     result = sim.optical_image()
     assert result.shape[1:] == sim.truth_space.shape
+    flux = sim.emission_flux()
+    assert flux.shape[2:] == sim.truth_space.shape
