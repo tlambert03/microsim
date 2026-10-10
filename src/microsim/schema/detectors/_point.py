@@ -41,9 +41,17 @@ class PMT(_Detector):
     control voltage.  For a bare tube, use volts (e.g. `ref_hv=1000`).  Experts can
     set `hv_gain` directly instead.
 
-    Gain noise comes mostly from the first dynode, where the fewest electrons are
-    involved: with a mean of `d` secondaries, `F` is about `d / (d - 1)`, i.e.
-    1.2-1.5.  `enf` is fixed here; on a real tube it rises as the HV is lowered.
+    Each dynode's yield is random, which adds gain noise.  With `n` equal stages of
+    mean yield `d = gain ** (1/n)`, the excess noise factor is
+    `F = 1 + 1/d + 1/d**2 + ... + 1/d**n`, about `d / (d - 1)` (Handbook Eq. 4-25).
+    Most of it comes from the first dynode, where the fewest electrons are involved.
+    `F` is ~1.3 at a gain of 5e5, and rises as the HV is lowered (1.5 at 2e4).  Real
+    modules often run the first dynode at a higher voltage, which lowers `F` a bit;
+    that is not modeled.
+
+    The amplifier adds a noise current, so the noise charge integrated over a pixel
+    grows as `sqrt(dwell)`, while the signal grows as `dwell`.  It is negligible
+    unless the HV (and so the gain) is low.
 
     Attributes
     ----------
@@ -59,8 +67,9 @@ class PMT(_Detector):
         5e5 at 0.8 V, and 2e4-1e6 over 0.5-0.9 V.
     hv_gain : float, optional
         Mean number of anode electrons per photoelectron.  Overrides `hv`.
-    enf : float
-        Excess noise factor of the dynode chain.
+    dynode_stages : int
+        Number of dynodes.  Only used for the excess noise factor.  The default (9)
+        matches `hv_exponent / k` for the presets, with `k = 0.75`.
     digital_gain : float
         Multiplies the output after digitization, before `offset` (as in Zeiss ZEN).
         Unlike `hv`, it amplifies signal and noise equally, and leaves gaps between
@@ -70,7 +79,9 @@ class PMT(_Detector):
         `digital_gain`.  The default gives 5 gray values per photoelectron at the
         default gain.
     read_noise : float
-        Amplifier noise, in anode electrons rms.
+        Amplifier noise, in anode electrons rms, for a 1 µs dwell.  Scales with
+        `sqrt(dwell)`.  The default is an estimate, not a published figure: an
+        input noise current of ~1 pA/sqrt(Hz) integrated over 1 µs.
     dark_current : float
         Dark counts (thermionic emission from the photocathode) per second.
     """
@@ -82,10 +93,10 @@ class PMT(_Detector):
     ref_gain: Annotated[float, Field(ge=1)] = 5e5
     hv_exponent: Annotated[float, Field(gt=0)] = 6.7
     hv_gain: Annotated[float, Field(ge=1)] | None = None
-    enf: Annotated[float, Field(ge=1)] = 1.3
+    dynode_stages: Annotated[int, Field(ge=1)] = 9
     digital_gain: Annotated[float, Field(gt=0)] = 1
     electrons_per_adu: Annotated[float, Field(gt=0)] = 1e5
-    read_noise: PositiveFloat = 1e5
+    read_noise: PositiveFloat = 5e3
     dark_current: PositiveFloat = 0
     offset: int = 0
 
@@ -112,7 +123,11 @@ class PMT(_Detector):
 
     @property
     def excess_noise_factor(self) -> float:
-        return self.enf
+        delta = self.multiplication_gain ** (1 / self.dynode_stages)
+        return float(sum(delta**-i for i in range(self.dynode_stages + 1)))
+
+    def _read_noise_per_pass(self, dwell_s: Any) -> Any:
+        return self.read_noise * (dwell_s / 1e-6) ** 0.5
 
     def _digital_gain(self) -> float:
         return self.digital_gain

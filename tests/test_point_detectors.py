@@ -47,11 +47,25 @@ def test_hyd_standard_mode_gain(xp: NumpyAPI) -> None:
 
 
 def test_pmt_excess_noise(xp: NumpyAPI) -> None:
-    # 10 gray values per photoelectron: mean = 10 n;  var = enf * 10^2 * n
-    det = PMT(hv_gain=1e6, electrons_per_adu=1e5, enf=1.5, read_noise=0, bit_depth=16)
+    # 10 gray values per photoelectron: mean = 10 n;  var = F * 10^2 * n
+    det = PMT(hv_gain=1e6, electrons_per_adu=1e5, read_noise=0, bit_depth=16)
     out = det.render(_flat(1e6), exposure_ms=0.01, xp=xp)
     assert np.mean(out) == pytest.approx(100, rel=0.02)
-    assert np.var(out) == pytest.approx(1.5 * 100 * 10, rel=0.1)
+    f = det.excess_noise_factor
+    assert np.var(out) == pytest.approx(f * 100 * 10, rel=0.1)
+
+
+def test_pmt_excess_noise_factor() -> None:
+    # F = d / (d - 1) for many equal stages of yield d = gain ** (1/n)
+    assert PMT(hv_gain=4**9).excess_noise_factor == pytest.approx(4 / 3, rel=1e-4)
+    assert PMT(hv=0.5).excess_noise_factor > PMT(hv=0.9).excess_noise_factor
+
+
+def test_pmt_read_noise_scales_with_dwell(xp: NumpyAPI) -> None:
+    det = PMT(read_noise=1e5, electrons_per_adu=1e3, offset=10_000, bit_depth=16)
+    std = [np.std(det.render(_flat(0), exposure_ms=t, xp=xp)) for t in (0.001, 0.004)]
+    assert std[0] == pytest.approx(100, rel=0.05)
+    assert std[1] == pytest.approx(200, rel=0.05)
 
 
 def test_pmt_hv_gain_curve() -> None:

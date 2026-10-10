@@ -24,15 +24,15 @@ and in which steps do nothing for them:
    Gain noise acts like dividing the QE by `F`.  Detectors without multiplication
    have gain 1 and `F = 1`.
 5. **Readout.** The amplifier adds Gaussian read noise (`read_noise`, electrons
-   rms, once per frame or pass).  The ADC then converts electrons to gray values
-   (the analog gain, `electrons_per_adu`), averages over `averaging` passes, rounds
-   (which adds quantization noise), and clips at the top of the range of
-   `bit_depth`.  Then any digital gain is applied, `offset` is added, and the
-   result is clipped to the range again.  Digital binning (CMOS) happens after this
-   step.
+   rms, once per frame or pass; for a PMT it grows with the dwell time).  The ADC
+   then converts electrons to gray values (the analog gain, `electrons_per_adu`),
+   averages over `averaging` passes, rounds (which adds quantization noise), and
+   clips at the top of the range of `bit_depth`.  Then any digital gain is applied,
+   `offset` is added, and the result is clipped to the range again.  Digital
+   binning (CMOS) happens after this step.
 
 Read noise is modeled as a single term referred to the input, so it does not
-change with analog gain or readout rate.
+change with analog gain or readout rate (a PMT's grows with the dwell time).
 """
 
 from typing import TYPE_CHECKING, Annotated
@@ -188,6 +188,10 @@ class _Detector(SimBaseModel):
         """Factor applied to the digitized signal (before the offset)."""
         return 1
 
+    def _read_noise_per_pass(self, dwell_s: "Any") -> "Any":
+        """Read noise (electrons rms) for one frame or pass of `dwell_s` seconds."""
+        return self.read_noise
+
     def _counting_efficiency(
         self, mean_events: npt.NDArray, time_s: "Any"
     ) -> "npt.NDArray | None":
@@ -220,6 +224,7 @@ class _Detector(SimBaseModel):
         xp = NumpyAPI.create(xp)
         n_avg = self.averaging
         exposure_s = exposure_ms / 1000 * n_avg  # total integration time
+        pass_s = exposure_ms / 1000  # integration time of one frame or pass
 
         # 1. expected signal
         # NOTE: QE is applied upstream (Simulation.filtered_emission_rates), not here.
@@ -268,7 +273,8 @@ class _Detector(SimBaseModel):
         electrons = self._clip_after_multiplication(electrons, xp)
 
         # 5. readout: read noise, ADC conversion, averaging, offset, binning, clipping
-        voltage = xp.norm_rvs(electrons, self.read_noise * n_avg**0.5)  # in electrons
+        read_noise = self._read_noise_per_pass(_per_channel(pass_s, ndim))
+        voltage = xp.norm_rvs(electrons, read_noise * n_avg**0.5)  # in electrons
         adu = self.conversion_factor * n_avg  # electrons per gray value, averaged
         signal = xp.minimum(xp.round(voltage / adu), self.max_intensity)  # type: ignore[operator]
         signal = xp.round(signal * self._digital_gain())
