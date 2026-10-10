@@ -1,0 +1,204 @@
+from __future__ import annotations
+
+import numpy as np
+import pytest
+from pydantic import ValidationError
+
+from microsim._data_array import DataArray
+from microsim.schema import PMT, CameraCCD, HyD, Simulation
+from microsim.schema.backend import NumpyAPI
+from microsim.schema.detectors import lib
+
+
+def _flat(photons_per_s: float, shape: tuple[int, ...] = (1, 1, 200, 200)) -> DataArray:
+    return DataArray(np.full(shape, photons_per_s), dims=("c", "z", "y", "x"))
+
+
+@pytest.fixture
+def xp() -> NumpyAPI:
+    xp = NumpyAPI()
+    xp.set_random_seed(0)
+    return xp
+
+
+def test_hyd_counting_low_rate(xp: NumpyAPI) -> None:
+    # 1 Mcps x 10 µs = 10 photons; dead-time loss is ~0.15%
+    det = HyD(bit_depth=16)
+    out = det.render(_flat(1e6), exposure_ms=0.01, xp=xp)
+    assert out.dtype == np.uint16
+    assert np.mean(out) == pytest.approx(10, rel=0.02)
+    assert np.var(out) == pytest.approx(10, rel=0.05)  # Poisson
+
+
+def test_hyd_dead_time_saturation(xp: NumpyAPI) -> None:
+    # 200 Mcps with 1.5 ns non-paralyzable dead time -> 200 / (1 + 0.3) Mcps
+    det = HyD(dead_time_ns=1.5, bit_depth=16)
+    out = det.render(_flat(2e8), exposure_ms=0.001, xp=xp)
+    assert np.mean(out) == pytest.approx(200 / 1.3, rel=0.01)
+    # sub-Poisson: var = m / (1 + n tau)^2
+    assert np.var(out) == pytest.approx(200 / 1.3 / 1.3**2, rel=0.1)
+
+
+def test_hyd_standard_mode_gain(xp: NumpyAPI) -> None:
+    # Leica "Standard" mode gain of 3 is electrons_per_adu = 1/3
+    det = HyD(electrons_per_adu=1 / 3, dead_time_ns=0)
+    out = det.render(_flat(1e6), exposure_ms=0.01, xp=xp)
+    assert np.mean(out) == pytest.approx(30, rel=0.02)
+
+
+def test_pmt_excess_noise(xp: NumpyAPI) -> None:
+    # 10 gray values per photoelectron: mean = 10 n;  var = F * 10^2 * n
+    det = PMT(hv_gain=1e6, electrons_per_adu=1e5, read_noise=0, bit_depth=16)
+    out = det.render(_flat(1e6), exposure_ms=0.01, xp=xp)
+    assert np.mean(out) == pytest.approx(100, rel=0.02)
+    f = det.excess_noise_factor
+    assert np.var(out) == pytest.approx(f * 100 * 10, rel=0.1)
+
+
+def test_pmt_excess_noise_factor() -> None:
+    # F = d / (d - 1) for many equal stages of yield d = gain ** (1/n)
+    assert PMT(hv_gain=4**9).excess_noise_factor == pytest.approx(4 / 3, rel=1e-4)
+    assert PMT(hv=0.5).excess_noise_factor > PMT(hv=0.9).excess_noise_factor
+
+
+def test_pmt_read_noise_scales_with_dwell(xp: NumpyAPI) -> None:
+    det = PMT(read_noise=1e5, electrons_per_adu=1e3, offset=10_000, bit_depth=16)
+    std = [np.std(det.render(_flat(0), exposure_ms=t, xp=xp)) for t in (0.001, 0.004)]
+    assert std[0] == pytest.approx(100, rel=0.05)
+    assert std[1] == pytest.approx(200, rel=0.05)
+
+
+def test_pmt_hv_gain_curve() -> None:
+    pmt = PMT(ref_hv=0.8, ref_gain=5e5, hv_exponent=6.7)
+    assert pmt.multiplication_gain == 5e5  # hv defaults to ref_hv
+    assert PMT(hv=0.5).multiplication_gain == pytest.approx(2.1e4, rel=0.05)
+    assert PMT(hv_gain=1e6).multiplication_gain == 1e6
+    with pytest.raises(ValidationError, match="not both"):
+        PMT(hv=0.8, hv_gain=1e6)
+    with pytest.warns(UserWarning, match="outside the usable range"):
+        PMT(hv=1.2)
+
+
+def test_pmt_digital_gain_leaves_gaps(xp: NumpyAPI) -> None:
+    det = PMT(hv_gain=1e6, digital_gain=4, offset=0, bit_depth=16)
+    out = np.asarray(det.render(_flat(1e6), exposure_ms=0.01, xp=xp))
+    assert np.all(out % 4 == 0)
+    # the ADC clips before digital gain
+    half = det.model_copy(update={"digital_gain": 0.5, "bit_depth": 8})
+    assert np.all(half.render(_flat(1e8), exposure_ms=0.01, xp=xp) == 128)
+
+
+def test_pmt_digital_gain(xp: NumpyAPI) -> None:
+    det = PMT(hv_gain=1e6, read_noise=0, bit_depth=16)
+    one = det.render(_flat(1e6), exposure_ms=0.01, xp=xp)
+    four = det.model_copy(update={"digital_gain": 4}).render(
+        _flat(1e6), exposure_ms=0.01, xp=xp
+    )
+    assert np.mean(four) == pytest.approx(4 * np.mean(one), rel=0.03)
+
+
+@pytest.mark.parametrize("i_over_max", [0.1, 1, 100])
+def test_pmt_output_current_saturation(i_over_max: float, xp: NumpyAPI) -> None:
+    # 1000 photoelectrons in 1 µs, with the gain set so the anode current is
+    # `i_over_max` times 2 µA (1.248e7 electrons in 1 µs)
+    gain = i_over_max * 2e-6 * 1e-6 / 1.602176634e-19 / 1000
+    det = PMT(hv_gain=gain, electrons_per_adu=1, read_noise=0, bit_depth=32)
+    sat = det.model_copy(update={"max_output_current_ua": 2})
+    img = _flat(1e9)  # uniform: the divider starts (and stays) at steady state
+    ratio = np.mean(sat.render(img, 0.001, xp=xp)) / np.mean(
+        det.render(img, 0.001, xp=xp)
+    )
+    expected = (1 + i_over_max**6) ** (-1 / 6)
+    assert float(ratio) == pytest.approx(expected, rel=0.01)
+
+
+def test_pmt_saturation_follows_average_current(xp: NumpyAPI) -> None:
+    # a lone bright pixel at 100x the max current is not saturated, but a bright
+    # band dims the lines after it, recovering with the divider time constant
+    det = PMT(hv_gain=1.248e4, electrons_per_adu=1, read_noise=0, bit_depth=32)
+    sat = det.model_copy(update={"max_output_current_ua": 2})
+    img = np.full((1, 1, 200, 100), 1e8)  # 0.1 I_max
+    img[..., 50, 50] = 1e11  # 100 I_max, for 1 µs
+    out = np.asarray(sat.render(DataArray(img, dims=_flat(0).dims), 0.001, xp=xp))
+    assert out[0, 0, 50, 50] == pytest.approx(1.248e9, rel=0.01)
+    img[..., 50:70, :] = 1e10  # 10 I_max for 2 ms (20 lines of 100 µs)
+    out = np.asarray(sat.render(DataArray(img, dims=_flat(0).dims), 0.001, xp=xp))
+    rows = out[0, 0].mean(axis=1) / 1.248e6  # relative to unsaturated 0.1 I_max
+    assert rows[40] == pytest.approx(1, abs=0.02)
+    assert rows[75] < 0.5  # 0.5 ms after the band
+    assert rows[199] == pytest.approx(1, abs=0.02)
+
+
+def test_pmt_time_constant(xp: NumpyAPI) -> None:
+    # a single bright column streaks to the right, decaying by exp(-dwell / tau)
+    img = np.zeros((1, 1, 4, 16))
+    img[..., 4] = 1e9  # 1000 photoelectrons in 1 µs
+    img = DataArray(img, dims=("c", "z", "y", "x"))
+    det = PMT(hv_gain=1e3, electrons_per_adu=1, read_noise=0, bit_depth=32)
+    sharp = det.render(img, 0.001, xp=xp)
+    assert np.all(sharp[..., 5:] == 0)
+    out = det.model_copy(update={"time_constant_us": 1}).render(img, 0.001, xp=xp)
+    assert np.all(out[..., :4] == 0)
+    row = np.asarray(out[0, 0].mean(axis=0))
+    total = np.asarray(sharp[0, 0]).mean(0).sum()
+    # tau = dwell: the pixel keeps e^-1, the next gets (1 - e^-1)^2, then x e^-1 each
+    assert row[4] / total == pytest.approx(np.exp(-1), rel=0.05)
+    assert row[5] / total == pytest.approx((1 - np.exp(-1)) ** 2, rel=0.05)
+    assert row[6] / row[5] == pytest.approx(np.exp(-1), rel=0.05)
+    assert row.sum() == pytest.approx(total, rel=0.05)
+
+
+def test_pmt_time_constant_per_channel_dwell(xp: NumpyAPI) -> None:
+    img = DataArray(np.full((2, 1, 4, 8), 1e9), dims=("c", "z", "y", "x"))
+    dwell = DataArray(np.array([0.001, 0.002]), dims=("c",))
+    det = PMT(
+        hv_gain=1e3, electrons_per_adu=1, read_noise=0, time_constant_us=1, bit_depth=32
+    )
+    out = np.asarray(det.render(img, dwell, xp=xp)).mean(axis=(1, 2))
+    # first pixel of each line keeps 1 - (tau/T)(1 - exp(-T/tau)) of the steady state
+    assert out[0, 0] / out[0, -1] == pytest.approx(np.exp(-1), rel=0.05)
+    assert out[1, 0] / out[1, -1] == pytest.approx(1 - (1 - np.exp(-2)) / 2, rel=0.05)
+
+
+def test_pmt_offset_and_clipping(xp: NumpyAPI) -> None:
+    det = PMT(offset=-1000, bit_depth=8)
+    assert np.all(det.render(_flat(1e6), exposure_ms=0.01, xp=xp) == 0)
+    det = PMT(hv_gain=1e8, bit_depth=8)
+    assert np.all(det.render(_flat(1e7), exposure_ms=0.01, xp=xp) == 255)
+
+
+def test_point_detectors_need_electrons_per_adu() -> None:
+    with pytest.raises(ValidationError, match="no `full_well`"):
+        PMT(relative_gain=2)
+
+
+@pytest.mark.parametrize(
+    "det",
+    [
+        HyD(dead_time_ns=0, bit_depth=16),
+        PMT(read_noise=0, bit_depth=16),
+        CameraCCD(read_noise=0, dark_current=0, offset=0, bit_depth=16,
+                  full_well=10**9, electrons_per_adu=1),
+    ],
+    ids=["HyD", "PMT", "CCD"],
+)  # fmt: skip
+def test_averaging(det: PMT | HyD | CameraCCD, xp: NumpyAPI) -> None:
+    # averaging N passes keeps the brightness and lowers the noise by sqrt(N)
+    img = _flat(1e6)
+    single = det.render(img, exposure_ms=0.01, xp=xp)
+    avg = det.model_copy(update={"averaging": 4}).render(img, exposure_ms=0.01, xp=xp)
+    assert np.mean(avg) == pytest.approx(np.mean(single), rel=0.02)
+    assert np.std(avg) == pytest.approx(np.std(single) / 2, rel=0.1)
+
+
+def test_point_detectors_in_simulation() -> None:
+    for det in (lib.PMT_GAASP, lib.HYD_SP8):
+        sim = Simulation.model_validate(
+            {
+                "truth_space": {"shape": (8, 32, 32), "scale": (0.04, 0.02, 0.02)},
+                "output_space": {"downscale": 2},
+                "sample": [],
+                "detector": det.model_dump(),
+            }
+        )
+        assert type(sim.detector) is type(det)

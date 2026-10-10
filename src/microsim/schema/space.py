@@ -1,4 +1,4 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
 
 import numpy as np
@@ -50,8 +50,19 @@ class SpaceProtocol(Protocol):
 ArrayType = TypeVar("ArrayType")
 
 
+def _coarsen(
+    img: xrDataArray, factors: Mapping[str, int], mean_axes: Collection[str]
+) -> xrDataArray:
+    """Downsample by summing over each window, or averaging along `mean_axes`."""
+    if mean := {ax: f for ax, f in factors.items() if ax in mean_axes}:
+        img = img.coarsen(mean).mean()
+    if summed := {ax: f for ax, f in factors.items() if ax not in mean_axes}:
+        img = img.coarsen(summed).sum()
+    return img
+
+
 class _Space(SimBaseModel):
-    def rescale(self, img: xrDataArray) -> xrDataArray:
+    def rescale(self, img: xrDataArray, mean_axes: Collection[str] = ()) -> xrDataArray:
         return img
 
     def create(
@@ -98,7 +109,7 @@ class _AxesSpace(_Space):
             if ax in img_scales
         }
 
-    def rescale(self, img: xrDataArray) -> xrDataArray:
+    def rescale(self, img: xrDataArray, mean_axes: Collection[str] = ()) -> xrDataArray:
         if not (img_space := getattr(img, "space", None)):  # pragma: no cover
             raise ValueError("Input image must have a 'space' attribute.")
 
@@ -107,7 +118,7 @@ class _AxesSpace(_Space):
             raise NotImplementedError(
                 f"Can only downscale an image. Got downscale factors {dims}."
             )
-        return img.coarsen(dims).sum()  # type: ignore
+        return _coarsen(img, dims, mean_axes)
 
     @field_validator("axes", mode="before")
     def _cast_axes(cls, value: Any) -> tuple[Axis, ...]:
@@ -209,13 +220,13 @@ class _RelativeSpace(_Space):
 class DownscaledSpace(_RelativeSpace):
     downscale: tuple[int, ...] | int
 
-    def rescale(self, img: xrDataArray) -> xrDataArray:
+    def rescale(self, img: xrDataArray, mean_axes: Collection[str] = ()) -> xrDataArray:
         if isinstance(self.downscale, int | float):
             axes = dict.fromkeys(self.axes, self.downscale)
         elif isinstance(self.downscale, Sequence):
             axes = dict(zip(self.axes, self.downscale, strict=False))
 
-        return img.coarsen(axes).sum()  # type: ignore
+        return _coarsen(img, axes, mean_axes)
 
     @computed_field  # type: ignore
     @property
