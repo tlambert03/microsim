@@ -97,6 +97,38 @@ def test_pmt_digital_gain(xp: NumpyAPI) -> None:
     assert np.mean(four) == pytest.approx(4 * np.mean(one), rel=0.03)
 
 
+@pytest.mark.parametrize("i_over_max", [0.1, 1, 100])
+def test_pmt_output_current_saturation(i_over_max: float, xp: NumpyAPI) -> None:
+    # 1000 photoelectrons in 1 µs, with the gain set so the anode current is
+    # `i_over_max` times 2 µA (1.248e7 electrons in 1 µs)
+    gain = i_over_max * 2e-6 * 1e-6 / 1.602176634e-19 / 1000
+    det = PMT(hv_gain=gain, electrons_per_adu=1, read_noise=0, bit_depth=32)
+    sat = det.model_copy(update={"max_output_current_ua": 2})
+    img = _flat(1e9)  # uniform: the divider starts (and stays) at steady state
+    ratio = np.mean(sat.render(img, 0.001, xp=xp)) / np.mean(
+        det.render(img, 0.001, xp=xp)
+    )
+    expected = (1 + i_over_max**6) ** (-1 / 6)
+    assert float(ratio) == pytest.approx(expected, rel=0.01)
+
+
+def test_pmt_saturation_follows_average_current(xp: NumpyAPI) -> None:
+    # a lone bright pixel at 100x the max current is not saturated, but a bright
+    # band dims the lines after it, recovering with the divider time constant
+    det = PMT(hv_gain=1.248e4, electrons_per_adu=1, read_noise=0, bit_depth=32)
+    sat = det.model_copy(update={"max_output_current_ua": 2})
+    img = np.full((1, 1, 200, 100), 1e8)  # 0.1 I_max
+    img[..., 50, 50] = 1e11  # 100 I_max, for 1 µs
+    out = np.asarray(sat.render(DataArray(img, dims=_flat(0).dims), 0.001, xp=xp))
+    assert out[0, 0, 50, 50] == pytest.approx(1.248e9, rel=0.01)
+    img[..., 50:70, :] = 1e10  # 10 I_max for 2 ms (20 lines of 100 µs)
+    out = np.asarray(sat.render(DataArray(img, dims=_flat(0).dims), 0.001, xp=xp))
+    rows = out[0, 0].mean(axis=1) / 1.248e6  # relative to unsaturated 0.1 I_max
+    assert rows[40] == pytest.approx(1, abs=0.02)
+    assert rows[75] < 0.5  # 0.5 ms after the band
+    assert rows[199] == pytest.approx(1, abs=0.02)
+
+
 def test_pmt_offset_and_clipping(xp: NumpyAPI) -> None:
     det = PMT(offset=-1000, bit_depth=8)
     assert np.all(det.render(_flat(1e6), exposure_ms=0.01, xp=xp) == 0)

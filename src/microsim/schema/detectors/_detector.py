@@ -198,9 +198,10 @@ class _Detector(SimBaseModel):
         """Fraction of `mean_events` (in `time_s`) that are recorded, or None if all."""
         return None
 
-    def _clip_after_multiplication(
-        self, electrons: npt.NDArray, xp: NumpyAPI
+    def _after_multiplication(
+        self, electrons: npt.NDArray, time_s: "Any", xp: NumpyAPI
     ) -> npt.NDArray:
+        """Limit or filter the multiplied charge collected over `time_s` seconds."""
         return electrons
 
     def apply_pre_quantization_binning(
@@ -270,7 +271,9 @@ class _Detector(SimBaseModel):
             electrons = apply_multiplication_gain(
                 electrons, self.multiplication_gain, self.excess_noise_factor
             )
-        electrons = self._clip_after_multiplication(electrons, xp)
+        electrons = self._after_multiplication(
+            electrons, _per_channel(exposure_s, ndim), xp
+        )
 
         # 5. readout: read noise, ADC conversion, averaging, offset, binning, clipping
         read_noise = self._read_noise_per_pass(_per_channel(pass_s, ndim))

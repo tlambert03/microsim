@@ -4,7 +4,7 @@ See `_detector.py` for the simulation steps shared by all detectors.
 """
 
 import warnings
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, Any, ClassVar, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -46,8 +46,8 @@ class _Camera(_Detector):
     def _dark_electrons_per_frame(self) -> float:
         return self.clock_induced_charge
 
-    def _clip_after_multiplication(
-        self, electrons: npt.NDArray, xp: NumpyAPI
+    def _after_multiplication(
+        self, electrons: npt.NDArray, time_s: Any, xp: NumpyAPI
     ) -> npt.NDArray:
         if self.serial_reg_full_well is not None:
             return xp.minimum(electrons, self.serial_reg_full_well)  # type: ignore[no-any-return]

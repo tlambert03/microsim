@@ -10,7 +10,9 @@ detectors.
 import warnings
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
+import numpy as np
 from pydantic import Field, model_validator
+from scipy import signal
 
 from ._detector import PositiveFloat, _Detector
 
@@ -18,6 +20,10 @@ if TYPE_CHECKING:
     from typing import Self
 
     import numpy.typing as npt
+
+    from microsim.schema.backend import NumpyAPI
+
+ELEMENTARY_CHARGE = 1.602176634e-19  # C
 
 
 class PMT(_Detector):
@@ -53,6 +59,32 @@ class PMT(_Detector):
     grows as `sqrt(dwell)`, while the signal grows as `dwell`.  It is negligible
     unless the HV (and so the gain) is low.
 
+    The anode current cannot rise without limit.  With continuous light the limit
+    comes from the voltage divider that sets the dynode voltages: anode current is
+    drawn from it, the last dynodes lose voltage, and the gain drops (Handbook
+    5.1.3).  Modules with an active divider stay linear almost up to their rated
+    maximum average output current, then drop sharply (Hamamatsu H10720 datasheet,
+    Fig. 8).  Capacitors across the last dynodes supply short bursts of current, so
+    the divider responds to the anode current averaged over its RC time constant
+    (`divider_time_constant_ms`), not to single pixels: a lone bright pixel is fine,
+    but a bright region dims itself and the scan lines after it.  This is modeled as
+    a gain factor `1 / (1 + (I_avg / I_max) ** 6) ** (1/6)`, where `I_avg` is a
+    running average of the anode current in scan order (rows left to right, top to
+    bottom, ignoring flyback): ~1% low at `0.6 I_max`, 11% low at `I_max`.
+    Lowering the HV raises the light level at which this happens.
+
+    Known omissions:
+
+    - The divider's response is a single time constant, and starts each image from
+      the image's mean current (as when scanning repeatedly), ignoring any recovery
+      during frame flyback.
+    - A few % rise in gain before saturation ("over-linearity", Handbook Fig. 5-5).
+    - Space charge saturation, which limits *peak* current (mA) and matters only for
+      pulsed excitation, which microsim does not model.
+    - Afterpulses (ion feedback a few hundred ns to µs after a photoelectron): a
+      few % of extra delayed signal, with no published rates.
+    - Temperature dependence, drift, and hysteresis of the gain (~1%).
+
     Attributes
     ----------
     hv : float, optional
@@ -84,6 +116,14 @@ class PMT(_Detector):
         input noise current of ~1 pA/sqrt(Hz) integrated over 1 µs.
     dark_current : float
         Dark counts (thermionic emission from the photocathode) per second.
+    max_output_current_ua : float, optional
+        Rated maximum average anode current (µA), where the output saturates.
+        Hamamatsu H7422: 2 µA for GaAsP, 100 µA for multialkali.  `None` for no
+        limit (other than the ADC).
+    divider_time_constant_ms : float
+        Time (ms) over which the voltage divider averages the anode current.  Not
+        published for any module; the default (3 ms) is the RC of the example
+        divider in Handbook Fig. 5-30 (300-500 kOhm per stage, 0.01 µF).
     """
 
     camera_type: Literal["PMT"] = "PMT"
@@ -99,6 +139,8 @@ class PMT(_Detector):
     read_noise: PositiveFloat = 5e3
     dark_current: PositiveFloat = 0
     offset: int = 0
+    max_output_current_ua: Annotated[float, Field(gt=0)] | None = None
+    divider_time_constant_ms: Annotated[float, Field(gt=0)] = 3
 
     @model_validator(mode="after")
     def _check_hv(self) -> "Self":
@@ -128,6 +170,17 @@ class PMT(_Detector):
 
     def _read_noise_per_pass(self, dwell_s: Any) -> Any:
         return self.read_noise * (dwell_s / 1e-6) ** 0.5
+
+    def _after_multiplication(
+        self, electrons: "npt.NDArray", time_s: Any, xp: "NumpyAPI"
+    ) -> "npt.NDArray":
+        if self.max_output_current_ua is not None:
+            current = electrons * ELEMENTARY_CHARGE / time_s
+            tau_s = self.divider_time_constant_ms * 1e-3
+            recent = _per_channel(_raster_running_mean, current, time_s, tau_s)
+            ratio = recent / (self.max_output_current_ua * 1e-6)
+            electrons = electrons / (1 + ratio**6) ** (1 / 6)
+        return electrons
 
     def _digital_gain(self) -> float:
         return self.digital_gain
@@ -177,3 +230,26 @@ class HyD(_Detector):
         # non-paralyzable dead time: m = n / (1 + n * tau), applied to the mean
         rate = mean_events / time_s
         return 1 / (1 + rate * self.dead_time_ns * 1e-9)  # type: ignore[no-any-return]
+
+
+def _per_channel(func: Any, x: "npt.NDArray", dt: Any, *args: Any) -> "npt.NDArray":
+    """Call `func(x, dt, *args)`, per channel (first axis) if `dt` is per channel."""
+    x, dt = np.asarray(x, dtype=float), np.asarray(dt, dtype=float)
+    if dt.size == 1:
+        return func(x, float(dt), *args)  # type: ignore[no-any-return]
+    return np.stack(
+        [func(xc, float(d), *args) for d, xc in zip(dt.ravel(), x, strict=True)]
+    )
+
+
+def _raster_running_mean(x: "npt.NDArray", dt: float, tau: float) -> "npt.NDArray":
+    """Exponential running mean over the last two axes (Y, X), in raster order.
+
+    `dt` is the time per pixel, and `tau` the averaging time constant.  Each image
+    starts from its own mean, as if it had been scanned before.
+    """
+    decay = np.exp(-dt / tau)
+    flat = x.reshape(*x.shape[:-2], -1)
+    zi = decay * flat.mean(axis=-1, keepdims=True)  # steady state at the mean
+    out, _ = signal.lfilter([1 - decay], [1, -decay], flat, axis=-1, zi=zi)
+    return out.reshape(x.shape)  # type: ignore[no-any-return]

@@ -34,11 +34,10 @@ sim = ms.Simulation(
 optical_image = sim.optical_image()
 
 detectors = {
-    # hv is the control voltage of a Hamamatsu module (0.5-0.9 V)
-    "GaAsP PMT (hv=0.9 V)": lib.PMT_GAASP.model_copy(update={"hv": 0.9}),
-    "GaAsP PMT (hv=0.9 V, digital gain 20)": lib.PMT_GAASP.model_copy(
-        update={"hv": 0.9, "digital_gain": 20}
-    ),
+    # hv is the control voltage of a Hamamatsu module (0.5-0.9 V).  At 0.9 V the
+    # brightest pixels exceed the module's 2 µA maximum output current.
+    "GaAsP PMT (hv=0.6 V)": lib.PMT_GAASP.model_copy(update={"hv": 0.6}),
+    "GaAsP PMT (hv=0.9 V, saturated)": lib.PMT_GAASP.model_copy(update={"hv": 0.9}),
     "HyD counting": lib.HYD_SP8,
     "HyD counting, 4x averaging": lib.HYD_SP8.model_copy(update={"averaging": 4}),
 }

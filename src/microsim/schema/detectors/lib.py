@@ -57,15 +57,26 @@ GAASP_PMT_QE = Spectrum(
 # PMT gain curves are read from the Hamamatsu H7422 series datasheet (gain at 0.8 V
 # from anode / cathode radiant sensitivity; slope from the typical gain plot):
 # -40 (GaAsP): 2e4 at 0.5 V to 1e6 at 0.9 V;  -01 (multialkali): 1.7e2 at 0.25 V to
-# 1.15e6 at 0.9 V.  Both are 5e5 at 0.8 V.
+# 1.15e6 at 0.9 V.  Both are 5e5 at 0.8 V.  Max. output current: 2 µA (-40) and
+# 100 µA (-01).  `electrons_per_adu` is our choice (not published): it puts the max.
+# output current, integrated over a 1 µs dwell, near the top of the 12-bit range.
 PMT_MULTIALKALI = PMT(
     name="Multialkali PMT",
     qe=0.2,
     dark_current=3000,
     hv_exponent=6.9,
     hv_range=(0.25, 0.9),
+    max_output_current_ua=100,
+    electrons_per_adu=1.5e5,
 )
-PMT_GAASP = PMT(name="GaAsP PMT", qe=GAASP_PMT_QE, dark_current=800, hv_exponent=6.7)
+PMT_GAASP = PMT(
+    name="GaAsP PMT",
+    qe=GAASP_PMT_QE,
+    dark_current=800,
+    hv_exponent=6.7,
+    max_output_current_ua=2,
+    electrons_per_adu=3000,
+)
 HYD_SP8 = HyD(
     name="Leica HyD (GaAsP)", qe=GAASP_HPD_QE, dark_current=560, dead_time_ns=1.5
 )
