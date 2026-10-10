@@ -26,12 +26,18 @@ sim = ms.Simulation(
     channels=[FITC.model_copy(update={"power": 2e4})],  # W/cm^2
     modality=ms.Confocal(pinhole_au=1),
     settings=ms.Settings(random_seed=100, max_psf_radius_aus=8),
+    # QE is applied when the optical image is computed (see microsim#152).  All the
+    # detectors below are GaAsP (QE 0.45), so one optical image serves them all.
+    detector=lib.HYD_SP8,
 )
 optical_image = sim.optical_image()
 
 detectors = {
-    "GaAsP PMT (gain=20)": lib.PMT_GAASP.model_copy(update={"gain": 20}),
-    "GaAsP PMT (gain=100, saturated)": lib.PMT_GAASP.model_copy(update={"gain": 100}),
+    # hv_gain / electrons_per_adu (1e5) = gray values per photoelectron
+    "GaAsP PMT (hv_gain=2e6)": lib.PMT_GAASP.model_copy(update={"hv_gain": 2e6}),
+    "GaAsP PMT (hv_gain=3e7, saturated)": lib.PMT_GAASP.model_copy(
+        update={"hv_gain": 3e7}
+    ),
     "HyD counting": lib.HYD_SP8,
     "HyD counting, 4x averaging": lib.HYD_SP8.model_copy(update={"averaging": 4}),
 }

@@ -1,153 +1,110 @@
-"""Point-scanning (single-element) detectors: PMT and hybrid photodetector (HyD).
+"""Point-scanning detectors: photomultiplier tube (PMT) and hybrid detector (HyD).
 
-For these detectors, `exposure_ms` (as passed by `Simulation.digital_image`) is
-interpreted as the pixel dwell time.  Realistic values are on the order of
-0.0005 - 0.01 ms (0.5 - 10 µs).  Camera-specific fields inherited from `_Camera`
-(`full_well`, `serial_reg_full_well`, `clock_induced_charge`) are ignored.
+A point scanner builds the image one pixel at a time, so `exposure_ms` is the pixel
+dwell time, typically 0.0005-0.01 ms (0.5-10 µs).  These detectors have no pixels
+that store charge, so they have no `full_well`, and their analog gain is set with
+`electrons_per_adu`.  See `_detector.py` for the simulation steps shared by all
+detectors.
 """
 
-from __future__ import annotations
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
-from typing import TYPE_CHECKING, Annotated, Literal
-
-import numpy as np
-import numpy.typing as npt
-from annotated_types import Ge
 from pydantic import Field
-from scipy import stats
 
-from microsim.schema.backend import NumpyAPI
-
-from ._camera import _Camera
+from ._detector import PositiveFloat, _Detector
 
 if TYPE_CHECKING:
-    from microsim._data_array import ArrayProtocol, xrDataArray
-
-PositiveFloat = Annotated[float, Ge(0)]
+    import numpy.typing as npt
 
 
-class _PointDetector(_Camera):
-    """Base class for point-scanning detectors.
+class PMT(_Detector):
+    """Photomultiplier tube, read out in analog (current-integrating) mode.
 
-    Attributes
-    ----------
-    averaging : int
-        Number of line/frame averages.  Photons are integrated for
-        `exposure_ms * averaging`, and the result is divided by `averaging`.
-    dark_current : float
-        Dark count rate, in counts per second.
-    offset : int
-        Offset added to the output, in gray values.
-    read_noise : float
-        Electronic noise, in gray values (rms) per pass.
-    """
+    A photon hitting the photocathode releases a photoelectron (with probability
+    `qe`).  The photoelectron is accelerated onto a chain of 8-12 dynodes, each of
+    which releases ~3-6 secondary electrons per incoming electron, for a total gain
+    of 1e5-1e7 electrons per photoelectron at the anode.  The gain rises steeply with
+    the high voltage (HV) across the tube, which is what microscope software calls
+    the PMT "gain" or "master gain".  The anode current is integrated over the pixel
+    dwell time, amplified, and digitized.
 
-    averaging: int = Field(1, ge=1)
-    dark_current: PositiveFloat = Field(0, description="counts/sec")
-    offset: int = 0
-    read_noise: PositiveFloat = 0
-
-    def _mean_photoelectrons(
-        self, photons_per_second: xrDataArray, exposure_ms: float | xrDataArray
-    ) -> tuple[npt.NDArray, npt.NDArray]:
-        """Return (mean photoelectrons, total integration time in s) per pixel."""
-        # NOTE: QE is already applied upstream in `filtered_emission_rate`
-        t_s = exposure_ms / 1000 * self.averaging
-        flux = photons_per_second.clip(min=0) + self.dark_current
-        lam = flux * t_s
-        t_s = t_s + 0 * lam  # broadcast (e.g. per-channel exposure) to image shape
-        return lam.data, t_s.data
-
-    def _to_gray(self, values: npt.NDArray, xp: NumpyAPI) -> npt.NDArray:
-        """Average, add electronic noise and offset, round, and clip to bit depth."""
-        if self.read_noise > 0:
-            noise = self.read_noise * np.sqrt(self.averaging)
-            values = xp.norm_rvs(values, noise)  # type: ignore[assignment]
-        gray = xp.round(values / self.averaging + self.offset)
-        gray = xp.clip(gray, 0, self.max_intensity)
-        return gray.astype(  # type: ignore[no-any-return]
-            "uint16" if self.bit_depth <= 16 else "uint32"
-        )
-
-
-class PMT(_PointDetector):
-    """Analog (integrating) photomultiplier tube.
-
-    Photoelectrons are Poisson distributed.  Each photoelectron is multiplied by a
-    gamma-distributed gain with mean `gain` and excess noise factor `enf` (the sum
-    of N such gammas is itself gamma: Gamma(N / (F-1), gain * (F-1))).  Electronic
-    noise and offset are then added before quantization.
+    Gain noise comes mostly from the first dynode, where the fewest electrons are
+    involved: with a mean of `d` secondaries, `F` is about `d / (d - 1)`, i.e.
+    1.2-1.5.  `enf` is fixed here; on a real tube it rises as the HV is lowered.
 
     Attributes
     ----------
-    gain : float
-        Mean gray values per photoelectron.  Stands in for the PMT high voltage
-        ("gain" / "master gain" in acquisition software).
+    hv_gain : float
+        Mean number of electrons at the anode per photoelectron (set by the HV).
     enf : float
-        Excess noise factor of the dynode chain (F = 1 + Var(g) / mean(g)^2).
-        ~1.2 - 1.5 for typical PMTs; 2 for an exponential single-photon response.
+        Excess noise factor of the dynode chain.
+    electrons_per_adu : float
+        Anode electrons per gray value (the amplifier/digitizer gain).  The default,
+        with the default `hv_gain`, gives 10 gray values per photoelectron.
+    read_noise : float
+        Amplifier noise, in anode electrons rms.
+    dark_current : float
+        Dark counts (thermionic emission from the photocathode) per second.
     """
 
     camera_type: Literal["PMT"] = "PMT"
-    gain: PositiveFloat = 10
-    enf: float = Field(1.3, gt=1)
-    read_noise: PositiveFloat = 1
+    hv_gain: Annotated[float, Field(ge=1)] = 1e6
+    enf: Annotated[float, Field(ge=1)] = 1.3
+    electrons_per_adu: Annotated[float, Field(gt=0)] = 1e5
+    read_noise: PositiveFloat = 1e5
+    dark_current: PositiveFloat = 0
+    offset: int = 0
 
-    def simulate(
-        self,
-        photons_per_second: xrDataArray,
-        exposure_ms: float | xrDataArray = 0.002,
-        binning: int = 1,
-        add_poisson: bool = True,
-        xp: NumpyAPI | None = None,
-    ) -> ArrayProtocol:
-        xp = NumpyAPI.create(xp)
-        lam, _ = self._mean_photoelectrons(photons_per_second, exposure_ms)
-        n_pe = np.asarray(xp.poisson_rvs(lam, shape=lam.shape) if add_poisson else lam)
-        k = 1 / (self.enf - 1)
-        theta = self.gain * (self.enf - 1)
-        charge = stats.gamma.rvs(np.maximum(n_pe, 1e-9) * k, scale=theta)
-        charge = np.where(n_pe > 0, charge, 0)
-        return self._to_gray(xp.asarray(charge), xp)
+    @property
+    def multiplication_gain(self) -> float:
+        return self.hv_gain
+
+    @property
+    def excess_noise_factor(self) -> float:
+        return self.enf
 
 
-class HyD(_PointDetector):
-    """Hybrid photodetector (e.g. Leica HyD) operated as a photon counter.
+class HyD(_Detector):
+    """Hybrid photodetector (e.g. Leica HyD), read out by photon counting.
 
-    The first-stage (electron bombardment) gain of ~1500 makes gain noise
-    negligible, so the output is a Poisson photon count, reduced at high count
-    rates by a non-paralyzable dead time: m = n / (1 + n * tau).
+    A photocathode (as in a PMT) releases a photoelectron, which is accelerated by
+    ~8 kV straight into an avalanche diode.  The impact alone creates ~1500
+    electron-hole pairs, and the avalanche multiplies them ~100x more.  Because the
+    first stage is so large, every photon gives nearly the same pulse (~3% spread),
+    so pulses are counted rather than integrated.  The output is a photon count: no
+    gain noise (`F = 1`), and no read noise.
+
+    Each pulse briefly blinds the detector (`dead_time_ns`), so at high count rates
+    some photons are missed: a true rate `n` is recorded as `n / (1 + n * tau)`.  At
+    40 Mcps and 1.5 ns, that loses ~6%.  The dead time also spaces counts more
+    regularly than random arrivals, so a mean count `m` has variance
+    `m / (1 + n * tau)**2` rather than `m`.
+
+    In Leica's "Standard" mode the count is multiplied by a gain; that is
+    `electrons_per_adu = 1 / gain` here.  The linearization Leica applies in that
+    mode is not published, and is not modeled.
 
     Attributes
     ----------
-    mode : {"counting", "standard"}
-        "counting" returns raw photon counts.  "standard" scales counts by `gain`
-        (Leica's "Standard" mode; its exact gain mapping and linearization are
-        undisclosed, so this is a plain multiplication).
-    gain : float
-        Gray values per counted photon in "standard" mode.  Ignored in "counting".
     dead_time_ns : float
-        Dead time of detector + electronics, in ns (Leica: < 1.5 ns).
+        Time after each pulse during which no other photon is counted (Leica: < 1.5
+        ns for the detector and electronics).
+    electrons_per_adu : float
+        Photons per gray value.  1 (the default) outputs raw photon counts.
+    dark_current : float
+        Dark counts per second.
     """
 
     camera_type: Literal["HyD"] = "HyD"
-    mode: Literal["counting", "standard"] = "counting"
-    gain: PositiveFloat = 1
     dead_time_ns: PositiveFloat = 1.5
+    electrons_per_adu: Annotated[float, Field(gt=0)] = 1
+    read_noise: PositiveFloat = 0
+    dark_current: PositiveFloat = 0
+    offset: int = 0
 
-    def simulate(
-        self,
-        photons_per_second: xrDataArray,
-        exposure_ms: float | xrDataArray = 0.002,
-        binning: int = 1,
-        add_poisson: bool = True,
-        xp: NumpyAPI | None = None,
-    ) -> ArrayProtocol:
-        xp = NumpyAPI.create(xp)
-        lam, t_s = self._mean_photoelectrons(photons_per_second, exposure_ms)
-        # non-paralyzable dead time applied to the mean rate
-        lam = lam / (1 + (lam / t_s) * self.dead_time_ns * 1e-9)
-        counts = xp.poisson_rvs(lam, shape=lam.shape) if add_poisson else lam
-        if self.mode == "standard":
-            counts = counts * self.gain
-        return self._to_gray(counts, xp)
+    def _counting_efficiency(
+        self, mean_events: "npt.NDArray", time_s: Any
+    ) -> "npt.NDArray":
+        # non-paralyzable dead time: m = n / (1 + n * tau), applied to the mean
+        rate = mean_events / time_s
+        return 1 / (1 + rate * self.dead_time_ns * 1e-9)  # type: ignore[no-any-return]
