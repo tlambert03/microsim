@@ -129,6 +129,37 @@ def test_pmt_saturation_follows_average_current(xp: NumpyAPI) -> None:
     assert rows[199] == pytest.approx(1, abs=0.02)
 
 
+def test_pmt_time_constant(xp: NumpyAPI) -> None:
+    # a single bright column streaks to the right, decaying by exp(-dwell / tau)
+    img = np.zeros((1, 1, 4, 16))
+    img[..., 4] = 1e9  # 1000 photoelectrons in 1 µs
+    img = DataArray(img, dims=("c", "z", "y", "x"))
+    det = PMT(hv_gain=1e3, electrons_per_adu=1, read_noise=0, bit_depth=32)
+    sharp = det.render(img, 0.001, xp=xp)
+    assert np.all(sharp[..., 5:] == 0)
+    out = det.model_copy(update={"time_constant_us": 1}).render(img, 0.001, xp=xp)
+    assert np.all(out[..., :4] == 0)
+    row = np.asarray(out[0, 0].mean(axis=0))
+    total = np.asarray(sharp[0, 0]).mean(0).sum()
+    # tau = dwell: the pixel keeps e^-1, the next gets (1 - e^-1)^2, then x e^-1 each
+    assert row[4] / total == pytest.approx(np.exp(-1), rel=0.05)
+    assert row[5] / total == pytest.approx((1 - np.exp(-1)) ** 2, rel=0.05)
+    assert row[6] / row[5] == pytest.approx(np.exp(-1), rel=0.05)
+    assert row.sum() == pytest.approx(total, rel=0.05)
+
+
+def test_pmt_time_constant_per_channel_dwell(xp: NumpyAPI) -> None:
+    img = DataArray(np.full((2, 1, 4, 8), 1e9), dims=("c", "z", "y", "x"))
+    dwell = DataArray(np.array([0.001, 0.002]), dims=("c",))
+    det = PMT(
+        hv_gain=1e3, electrons_per_adu=1, read_noise=0, time_constant_us=1, bit_depth=32
+    )
+    out = np.asarray(det.render(img, dwell, xp=xp)).mean(axis=(1, 2))
+    # first pixel of each line keeps 1 - (tau/T)(1 - exp(-T/tau)) of the steady state
+    assert out[0, 0] / out[0, -1] == pytest.approx(np.exp(-1), rel=0.05)
+    assert out[1, 0] / out[1, -1] == pytest.approx(1 - (1 - np.exp(-2)) / 2, rel=0.05)
+
+
 def test_pmt_offset_and_clipping(xp: NumpyAPI) -> None:
     det = PMT(offset=-1000, bit_depth=8)
     assert np.all(det.render(_flat(1e6), exposure_ms=0.01, xp=xp) == 0)

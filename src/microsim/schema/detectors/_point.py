@@ -73,6 +73,16 @@ class PMT(_Detector):
     bottom, ignoring flyback): ~1% low at `0.6 I_max`, 11% low at `I_max`.
     Lowering the HV raises the light level at which this happens.
 
+    The amplifier also has a finite bandwidth, so the signal from a bright pixel
+    decays over the next few pixels along the scan line (`time_constant_us`, a
+    first-order low-pass with `f_c = 1 / (2 pi R C)`, Handbook Eq. 5-7).  The
+    filtered current is integrated over each pixel: with dwell `T` and time constant
+    `tau`, a pixel keeps `1 - (tau/T)(1 - exp(-T/tau))` of its own charge (37% when
+    `tau = T`), and the rest decays into the following pixels.  This is the
+    one-sided streak seen at short dwell times.  The fast scan axis is the last
+    (X) axis, scanned left to right, and each line starts dark (beam blanked during
+    flyback).  Off by default, since it makes pixels depend on their neighbors.
+
     Known omissions:
 
     - The divider's response is a single time constant, and starts each image from
@@ -84,6 +94,7 @@ class PMT(_Detector):
     - Afterpulses (ion feedback a few hundred ns to µs after a photoelectron): a
       few % of extra delayed signal, with no published rates.
     - Temperature dependence, drift, and hysteresis of the gain (~1%).
+    - Bidirectional scanning (which flips the streak on alternate lines).
 
     Attributes
     ----------
@@ -124,6 +135,9 @@ class PMT(_Detector):
         Time (ms) over which the voltage divider averages the anode current.  Not
         published for any module; the default (3 ms) is the RC of the example
         divider in Handbook Fig. 5-30 (300-500 kOhm per stage, 0.01 µF).
+    time_constant_us : float
+        Time constant (µs) of the amplifier's low-pass filter.  0 (the default) is
+        an ideal integrator, with no crosstalk between pixels.
     """
 
     camera_type: Literal["PMT"] = "PMT"
@@ -141,6 +155,7 @@ class PMT(_Detector):
     offset: int = 0
     max_output_current_ua: Annotated[float, Field(gt=0)] | None = None
     divider_time_constant_ms: Annotated[float, Field(gt=0)] = 3
+    time_constant_us: PositiveFloat = 0
 
     @model_validator(mode="after")
     def _check_hv(self) -> "Self":
@@ -180,6 +195,10 @@ class PMT(_Detector):
             recent = _per_channel(_raster_running_mean, current, time_s, tau_s)
             ratio = recent / (self.max_output_current_ua * 1e-6)
             electrons = electrons / (1 + ratio**6) ** (1 / 6)
+        if self.time_constant_us > 0:
+            dwell_s = time_s / self.averaging  # filtering each pass = filtering the sum
+            tau_s = self.time_constant_us * 1e-6
+            electrons = _per_channel(_integrating_lowpass, electrons, dwell_s, tau_s)
         return electrons
 
     def _digital_gain(self) -> float:
@@ -253,3 +272,16 @@ def _raster_running_mean(x: "npt.NDArray", dt: float, tau: float) -> "npt.NDArra
     zi = decay * flat.mean(axis=-1, keepdims=True)  # steady state at the mean
     out, _ = signal.lfilter([1 - decay], [1, -decay], flat, axis=-1, zi=zi)
     return out.reshape(x.shape)  # type: ignore[no-any-return]
+
+
+def _integrating_lowpass(x: "npt.NDArray", dt: float, tau: float) -> "npt.NDArray":
+    """Charge per pixel from a first-order low-pass of the current, along X.
+
+    The current is constant within each pixel (of duration `dt`).  A pixel keeps
+    `b0` of its own charge, and `c * d**k` of it lands `k + 1` pixels later, where
+    `d = exp(-dt / tau)`.  Each line starts from zero.
+    """
+    d = np.exp(-dt / tau)
+    b0 = 1 - tau / dt * (1 - d)
+    c = tau / dt * (1 - d) ** 2
+    return signal.lfilter([b0, c - b0 * d], [1, -d], x, axis=-1)  # type: ignore[no-any-return]
