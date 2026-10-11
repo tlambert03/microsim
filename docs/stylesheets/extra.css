@@ -65,6 +65,22 @@
   white-space: nowrap;
 }
 
+/* API overview: the same column widths in every table */
+.md-typeset .ms-api-index .md-typeset__table,
+.md-typeset .ms-api-index table:not([class]) {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.md-typeset .ms-api-index th:first-child {
+  width: 45%;
+}
+
+.md-typeset .ms-api-index table:not([class]) td:first-child > code {
+  white-space: normal;
+}
+
 /* matplotlib output with a white background (tutorial pages) */
 .md-typeset img.plot {
   background: #fff;

@@ -210,6 +210,12 @@ exclude = [
   "microsim.schema.optical_config.filter",
   "microsim.schema.sample.sample",
   "microsim.schema.sample.fluorophore",
+  # internals: not part of the user-facing API
+  "microsim.fft",
+  "microsim.xarray_jax",
+  "microsim.cosem.manage",
+  "microsim.schema.backend",
+  "microsim.schema.dimensions",
 ]
 
 # the top-level packages re-export everything: list their members, don't repeat them

@@ -19,25 +19,67 @@ field that takes a model also accepts a dictionary with the same keys.
 Unknown fields raise an error.
 
 The pages in this section are generated from the source code, one per public
-module, so they always match the installed version. The most useful ones:
+module, so they always match the installed version. Each object is documented
+once, in the module or subpackage that defines it; most are also importable
+from `microsim.schema`, as above. The main objects, by topic:
 
-| Module                                                       | Contents                                                          |
-| ------------------------------------------------------------ | ----------------------------------------------------------------- |
-| [`schema.simulation`][microsim.schema.simulation]            | `Simulation`, the top-level model and its stage methods           |
-| [`schema.space`][microsim.schema.space]                      | `ShapeScaleSpace`, `DownscaledSpace`, ...                         |
-| [`schema.sample`][microsim.schema.sample]                    | `Sample`, `FluorophoreDistribution`, `Fluorophore`, distributions |
-| [`schema.optical_config`][microsim.schema.optical_config]    | `OpticalConfig`, filters, `LightSource`                           |
-| [`schema.optical_config.lib`][microsim.schema.optical_config.lib] | built-in filter sets                                         |
-| [`schema.modality`][microsim.schema.modality]                | `Widefield`, `Confocal`, `Identity`                               |
-| [`schema.lens`][microsim.schema.lens]                        | `ObjectiveLens`                                                   |
-| [`schema.detectors`][microsim.schema.detectors]              | cameras and point detectors                                       |
-| [`schema.detectors.lib`][microsim.schema.detectors.lib]      | built-in detectors                                                |
-| [`schema.settings`][microsim.schema.settings]                | `Settings`                                                        |
-| [`schema.spectrum`][microsim.schema.spectrum]                | `Spectrum`                                                        |
-| [`psf`][microsim.psf]                                        | PSF functions                                                     |
-| [`util`][microsim.util]                                      | plotting and cache helpers                                        |
-| [`allen`][microsim.allen]                                    | neuron reconstructions from the Allen Institute                   |
-| [`cosem`][microsim.cosem]                                    | access to OpenOrganelle (COSEM) datasets                          |
+<div class="ms-api-index" markdown>
 
-Each object is documented once, in the module or subpackage that defines it.
-Most of them are also importable from `microsim.schema`, as above.
+## Simulation
+
+| Object | Description |
+| --- | --- |
+| [`Simulation`][microsim.schema.simulation.Simulation] | the top-level model |
+| [`Simulation.run`][microsim.schema.simulation.Simulation.run] | run every stage and return the digital image |
+| [`ground_truth`][microsim.schema.simulation.Simulation.ground_truth], [`filtered_emission_rates`][microsim.schema.simulation.Simulation.filtered_emission_rates], [`optical_image`][microsim.schema.simulation.Simulation.optical_image], [`digital_image`][microsim.schema.simulation.Simulation.digital_image] | the stages, run one at a time ([guide](../guide/index.md)) |
+
+## Spaces
+
+| Object | Description |
+| --- | --- |
+| [`ShapeScaleSpace`][microsim.schema.space.ShapeScaleSpace], [`ExtentScaleSpace`][microsim.schema.space.ExtentScaleSpace], [`ShapeExtentSpace`][microsim.schema.space.ShapeExtentSpace] | a space given by two of shape, extent, and scale |
+| [`DownscaledSpace`][microsim.schema.space.DownscaledSpace], [`UpscaledSpace`][microsim.schema.space.UpscaledSpace] | a space derived from another one ([guide](../guide/spaces.md)) |
+
+## Sample
+
+| Object | Description |
+| --- | --- |
+| [`Sample`][microsim.schema.sample.Sample], [`FluorophoreDistribution`][microsim.schema.sample.FluorophoreDistribution] | the labels in the sample, and where each one is |
+| [`Fluorophore`][microsim.schema.sample.Fluorophore] | spectra, extinction coefficient, quantum yield, lifetime |
+| [`MatsLines`][microsim.schema.sample.MatsLines], [`CosemLabel`][microsim.schema.sample.CosemLabel] | built-in distributions ([guide](../guide/samples.md)) |
+| [`cosem`][microsim.cosem], [`allen`][microsim.allen] | OpenOrganelle (COSEM) datasets, Allen Institute neuron reconstructions |
+
+## Optics
+
+| Object | Description |
+| --- | --- |
+| [`ObjectiveLens`][microsim.schema.lens.ObjectiveLens] | numerical aperture, immersion and specimen refractive index |
+| [`Widefield`][microsim.schema.modality.Widefield], [`Confocal`][microsim.schema.modality.Confocal], [`Identity`][microsim.schema.modality.Identity] | imaging modalities ([guide](../guide/modalities.md)) |
+| [`psf`][microsim.psf] | the PSF functions the modalities use |
+
+## Channels
+
+| Object | Description |
+| --- | --- |
+| [`OpticalConfig`][microsim.schema.optical_config.OpticalConfig] | a channel: light sources, filters, and optionally its own detector and exposure ([guide](../guide/channels.md)) |
+| [`LightSource`][microsim.schema.optical_config.LightSource] | an excitation spectrum and its power |
+| [`Bandpass`][microsim.schema.optical_config.Bandpass], [`Longpass`][microsim.schema.optical_config.Longpass], [`Shortpass`][microsim.schema.optical_config.Shortpass], [`SpectrumFilter`][microsim.schema.optical_config.SpectrumFilter] | filters |
+| [`Spectrum`][microsim.schema.spectrum.Spectrum] | a sampled spectrum |
+| [`optical_config.lib`][microsim.schema.optical_config.lib] | built-in filter sets |
+
+## Detectors
+
+| Object | Description |
+| --- | --- |
+| [`CameraCCD`][microsim.schema.detectors.CameraCCD], [`CameraCMOS`][microsim.schema.detectors.CameraCMOS], [`CameraEMCCD`][microsim.schema.detectors.CameraEMCCD] | cameras ([guide](../guide/detectors.md)) |
+| [`PMT`][microsim.schema.detectors.PMT], [`HyD`][microsim.schema.detectors.HyD] | point detectors |
+| [`detectors.lib`][microsim.schema.detectors.lib] | built-in detectors |
+
+## Settings and utilities
+
+| Object | Description |
+| --- | --- |
+| [`Settings`][microsim.schema.settings.Settings] | array backend, precision, random seed, caching ([guide](../guide/settings.md)) |
+| [`util`][microsim.util] | plotting (`ortho_plot`, `ndview`, `animate`) and cache helpers |
+
+</div>
