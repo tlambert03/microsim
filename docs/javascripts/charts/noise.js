@@ -17,7 +17,7 @@ import {
   stat,
 } from "./lib.js";
 
-// starting values, as in the "Which camera when" chart; `electronsPerAdu` puts
+// starting values, as in the "SNR against signal" chart; `electronsPerAdu` puts
 // the signal well inside a 16-bit range.  The offset is 5x the largest read
 // noise on the slider (100 e⁻ at 0.5 e⁻/ADU), so the background never clips at 0.
 const OFFSET = 1000;

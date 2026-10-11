@@ -12,13 +12,13 @@ enters, and where most of the noise comes from.
 sim = ms.Simulation(..., detector=ms.CameraCMOS(qe=0.8, read_noise=1.5))
 ```
 
-| Detector                                     | `camera_type` | Typical use                                |
-| -------------------------------------------- | ------------- | ------------------------------------------ |
-| [`CameraCCD`][microsim.schema.CameraCCD]     | `"CCD"`       | widefield; interline CCD cameras           |
-| [`CameraEMCCD`][microsim.schema.CameraEMCCD] | `"EMCCD"`     | widefield or spinning disk at very low light |
-| [`CameraCMOS`][microsim.schema.CameraCMOS]   | `"CMOS"`      | widefield; sCMOS cameras                   |
-| [`PMT`][microsim.schema.PMT]                 | `"PMT"`       | point-scanning confocal                    |
-| [`HyD`][microsim.schema.HyD]                 | `"HyD"`       | point-scanning confocal, photon counting   |
+| Detector                                     | `camera_type` | Models                                   |
+| -------------------------------------------- | ------------- | ---------------------------------------- |
+| [`CameraCCD`][microsim.schema.CameraCCD]     | `"CCD"`       | CCD cameras                              |
+| [`CameraEMCCD`][microsim.schema.CameraEMCCD] | `"EMCCD"`     | electron-multiplying CCD cameras         |
+| [`CameraCMOS`][microsim.schema.CameraCMOS]   | `"CMOS"`      | CMOS and sCMOS cameras                   |
+| [`PMT`][microsim.schema.PMT]                 | `"PMT"`       | photomultiplier tubes, analog readout    |
+| [`HyD`][microsim.schema.HyD]                 | `"HyD"`       | hybrid photodetectors, photon counting   |
 
 In dictionary form, `camera_type` selects the class:
 `detector={"camera_type": "EMCCD", "em_gain": 300}`.
@@ -138,7 +138,7 @@ range.
     integrated for N times the exposure, read noise is added N times, and the
     result is divided by N. Brightness is unchanged, and noise is reduced.
 
-### Which camera when
+### SNR against signal
 
 <div class="ms-chart" data-chart="detector-snr"></div>
 /// caption

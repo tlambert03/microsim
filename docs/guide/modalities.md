@@ -69,8 +69,9 @@ For a point-scanning modality:
   of the excitation spot rather than to the emission rate.
 - Downsampling to the output space averages rather than sums
   ([Spaces](spaces.md#how-the-downsampling-works)).
-- A point detector ([PMT or HyD](detectors.md#point-detectors)) is the natural
-  choice, though any detector works.
+- Point-scanning microscopes record with a point detector
+  ([PMT or HyD](detectors.md#point-detectors)), but microsim accepts any
+  detector.
 
 <div class="ms-chart" data-chart="pinhole"></div>
 /// caption

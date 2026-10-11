@@ -307,6 +307,6 @@ ortho_plot(sim.digital_image(exposure_ms=0.01), z=9)  # 10 µs pixel dwell
 ![Confocal digital image](../images/generated/tutorials/two-color-cell/15.png){ .plot }
 
 The channels still use the LED spectrum from the widefield configuration;
-only the irradiance and the PSF changed. A CCD camera is also not what a
-point-scanning confocal would use; see
+only the irradiance and the PSF changed. The detector is still the CCD camera;
+point-scanning confocals record with point detectors, as in
 [point-scanning detectors](point-scanning-detectors.md).

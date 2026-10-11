@@ -76,6 +76,10 @@ statement of fact about microsim, find the code that makes it true, and cite it
 
 - Fix clear factual errors directly, in the docs' existing style: plain,
   scientific, no marketing language, no em dashes.
+- The docs describe what microsim computes; they don't advise readers on which
+  hardware to use (e.g. "which camera when", "the natural choice", "best for
+  low light"). Rephrase such lines as statements of what the model or the
+  physics does.
 - If the code looks wrong rather than the docs (a doc describes intended behavior
   the code doesn't implement), don't change either; report it.
 - Report what you checked, what you changed, and anything you could not verify,
