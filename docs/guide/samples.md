@@ -55,9 +55,16 @@ compute and useful for testing.
 | Parameter | Effect                                                                                       |
 | --------- | -------------------------------------------------------------------------------------------- |
 | `density` | number of lines, as a fraction of the X size in voxels (512 voxels × 0.5 = 256 lines)        |
-| `length`  | scales the random line length, relative to the size of the field of view                     |
+| `length`  | line length: 1/20 of the field of view, plus a random amount up to `length`/20 of it        |
 | `azimuth` | limits the tilt out of the XY plane: larger values give flatter lines                         |
 | `max_r`   | lines are only drawn inside an ellipsoid of this relative radius (1 = touching the edges)     |
+
+![MatsLines with different parameters](../images/generated/matslines-examples.png)
+/// caption
+Maximum projections of `MatsLines` ground truths in a 64 × 256 × 256 truth
+space, with the defaults (`density=1`, `length=10`, `azimuth=10`,
+`max_r=0.9`) and with one parameter changed at a time.
+///
 
 ### OpenOrganelle (COSEM)
 
@@ -81,12 +88,46 @@ ms.CosemLabel(dataset="jrc_hela-3", label="er-mem_pred")
 The data are downloaded on first use and cached. This needs the `cosem` extra
 and network access.
 
+![Three labels from two OpenOrganelle datasets](../images/cosem-examples.jpg)
+/// caption
+Three labels each from two OpenOrganelle datasets (HeLa and macrophage cells),
+on a 64 nm grid: one plane of the ground truth (left) and of the widefield
+optical image (right), each label in its own color. In widefield, the top and
+bottom of the nuclear envelope (cyan) blur into the plane, and fill the
+nucleus.
+///
+
 !!! warning "Voxel size"
 
     The source data are stored at 4 nm voxels and at a series of 2×
     downsampled levels (8, 16, 32 nm, ...). microsim reads the level that
     matches the truth space without interpolating, so use the same scale on
     all three axes, equal to 4 nm times a power of two (e.g. `scale=0.064`).
+
+### Allen Institute neurons
+
+[`microsim.allen`](../api/util.md#allen-institute-neurons) fetches neuron reconstructions from the
+[Allen Cell Types Database](https://celltypes.brain-map.org) and renders them as
+a 3D mask, which can be used as a [fixed array](#your-own-array):
+
+```py
+from microsim.allen import NeuronReconstruction
+
+mask = NeuronReconstruction.fetch(638976782).binary_mask(voxel_size=1)  # (Z, Y, X)
+```
+
+![An Allen neuron reconstruction rendered as a mask](../images/generated/allen-neuron.png)
+/// caption
+Reconstruction 638976782 rendered at 1 µm voxels (maximum projections).
+///
+
+!!! warning "Not yet practical at optical resolution"
+
+    `binary_mask` renders the whole neuron, hundreds of micrometers across, in
+    one array, and the line widths it draws do not scale with `voxel_size`.
+    At the 50 nm voxels that a simulation needs, the array would be far too
+    large. For now, use it at about 1 µm to explore the morphology, or crop
+    and resample the mask yourself.
 
 ### Your own array
 

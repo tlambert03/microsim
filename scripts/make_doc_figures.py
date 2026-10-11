@@ -28,6 +28,7 @@ import numpy as np
 
 from microsim import schema as ms
 from microsim._data_array import DataArray
+from microsim.allen import NeuronReconstruction
 from microsim.psf import make_psf
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.detectors import lib as det_lib
@@ -43,6 +44,9 @@ DOCS = Path(__file__).parents[1] / "docs"
 OUT = DOCS / "images" / "generated"
 DATA = DOCS / "data" / "generated"
 FIGURES: dict[str, Callable[[], None]] = {}
+# figures that are checked in (to docs/images/) because they are slow to make;
+# only made when named on the command line
+COMMITTED: set[str] = set()
 
 # image panels are dark in both schemes, so their labels use a neutral gray
 IMG_LABEL = "#9a998f"
@@ -51,6 +55,11 @@ IMG_LABEL = "#9a998f"
 def figure(func: Callable[[], None]) -> Callable[[], None]:
     FIGURES[func.__name__] = func
     return func
+
+
+def committed_figure(func: Callable[[], None]) -> Callable[[], None]:
+    COMMITTED.add(func.__name__)
+    return figure(func)
 
 
 def save(fig: plt.Figure, path: Path) -> None:
@@ -507,6 +516,84 @@ def spectra_plots() -> None:
 
 
 @figure
+def matslines_examples() -> None:
+    """MatsLines ground truth with different parameters (maximum projections)."""
+    variants = {
+        "defaults": {},
+        "density=0.2": {"density": 0.2},
+        "length=2": {"length": 2},
+        "azimuth=2": {"azimuth": 2},
+    }
+    fig, axes = plt.subplots(1, 4, figsize=(13, 3.6), gridspec_kw={"wspace": 0.04})
+    for ax, (title, kwargs) in zip(axes, variants.items(), strict=True):
+        sim = ms.Simulation(
+            truth_space=ms.ShapeScaleSpace(shape=(64, 256, 256), scale=0.02),
+            sample=[ms.MatsLines(**kwargs)],
+            settings=ms.Settings(random_seed=0),
+        )
+        truth = _np(sim.ground_truth())[0]
+        ax.imshow(norm(truth.max(axis=0), 0, 99.5), cmap="gray")
+        image_axes(ax, title)
+    save(fig, OUT / "matslines-examples.png")
+
+
+COSEM_EXAMPLES = {
+    "jrc_hela-3": ["er-mem_pred", "mito-mem_pred", "ne-mem_pred"],
+    "jrc_macrophage-2": ["mito-mem_pred", "lyso-mem_pred", "ne-mem_pred"],
+}
+COSEM_COLORS = ["#33ff66", "#ff33cc", "#33ccff"]
+
+
+@committed_figure
+def cosem_examples() -> None:
+    """Three labels from two OpenOrganelle datasets: ground truth and optical image.
+
+    Checked in as docs/images/cosem-examples.jpg: the downloads take a while.
+    """
+    fig, axes = plt.subplots(2, 2, figsize=(9, 9.4), gridspec_kw={"wspace": 0.03})
+    for row, (dataset, labels) in enumerate(COSEM_EXAMPLES.items()):
+        sim = ms.Simulation(
+            truth_space=ms.ShapeScaleSpace(shape=(64, 512, 512), scale=0.064),
+            sample=[ms.CosemLabel(dataset=dataset, label=lbl) for lbl in labels],
+            settings=ms.Settings(random_seed=0),
+        )
+        z = 24
+        truth = _np(sim.ground_truth())[:, z]
+        optical = _np(sim.optical_image_per_fluor())[0, :, z]
+        axes[row, 0].imshow(composite(list(truth), COSEM_COLORS))
+        image_axes(axes[row, 0], f"{dataset}: ground truth")
+        axes[row, 1].imshow(composite(list(optical), COSEM_COLORS))
+        image_axes(axes[row, 1], "widefield optical image")
+        names = ", ".join(lbl.removesuffix("_pred") for lbl in labels)
+        axes[row, 0].text(
+            0, -0.08, names, transform=axes[row, 0].transAxes, color=IMG_LABEL
+        )
+    path = DOCS / "images" / "cosem-examples.jpg"
+    fig.savefig(path, dpi=90, bbox_inches="tight", facecolor="#111111")
+    plt.close(fig)
+    print("wrote", path.relative_to(DOCS.parent))
+
+
+@figure
+def allen_neuron() -> None:
+    """An Allen Cell Types neuron reconstruction, rendered as a 1 µm mask."""
+    mask = NeuronReconstruction.fetch(638976782).binary_mask(voxel_size=1)  # (z, y, x)
+    xy = mask.max(axis=0).T  # long axis (y) horizontal
+    zy = mask.max(axis=2)
+    fig, axes = plt.subplots(
+        2,
+        1,
+        figsize=(10, 10 * (xy.shape[0] + zy.shape[0]) / xy.shape[1] + 0.6),
+        gridspec_kw={"height_ratios": [xy.shape[0], zy.shape[0]], "hspace": 0.12},
+    )
+    axes[0].imshow(xy, cmap="gray", interpolation="nearest")
+    image_axes(axes[0], "maximum projection along Z")
+    axes[1].imshow(zy, cmap="gray", interpolation="nearest")
+    image_axes(axes[1], "maximum projection along X")
+    save(fig, OUT / "allen-neuron.png")
+
+
+@figure
 def first_simulation() -> None:
     """The example from the home page and the "First simulation" page."""
     sim = ms.Simulation(
@@ -585,7 +672,7 @@ def tutorials() -> None:
 
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
-    names = sys.argv[1:] or list(FIGURES)
+    names = sys.argv[1:] or [n for n in FIGURES if n not in COMMITTED]
     for name in names:
         print(f"--- {name}")
         FIGURES[name]()
