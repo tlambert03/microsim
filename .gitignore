@@ -111,3 +111,4 @@ dask-worker-space*
 
 # documentation figures, made by scripts/make_doc_figures.py
 docs/images/generated/
+docs/data/generated/

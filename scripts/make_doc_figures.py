@@ -1,8 +1,9 @@
 """Generate the figures used in the documentation.
 
 Every figure is produced by microsim itself, so the docs show what the code does.
-Output goes to `docs/images/generated/`.  Line plots are written twice, with
-`-light` and `-dark` suffixes, for the two color schemes of the docs.
+Images go to `docs/images/generated/`.  Line plots are written twice, with
+`-light` and `-dark` suffixes, for the two color schemes of the docs.  Data for the
+interactive charts (`docs/javascripts/charts/`) goes to `docs/data/generated/`.
 
 Usage (some figures fetch data from FPbase and OpenOrganelle, so need network):
 
@@ -12,6 +13,7 @@ Usage (some figures fetch data from FPbase and OpenOrganelle, so need network):
 from __future__ import annotations
 
 # ruff: noqa: RUF001
+import json
 import os
 import re
 import sys
@@ -37,6 +39,7 @@ warnings.filterwarnings("ignore")
 
 DOCS = Path(__file__).parents[1] / "docs"
 OUT = DOCS / "images" / "generated"
+DATA = DOCS / "data" / "generated"
 FIGURES: dict[str, Callable[[], None]] = {}
 
 # categorical palette (fixed order), and text inks, for light and dark schemes
@@ -96,6 +99,27 @@ def save(fig: plt.Figure, path: Path) -> None:
     fig.savefig(path, dpi=160, bbox_inches="tight", transparent=True)
     plt.close(fig)
     print("wrote", path.relative_to(OUT.parents[2]))
+
+
+def write_json(name: str, obj: object) -> None:
+    DATA.mkdir(parents=True, exist_ok=True)
+    path = DATA / f"{name}.json"
+    path.write_text(json.dumps(obj, separators=(",", ":")))
+    print("wrote", path.relative_to(DOCS.parent), f"({path.stat().st_size // 1024} kB)")
+
+
+def spectrum_json(spec: ms.Spectrum) -> dict:
+    """Compact spectrum for docs/javascripts/physics (decoded by `decodeSpectrum`).
+
+    Values are rounded to 5 significant digits, and below 1e-9 to 0.  Uniformly
+    spaced wavelengths are stored as a start `w0` and step `dw`.
+    """
+    w = np.asarray(spec.wavelength, dtype=float)
+    v = [0 if abs(x) < 1e-9 else float(f"{x:.5g}") for x in np.asarray(spec.intensity)]
+    steps = np.diff(w)
+    if len(w) > 1 and np.all(steps == steps[0]):
+        return {"w0": float(w[0]), "dw": float(steps[0]), "v": v}
+    return {"w": w.tolist(), "v": v}
 
 
 def norm(img: np.ndarray, lo: float = 0.1, hi: float = 99.9) -> np.ndarray:
@@ -188,66 +212,6 @@ def pipeline() -> None:
 
 
 @figure
-def spectra() -> None:
-    """EGFP spectra and the FITC filter set."""
-    egfp = ms.Fluorophore.from_fpbase("EGFP")
-    fitc = oc_lib.FITC
-    ex = egfp.excitation_spectrum
-    em = egfp.emission_spectrum
-    for t in themed("spectra-egfp-fitc"):
-        fig, (ax1, ax2) = plt.subplots(
-            2, 1, figsize=(8, 4.6), sharex=True, gridspec_kw={"hspace": 0.15}
-        )
-        s = t["series"]
-        ax1.plot(ex.wavelength, ex.intensity / ex.intensity.max(), color=s[0])
-        ax1.plot(em.wavelength, em.intensity / em.intensity.max(), color=s[2])
-        ax1.text(445, 0.82, "EGFP excitation", color=t["text"], ha="right")
-        ax1.text(545, 0.82, "EGFP emission", color=t["text"], ha="left")
-        ax1.set_ylabel("relative intensity")
-        ax1.set_ylim(0, 1.08)
-
-        styles = {"EX": (s[0], "-"), "BS": (t["fill"], "--"), "EM": (s[2], "-")}
-        for f in fitc.filters:
-            color, ls = styles[f.placement.value]
-            sp = f.spectrum
-            ax2.plot(sp.wavelength, sp.intensity, color=color, linestyle=ls, lw=1.5)
-            if ls == "-":
-                ax2.fill_between(sp.wavelength, sp.intensity, color=color, alpha=0.15)
-        ax2.text(
-            470,
-            0.5,
-            "excitation\nfilter",
-            color=t["text"],
-            ha="center",
-            va="center",
-            fontsize=9,
-        )
-        ax2.text(
-            525,
-            0.5,
-            "emission\nfilter",
-            color=t["text"],
-            ha="center",
-            va="center",
-            fontsize=9,
-        )
-        ax2.text(
-            560,
-            0.72,
-            "dichroic: reflects excitation,\ntransmits emission",
-            color=t["muted"],
-            ha="left",
-            va="top",
-            fontsize=9,
-        )
-        ax2.set_ylabel("transmission")
-        ax2.set_ylim(0, 1.15)
-        ax2.set_xlim(380, 720)
-        ax2.set_xlabel("wavelength (nm)")
-        save(fig, t["path"])
-
-
-@figure
 def photon_budget() -> None:
     """Absorption, emission, and filtered emission rates for EGFP in FITC."""
     egfp = ms.Fluorophore.from_fpbase("EGFP")
@@ -280,6 +244,96 @@ def photon_budget() -> None:
             loc="upper right",
         )
         save(fig, t["path"])
+
+
+# offered in the interactive spectra and photon budget charts, blue to far red
+CHART_FLUOROPHORES = [
+    "DAPI",
+    "mTagBFP2",
+    "mTurquoise2",
+    "EGFP",
+    "mNeonGreen",
+    "Alexa Fluor 488",
+    "mVenus",
+    "tdTomato",
+    "mScarlet-I",
+    "Alexa Fluor 568",
+    "mCherry",
+    "Alexa Fluor 647",
+]
+
+
+def _filter_label(f: ms.Filter) -> str:
+    if f.name:
+        return f.name
+    if isinstance(f, ms.Bandpass):
+        return f"{f.bandcenter:g}/{f.bandwidth:g} bandpass"
+    if isinstance(f, ms.Longpass):
+        return f"{f.cuton:g} longpass"
+    return type(f).__name__
+
+
+@figure
+def photometry_data() -> None:
+    """Spectra and photophysics for the interactive spectra and photon budget charts."""
+    fluors = []
+    for name in CHART_FLUOROPHORES:
+        f = ms.Fluorophore.from_fpbase(name)
+        fluors.append(
+            {
+                "name": name,
+                "ec": f.extinction_coefficient,
+                "qy": f.quantum_yield,
+                "lifetime_ns": f.lifetime_ns,
+                "ex": spectrum_json(f.excitation_spectrum),
+                "em": spectrum_json(f.emission_spectrum),
+            }
+        )
+    configs = [
+        *(getattr(oc_lib, n) for n in ["DAPI", "ECFP", "FITC", "EYFP", "TRITC"]),
+        *(getattr(oc_lib, n) for n in ["DSRED", "CY5", "CY7"]),
+        *(
+            ms.OpticalConfig.from_fpbase(microscope_id="wKqWbg", config_name=n)
+            for n in ["Widefield Green", "Widefield Red"]
+        ),
+    ]
+    channels = []
+    for oc in configs:
+        channels.append(
+            {
+                "name": oc.name,
+                "filters": [
+                    {
+                        "name": _filter_label(f),
+                        "placement": f.placement.value,
+                        "spectrum": spectrum_json(f.spectrum),
+                    }
+                    for f in oc.filters
+                ],
+                "lights": [
+                    {
+                        "name": li.name,
+                        "power": li.power,
+                        "spectrum": spectrum_json(li.spectrum),
+                    }
+                    for li in oc.lights
+                ],
+                "illumination": spectrum_json(oc.illumination),
+                "emission": spectrum_json(
+                    oc.emission.spectrum if oc.emission else None
+                ),
+            }
+        )
+    detectors = [
+        {"name": "QE = 1 (no detector)", "qe": 1},
+        {"name": "ICX285 CCD", "qe": spectrum_json(det_lib.ICX285.qe)},
+        {"name": "GaAsP PMT", "qe": spectrum_json(det_lib.PMT_GAASP.qe)},
+        {"name": "Power HyD R", "qe": spectrum_json(det_lib.POWER_HYD_R.qe)},
+    ]
+    write_json(
+        "photometry",
+        {"fluorophores": fluors, "channels": channels, "detectors": detectors},
+    )
 
 
 @figure

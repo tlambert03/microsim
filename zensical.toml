@@ -9,8 +9,9 @@ repo_url = "https://github.com/tlambert03/microsim"
 edit_uri = "edit/main/docs/"
 docs_dir = "docs"
 
-extra_css = ["stylesheets/extra.css"]
+extra_css = ["stylesheets/extra.css", "stylesheets/charts.css"]
 extra_javascript = [
+  { path = "javascripts/charts/index.js", type = "module" },
   "javascripts/mathjax.js",
   "https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js",
 ]

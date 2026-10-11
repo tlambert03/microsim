@@ -17,13 +17,14 @@ from microsim.schema.optical_config import lib
 sim = ms.Simulation(..., channels=[lib.FITC, lib.TRITC])
 ```
 
-![EGFP spectra and the FITC filter set](../images/generated/spectra-egfp-fitc-light.png#only-light)
-![EGFP spectra and the FITC filter set](../images/generated/spectra-egfp-fitc-dark.png#only-dark)
+<div class="ms-chart" data-chart="spectra"></div>
 /// caption
-Top: excitation and emission spectra of EGFP. Bottom: the filters of
-`lib.FITC`. The excitation filter selects the light that reaches the sample, the
-emission filter selects the light that reaches the detector, and the dichroic
-mirror separates the two paths.
+A fluorophore's absorption and emission spectra (normalized to their peaks), the
+excitation light that reaches the sample, and the transmission of the emission
+path. The emission path combines every filter in it: the dichroic mirror
+reflects the excitation light toward the sample and transmits the emission to
+the detector. Shaded: the absorption spectrum weighted by the excitation light,
+and the emission that passes the emission path. Hover for values.
 ///
 
 ## Built-in filter sets
