@@ -2,6 +2,7 @@ import inspect
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, cast
 
+import numpy as np
 import xarray as xr
 from pydantic import Field, model_validator
 from scipy.constants import c, h
@@ -71,7 +72,10 @@ class OpticalConfig(SimBaseModel):
         and singleton dimensions F and C.
         """
         illum_flux_density = self.illumination_flux_density  # photons/cm^2/s
-        cross_section = fluorophore.absorption_cross_section  # cm^2/fluorophore
+        # cm^2/fluorophore, at each wavelength of the illumination
+        cross_section = fluorophore.absorption_cross_section.interp(
+            {Axis.W: illum_flux_density.coords[Axis.W]}, kwargs={"fill_value": 0}
+        )
 
         # absorption rate in photons/s/fluorophore
         abs_rate = illum_flux_density * cross_section
@@ -120,17 +124,39 @@ class OpticalConfig(SimBaseModel):
             # - pulsed excitation: assumes CW (steady state), not pulses << lifetime
             s = self.saturation_parameter(fluorophore)
             tot_absorption_rate = tot_absorption_rate / (1 + s)
-        em_rate = fluorophore.emission_spectrum.as_xarray()
-        # norm area to 1
-        em_rate = em_rate / em_rate.sum()
-        # multiply by quantum yield and total absorption rate
-        em_rate = em_rate * (fluorophore.quantum_yield or 1) * tot_absorption_rate
+        em_rate = fluorophore.emission_per_absorbed_photon * tot_absorption_rate
         # add singleton coordinates for fluorophore and self
         em_rate = em_rate.expand_dims({Axis.F: [fluorophore], Axis.C: [self]})
         em_rate.name = "emission_rate"
         em_rate.attrs["long_name"] = "Emission rate"
         em_rate.attrs["units"] = "photons/s"
         return em_rate
+
+    def detected_fraction(
+        self, fluorophore: Fluorophore, detector_qe: float | Spectrum | None = None
+    ) -> xr.DataArray:
+        """Return the fraction of absorbed photons that are detected in this channel.
+
+        This is the number of photons detected per photon absorbed by `fluorophore`,
+        as a function of emission wavelength: the quantum yield, times the emission
+        spectrum (normalized to an area of 1), times the transmission of the emission
+        filters and the detector QE.  It does *not* include the fraction of emitted
+        light collected by the objective (see `ObjectiveLens.collection_efficiency`).
+        """
+        if detector_qe is None and self.detector is not None:
+            detector_qe = self.detector.qe
+        detected = fluorophore.emission_per_absorbed_photon
+        wavelength = detected.coords[Axis.W]
+        if self.emission is not None:
+            detected = detected * self.emission.spectrum.at(wavelength)
+        if isinstance(detector_qe, Spectrum):
+            detected = detected * detector_qe.at(wavelength)
+        elif detector_qe is not None:
+            detected = detected * detector_qe
+        detected.name = "detected_fraction"
+        detected.attrs["long_name"] = "Detected photons per absorbed photon"
+        detected.attrs["units"] = ""
+        return detected
 
     def filtered_emission_rate(
         self,
@@ -156,21 +182,34 @@ class OpticalConfig(SimBaseModel):
             - the emission filter/beamsplitter spectra
             - camera QE, if passed
         """
-        if self.emission is None:
-            em_array: xr.DataArray | float = 1.0
-        else:
-            em_spectrum = self.emission.spectrum
-            if detector_qe is None and self.detector is not None:
-                detector_qe = self.detector.qe
-            if detector_qe is not None:
-                em_spectrum = em_spectrum * detector_qe
-            em_array = em_spectrum.as_xarray()
-
-        final = self.total_emission_rate(fluorophore, saturate=saturate) * em_array
+        absorption_rate = self.absorption_rate(fluorophore).sum()
+        if saturate:
+            absorption_rate /= 1 + self.saturation_parameter(fluorophore)
+        detected = self.detected_fraction(fluorophore, detector_qe)
+        final = absorption_rate * detected
+        # add singleton coordinates for fluorophore and self
+        final = final.expand_dims({Axis.F: [fluorophore], Axis.C: [self]})
         final.name = "filtered_emission_rate"
         final.attrs["long_name"] = "Filtered Emission rate"
         final.attrs["units"] = "photons/s"
         return final
+
+    def emission_band_center(self) -> float | None:
+        """Center (transmission-weighted mean wavelength) of the emission filter band.
+
+        This combines all filters in the emission path.  Returns None if there are no
+        emission filters, or if the band is open-ended (e.g. a longpass filter, still
+        transmitting at the end of its spectrum).
+        """
+        if (emission := self.emission) is None:
+            return None
+        spectrum = emission.spectrum
+        order = np.argsort(spectrum.wavelength)
+        wvl, trans = spectrum.wavelength[order], spectrum.intensity[order]
+        peak = trans.max()
+        if peak <= 0 or trans[0] > peak / 2 or trans[-1] > peak / 2:
+            return None
+        return float(np.average(wvl, weights=trans))
 
     @property
     def excitation(self) -> Filter | None:
@@ -200,7 +239,7 @@ class OpticalConfig(SimBaseModel):
                 for light in rest:
                     illum_spect = illum_spect + light.scaled_spectrum()
             if exc:
-                return illum_spect * exc.spectrum
+                return illum_spect.transmitted(exc.spectrum)
             return illum_spect
         return exc.spectrum if exc else None
 

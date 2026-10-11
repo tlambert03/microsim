@@ -6,7 +6,7 @@ import xarray.testing as xrt
 
 import microsim.schema as ms
 from microsim import _data_array
-from microsim.psf import cached_psf
+from microsim.psf import PSFGrid, detection_psf
 
 
 def test_cache(sim1: ms.Simulation) -> None:
@@ -28,22 +28,17 @@ def test_cache(sim1: ms.Simulation) -> None:
 
 def test_cache_psf(caplog: pytest.LogCaptureFixture) -> None:
     kwargs = {
-        "nz": 16,
-        "nx": 64,
-        "dx": 0.01,
-        "dz": 0.02,
-        "ex_wvl_um": 0.5,
-        "em_wvl_um": 0.6,
+        "grid": PSFGrid(nz=16, nx=64, dx=0.01, dz=0.02),
+        "wvl_nm": 600,
         "objective": ms.ObjectiveLens(numerical_aperture=1.4),
-        "pinhole_au": 1.0,
-        "max_au_relative": None,
         "xp": ms.NumpyAPI(),
+        "pinhole_radius_um": 0.26,
     }
     caplog.set_level(10)
-    psf1 = cached_psf(**kwargs)
-    cached_psf.cache_clear()  # clear the functools cache
+    psf1 = detection_psf(**kwargs)
+    detection_psf.cache_clear()  # clear the functools cache
     assert "Found cached PSF" not in caplog.text
-    psf2 = cached_psf(**kwargs)
+    psf2 = detection_psf(**kwargs)
     assert "Found cached PSF" in caplog.text
 
     np.testing.assert_array_equal(psf1, psf2)

@@ -5,6 +5,7 @@ import pytest
 
 from microsim import schema as ms
 from microsim.psf import make_psf
+from microsim.schema.modality._optics import CameraDetection, PinholeDetection
 from microsim.schema.optical_config.lib import FITC
 
 NA1_4 = ms.ObjectiveLens(numerical_aperture=1.4)
@@ -70,8 +71,6 @@ def test_max_psf_radius_aus() -> None:
     assert not np.allclose(_image(2), full, rtol=0.01)  # 2 AU = ~9 px << 48 px
     np.testing.assert_allclose(_image(100), full)  # never larger than the volume
 
-    wf, conf = ms.Widefield(), ms.Confocal()
-    assert wf._auto_psf_radius_aus(5, 0.52, NA1_4) > wf._auto_psf_radius_aus(
-        1, 0.52, NA1_4
-    )
-    assert conf._auto_psf_radius_aus(5, 0.52, NA1_4) == 8
+    camera, pinhole = CameraDetection(), PinholeDetection(radius_um=0.2)
+    assert camera.psf_radius_aus(5, 0.52, NA1_4) > camera.psf_radius_aus(1, 0.52, NA1_4)
+    assert pinhole.psf_radius_aus(5, 0.52, NA1_4) == 8

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from functools import cache, lru_cache
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import numpy as np
 import numpy.typing as npt
@@ -17,7 +18,7 @@ from ._data_array import ArrayProtocol
 from ._logger import logger
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
     from pathlib import Path
 
     from microsim._data_array import ArrayProtocol
@@ -247,6 +248,120 @@ def vectorial_psf_centered(
     )
 
 
+@dataclass(frozen=True)
+class PSFGrid:
+    """Shape and voxel size (in um) of a 3D PSF array.
+
+    Sizes are rounded up to odd numbers, so that the PSF is centered on a voxel (an
+    even-sized PSF shifts the image by a fraction of a pixel when convolved).
+    """
+
+    nz: int
+    nx: int
+    dz: float
+    dx: float
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "nz", int(self.nz) | 1)
+        object.__setattr__(self, "nx", int(self.nx) | 1)
+
+
+def airy_radius_um(wvl_um: float, na: float) -> float:
+    """Radius of the Airy disk (to its first minimum), in um."""
+    return 0.61 * wvl_um / na
+
+
+def saturate(spot: Any, saturation: float) -> Any:
+    """Apply excitation saturation to a relative excitation intensity (1 at focus).
+
+    `saturation` is the fluorophore's saturation at the reference (focal) intensity
+    (see `ChannelFluorescence.saturation`).  The returned array is the emission at
+    each position, relative to the *unsaturated* emission at the focus.
+    """
+    if not saturation:
+        return spot
+    return spot / (1 + saturation * spot)
+
+
+def _excitation_spot(
+    nz: int,
+    wvl_um: float,
+    dz: float,
+    nx: int,
+    dxy: float,
+    objective: ObjectiveLens,
+    xp: NumpyAPI,
+    pz: float = 0,
+    ny: int | None = None,
+    pos: tuple[float, float, float] = (0, 0, 0),
+    sf: int = 3,
+) -> npt.NDArray:
+    """Relative excitation intensity of a focused laser spot (1 at the focus)."""
+    return vectorial_psf_centered(
+        nz=nz,
+        wvl=wvl_um,
+        dz=dz,
+        pz=pz,
+        nx=nx,
+        ny=ny,
+        pos=pos,
+        dxy=dxy,
+        objective=objective,
+        xp=xp,
+        sf=sf,
+        normalize="max",
+    )
+
+
+def _detection_psf(
+    nz: int,
+    wvl_um: float,
+    dz: float,
+    nx: int,
+    dxy: float,
+    objective: ObjectiveLens,
+    xp: NumpyAPI,
+    pinhole_radius_um: float | None = None,
+    pz: float = 0,
+    ny: int | None = None,
+    pos: tuple[float, float, float] = (0, 0, 0),
+    sf: int = 3,
+) -> npt.NDArray:
+    """Fraction of the light collected from a point source that reaches the detector.
+
+    Without a pinhole, each z-plane is the image of the point source on a camera
+    (see `_norm_to_collected_light`).  With a pinhole (radius in sample space), each
+    voxel is the fraction of the collected light passing the pinhole, for a point
+    source at that position relative to the focus.
+    """
+    psf = vectorial_psf_centered(
+        nz=nz,
+        wvl=wvl_um,
+        dz=dz,
+        pz=pz,
+        nx=nx,
+        ny=ny,
+        pos=pos,
+        dxy=dxy,
+        objective=objective,
+        xp=xp,
+        sf=sf,
+        normalize=False,
+    )
+    psf = _norm_to_collected_light(psf, wvl_um, dxy, objective, sf, xp)
+    if pinhole_radius_um is None:
+        return psf
+
+    # light through the pinhole: the image of the point source, summed over the
+    # pinhole area (i.e. convolved with the pinhole mask)
+    pinhole = xp.asarray(_pinhole_mask(psf.shape[-1], pinhole_radius_um, dxy, xp))
+    out = xp.empty_like(psf)
+    for i in tqdm.trange(len(psf), desc="convolving em_psf with pinhole..."):
+        plane = xp.fftconvolve(xp.asarray(psf[i]), pinhole, mode="same")
+        out = xp._array_assign(out, i, plane)
+    return out  # type: ignore [no-any-return]
+
+
 def make_confocal_psf(
     nz: int,
     ex_wvl_um: float = 0.475,
@@ -266,8 +381,9 @@ def make_confocal_psf(
 ) -> np.ndarray:
     """Create a confocal PSF.
 
-    This function creates a confocal PSF by multiplying the excitation PSF with
-    the emission PSF convolved with a pinhole mask.
+    This function creates a confocal system PSF: the excitation spot times the
+    detection PSF (the emission PSF convolved with a pinhole mask).  `pinhole_au` is
+    in Airy units at the emission wavelength.
 
     If `normalize` is False, the result is physically scaled: the relative excitation
     intensity (1 at focus) times the fraction of collected emission that passes the
@@ -280,66 +396,13 @@ def make_confocal_psf(
     All extra keyword arguments are passed to `vectorial_psf_centered`.
     """
     xp = NumpyAPI.create(xp)
-
     objective = _cast_objective(objective)
-    ex_psf = vectorial_psf_centered(
-        nz=nz,
-        wvl=ex_wvl_um,
-        dz=dz,
-        pz=pz,
-        nx=nx,
-        ny=ny,
-        pos=pos,
-        dxy=dxy,
-        objective=objective,
-        xp=xp,
-        sf=sf,
-        normalize="max",  # relative irradiance: 1 at focus
-    )
-    if saturation:
-        # local steady-state saturation: emission relative to the unsaturated
-        # emission at focus (see `OpticalConfig.total_emission_rate`)
-        ex_psf = ex_psf / (1 + saturation * ex_psf)
-    em_psf = vectorial_psf_centered(
-        nz=nz,
-        wvl=em_wvl_um,
-        dz=dz,
-        pz=pz,
-        nx=nx,
-        ny=ny,
-        pos=pos,
-        dxy=dxy,
-        objective=objective,
-        xp=xp,
-        sf=sf,
-        normalize=False,
-    )
-    em_psf = _norm_to_collected_light(em_psf, em_wvl_um, dxy, objective, sf, xp)
-
-    # The effective emission PSF is the regular emission PSF convolved with the
-    # pinhole mask. The pinhole mask is a disk with diameter equal to the pinhole
-    # size in AU, converted to pixels.
-    pinhole = _pinhole_mask(
-        nxy=ex_psf.shape[-1],
-        pinhole_au=pinhole_au,
-        wvl=em_wvl_um,
-        na=objective.numerical_aperture,
-        dxy=dxy,
-        xp=xp,
-    )
-    pinhole = xp.asarray(pinhole)
-
-    eff_em_psf = xp.empty_like(em_psf)
-    for i in tqdm.trange(len(em_psf), desc="convolving em_psf with pinhole..."):
-        plane = xp.fftconvolve(xp.asarray(em_psf[i]), pinhole, mode="same")
-        eff_em_psf = xp._array_assign(eff_em_psf, i, plane)
-
-    # The final PSF is the excitation PSF multiplied by the effective emission PSF.
-    # Before normalization, this is the relative excitation times the fraction of
-    # collected emission that passes the pinhole, for a fluorophore at each position.
-    out = xp.asarray(ex_psf) * eff_em_psf
-    out = _norm_psf(out, normalize, xp)
-    return out
+    kw: dict[str, Any] = {"nz": nz, "dz": dz, "pz": pz, "nx": nx, "ny": ny}
+    kw.update(pos=pos, dxy=dxy, objective=objective, sf=sf, xp=xp)
+    spot = saturate(_excitation_spot(wvl_um=ex_wvl_um, **kw), saturation)
+    pinhole_um = pinhole_au * airy_radius_um(em_wvl_um, objective.numerical_aperture)
+    det = _detection_psf(wvl_um=em_wvl_um, pinhole_radius_um=pinhole_um, **kw)
+    return _norm_psf(xp.asarray(spot) * det, normalize, xp)
 
 
 # lateral radius (in Airy units) of the in-focus plane used to normalize emission
@@ -405,23 +468,14 @@ def _norm_psf(
 
 
 def _pinhole_mask(
-    nxy: int,
-    pinhole_au: float,
-    wvl: float,
-    na: float,
-    dxy: float,
-    xp: NumpyAPI | None = None,
+    nxy: int, radius_um: float, dxy: float, xp: NumpyAPI | None = None
 ) -> npt.NDArray:
-    """Create a 2D circular pinhole mask of specified `pinhole_au`."""
+    """Create a 2D circular pinhole mask of radius `radius_um` (in sample space)."""
     xp = NumpyAPI.create(xp)
-
-    pinhole_size = pinhole_au * 0.61 * wvl / na
-    pinhole_px = pinhole_size / dxy
-
     x = xp.arange(nxy) - nxy // 2
     xx, yy = xp.meshgrid(x, x)
     r = xp.sqrt(xx**2 + yy**2)
-    return (r <= pinhole_px).astype(int)  # type: ignore
+    return (r <= radius_um / dxy).astype(int)  # type: ignore
 
 
 def make_psf(
@@ -437,6 +491,12 @@ def make_psf(
     saturation: float = 0,
     xp: NumpyAPI | None = None,
 ) -> ArrayProtocol:
+    """Make a widefield PSF, or (if `pinhole_au` is given) a confocal PSF.
+
+    Results are cached (see `excitation_spot` and `detection_psf`).  `pinhole_au` is
+    in Airy units at the emission wavelength, and `max_au_relative` (if given) caps
+    the lateral size of the PSF, in Airy units at the excitation wavelength.
+    """
     if ex_wvl_nm is None:
         if em_wvl_nm is None:
             raise ValueError(
@@ -446,116 +506,107 @@ def make_psf(
     if em_wvl_nm is None:
         em_wvl_nm = ex_wvl_nm
 
-    return cached_psf(
-        nz=nz,
-        nx=nx,
-        dx=dx,
-        dz=dz,
-        ex_wvl_um=ex_wvl_nm * 1e-3,  # nm to um
-        em_wvl_um=em_wvl_nm * 1e-3,  # nm to um
-        objective=_cast_objective(objective),
-        pinhole_au=pinhole_au,
-        max_au_relative=max_au_relative,
-        saturation=saturation,
-        xp=NumpyAPI.create(xp),
-    )
-
-
-# variant of make_psf that only accepts hashable arguments
-@lru_cache(maxsize=Settings().cache.in_mem_size.psf)
-def cached_psf(
-    nz: int,
-    nx: int,
-    dx: float,
-    dz: float,
-    ex_wvl_um: float,
-    em_wvl_um: float,
-    objective: ObjectiveLens,
-    pinhole_au: float | None,
-    max_au_relative: float | None,
-    xp: NumpyAPI,
-    saturation: float = 0,
-) -> ArrayProtocol:
-    # now restrict nx to no more than max_au_relative
+    objective = _cast_objective(objective)
+    na = objective.numerical_aperture
     if max_au_relative is not None:
-        airy_radius = 0.61 * ex_wvl_um / objective.numerical_aperture
-        n_pix_per_airy_radius = airy_radius / dx
-        max_nx = int(n_pix_per_airy_radius * max_au_relative * 2)
-        nx = min(nx, max_nx)
+        airy_px = airy_radius_um(ex_wvl_nm * 1e-3, na) / dx
+        nx = min(nx, int(airy_px * max_au_relative * 2))
+    grid = PSFGrid(nz=nz, nx=nx, dz=dz, dx=dx)
+    xp = NumpyAPI.create(xp)
 
-    # odd sizes, so that the PSF is centered on a pixel (an even-sized PSF shifts
-    # the image by a fraction of a pixel when convolved in `mode="same"`)
-    nz, nx = nz | 1, nx | 1
-
-    use_cache = os.getenv("MICROSIM_CACHE", "").lower() not in {"0", "false", "no", "n"}
-    if use_cache:
-        cache_path = _psf_cache_path(
-            nz, nx, dz, dx, em_wvl_um, pinhole_au, ex_wvl_um, objective, saturation
-        )
-        if cache_path.exists():
-            logger.info(
-                f"Found cached PSF {nz=} {nx=} {dz=} {dx=} "
-                f"{ex_wvl_um=:.2f} {pinhole_au=}"
-            )
-            # the file may have been written by a simulation of another precision
-            return xp.asarray(np.load(cache_path), dtype=xp.float_dtype)
-
-    logger.info(
-        f"Creating new PSF {nz=} {nx=} {dz=} {dx=} {ex_wvl_um=:.2f} {pinhole_au=}"
-    )
     if pinhole_au is None:
-        psf = vectorial_psf_centered(
-            wvl=em_wvl_um,
-            nz=nz,
-            nx=nx,
-            dz=dz,
-            dxy=dx,
-            objective=objective,
-            xp=xp,
-            normalize=False,
-        )
-        psf = _norm_to_collected_light(psf, em_wvl_um, dx, objective, 3, xp)
-    else:
-        psf = make_confocal_psf(
-            nz=nz,
-            ex_wvl_um=ex_wvl_um,
-            em_wvl_um=em_wvl_um,
-            pinhole_au=pinhole_au,
-            nx=nx,
-            dz=dz,
-            dxy=dx,
-            objective=objective,
-            xp=xp,
-            normalize=False,  # keep physical scale (pinhole throughput)
-            saturation=saturation,
-        )
+        return detection_psf(grid, em_wvl_nm, objective, xp)
+    pinhole_um = pinhole_au * airy_radius_um(em_wvl_nm * 1e-3, na)
+    det = detection_psf(grid, em_wvl_nm, objective, xp, pinhole_radius_um=pinhole_um)
+    spot = saturate(excitation_spot(grid, ex_wvl_nm, objective, xp), saturation)
+    return spot * det  # type: ignore [no-any-return]
 
+
+@lru_cache(maxsize=Settings().cache.in_mem_size.psf)
+def excitation_spot(
+    grid: PSFGrid, wvl_nm: float, objective: ObjectiveLens, xp: NumpyAPI
+) -> ArrayProtocol:
+    """Relative excitation intensity of a focused laser spot (1 at the focus).
+
+    The result is cached (in memory, and on disk), so it must not be modified.
+    """
+    return _disk_cached(
+        ("spot", wvl_nm),
+        grid,
+        objective,
+        xp,
+        lambda: _excitation_spot(
+            grid.nz, wvl_nm * 1e-3, grid.dz, grid.nx, grid.dx, objective, xp
+        ),
+    )
+
+
+@lru_cache(maxsize=Settings().cache.in_mem_size.psf)
+def detection_psf(
+    grid: PSFGrid,
+    wvl_nm: float,
+    objective: ObjectiveLens,
+    xp: NumpyAPI,
+    pinhole_radius_um: float | None = None,
+) -> ArrayProtocol:
+    """Fraction of the light collected from a point source that reaches the detector.
+
+    For a camera (no pinhole), each z-plane is the image of a point source at that
+    distance from the focal plane, as a fraction of the light collected from it.
+    With a pinhole (radius in um, in sample space), each voxel is the fraction of the
+    collected light that passes the pinhole, for a point source at that position.
+
+    The result is cached (in memory, and on disk), so it must not be modified.
+    """
+    name: tuple[str | float, ...] = ("detection", wvl_nm)
+    if pinhole_radius_um is not None:
+        name = (*name, "pinhole", pinhole_radius_um)
+    return _disk_cached(
+        name,
+        grid,
+        objective,
+        xp,
+        lambda: _detection_psf(
+            grid.nz,
+            wvl_nm * 1e-3,
+            grid.dz,
+            grid.nx,
+            grid.dx,
+            objective,
+            xp,
+            pinhole_radius_um=pinhole_radius_um,
+        ),
+    )
+
+
+def _disk_cached(
+    name: tuple[str | float, ...],
+    grid: PSFGrid,
+    objective: ObjectiveLens,
+    xp: NumpyAPI,
+    compute: Callable[[], ArrayProtocol],
+) -> ArrayProtocol:
+    """Load a PSF array from the disk cache, or compute (and cache) it."""
+    use_cache = os.getenv("MICROSIM_CACHE", "").lower() not in {"0", "false", "no", "n"}
+    path = _psf_cache_path(name, grid, objective)
+    if use_cache and path.exists():
+        logger.info(f"Found cached PSF {path.stem}")
+        # the file may have been written by a simulation of another precision
+        return xp.asarray(np.load(path), dtype=xp.float_dtype)
+
+    logger.info(f"Creating new PSF {path.stem}")
+    psf = compute()
     if use_cache:
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        np.save(cache_path, psf)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        np.save(path, psf)
     return xp.asarray(psf)
 
 
 def _psf_cache_path(
-    nz: int,
-    nx: int,
-    dz: float,
-    dx: float,
-    em_wvl_um: float,
-    pinhole_au: float | None,
-    ex_wvl_um: float,
-    objective: ObjectiveLens,
-    saturation: float = 0,
+    name: tuple[str | float, ...], grid: PSFGrid, objective: ObjectiveLens
 ) -> Path:
-    """Return the cache location for these PSF parameters."""
-    # "v2": PSFs are scaled to collected light, no longer sum-normalized
-    # "v3": PSF shape is (nz, nx, nx), rounded up to odd (widefield was nz + 1, ...),
-    # and normalization no longer depends on the lateral size (truncation)
-    cache_key: list[float | str] = [nz, nx, dz, dx, em_wvl_um, "v3"]
-    if pinhole_au is not None:
-        cache_key.extend([ex_wvl_um, pinhole_au])
-        if saturation:
-            cache_key.append(f"sat{saturation:.6g}")
-    cache_path = microsim_cache("psf") / objective.cache_key()
-    cache_path = cache_path / "_".join([str(x).replace(".", "-") for x in cache_key])
-    return cache_path.with_suffix(".npy")
+    """Return the cache location for a PSF array."""
+    # "v4": PSFs are cached as separate excitation spots and detection PSFs
+    parts = [*name, grid.nz, grid.nx, grid.dz, grid.dx, "v4"]
+    stem = "_".join(str(x).replace(".", "-") for x in parts)
+    return (microsim_cache("psf") / objective.cache_key() / stem).with_suffix(".npy")
