@@ -153,6 +153,29 @@ def test_photometry() -> None:
         assert js["saturation"] == pytest.approx(
             oc.saturation_parameter(fluor), rel=1e-9
         )
+        if sat:  # widefield saturates the rates; point scanners do it in the PSF
+            sim = ms.Simulation(
+                truth_space=ms.ShapeScaleSpace(shape=(1, 8, 8), scale=0.1),
+                sample=[
+                    ms.FluorophoreDistribution(
+                        distribution=ms.MatsLines(), fluorophore=fluor
+                    )
+                ],
+                channels=[oc],
+                objective_lens=lens,
+                detector=None if qe is None else ms.CameraCCD(qe=qe),
+            )
+            _assert_same(js["collected"], sim.filtered_emission_rates())
+        if fluor.lifetime_ns:
+            half = oc.model_copy(update={"power": js["half_saturation_irradiance"]})
+            assert half.saturation_parameter(fluor) == pytest.approx(1, rel=1e-9)
+            # QY k / (1 + k tau) = (QY / tau) * s / (1 + s), with s = k tau
+            bright = oc.model_copy(update={"power": 1e9})
+            rate = float(bright.total_emission_rate(fluor).sum())
+            s = bright.saturation_parameter(fluor)
+            assert js["max_emission_rate"] * s / (1 + s) == pytest.approx(
+                rate, rel=1e-9
+            )
 
 
 def _measured_snr(detector: ms.Detector, electrons: float) -> float:
@@ -202,7 +225,9 @@ def test_detectors() -> None:
     snr = [
         {"electrons": n, **params} for _, params in SNR_CASES for n in (0.5, 5, 50, 500)
     ]
-    js = _run("detectors.mjs", {"emccd": emccd, "pmt": pmt, "hyd": hyd, "snr": snr})
+    rounding = [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.49, 3.5, -3.7, 7]
+    payload = {"emccd": emccd, "pmt": pmt, "hyd": hyd, "snr": snr, "round": rounding}
+    js = _run("detectors.mjs", payload)
 
     for (g, n), f in zip(emccd, js["emccd"], strict=True):
         expected = ms.CameraEMCCD(em_gain=g, em_stages=n).excess_noise_factor
@@ -214,6 +239,12 @@ def test_detectors() -> None:
     for (rate, tau), eff in zip(hyd, js["hyd"], strict=True):
         expected = ms.HyD(dead_time_ns=tau)._counting_efficiency(np.array(rate), 1.0)
         assert eff == pytest.approx(float(expected), rel=1e-12)
+    for (_, tau), max_rate in zip(hyd, js["hyd_max"], strict=True):
+        # the recorded rate n * efficiency(n) at a very high true rate n
+        n = 1e18
+        recorded = n * ms.HyD(dead_time_ns=tau)._counting_efficiency(np.array(n), 1.0)
+        assert max_rate == pytest.approx(float(recorded), rel=1e-6)
+    np.testing.assert_array_equal(js["round"], np.round(rounding))
 
     # the analytic SNR used in the docs, against microsim's detector simulation
     measured = [

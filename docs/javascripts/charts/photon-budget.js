@@ -47,15 +47,15 @@ function flow(parent, labels) {
 }
 
 export default async function (el) {
-  const { fluors, channels, detectors } = await loadPhotometry();
+  const { fluors, channels, detectors, lens } = await loadPhotometry();
   const ui = shell(el);
   const state = {
     fluor: "EGFP",
     channel: "FITC",
     detector: detectors[0].name,
     power: 1, // W/cm^2
-    na: 1.4,
-    ns: 1.47, // ObjectiveLens.specimen_ri default
+    na: lens.na, // ObjectiveLens defaults
+    ns: lens.specimen_ri,
     exposure: 100, // ms
   };
   const redraw = () => chart.redraw();
@@ -136,25 +136,24 @@ export default async function (el) {
     const channel = channels.find((c) => c.name === state.channel);
     const qe = detectors.find((d) => d.name === state.detector).qe;
 
-    // OpticalConfig.absorption_rate, total_emission_rate, filtered_emission_rate,
-    // and Simulation.filtered_emission_rates (collection efficiency)
-    const absorbed = P.absorptionRate(channel.illumination, state.power, fluor);
-    const k = P.total(absorbed);
-    const s = P.saturationParameter(k, fluor.lifetime_ns);
-    const emitted = P.totalEmissionRate(absorbed, fluor);
-    const eta = P.collectionEfficiency(state.na, state.ns);
-    const passed = P.filteredEmissionRate(emitted, channel.emission);
-    const detected = P.scale(P.filteredEmissionRate(emitted, channel.emission, qe), eta);
+    // Simulation.filtered_emission_rates for one fluorophore and channel, with and
+    // without the detector QE
+    const opts = { channel, fluor, power: state.power, na: state.na, specimenRI: state.ns };
+    const b = P.photonBudget({ ...opts, qe });
+    const noQE = P.photonBudget({ ...opts, qe: null });
+    const { absorbed, emitted, collection: eta, saturation: s } = b;
+    const detected = b.collected;
 
+    const k = P.total(absorbed);
     const nEm = P.total(emitted);
     const nColl = nEm * eta;
-    const nPass = P.total(passed) * eta;
-    const nDet = P.total(detected);
+    const nPass = P.total(noQE.collected);
+    const nDet = P.total(b.collected);
     const nExp = (nDet * state.exposure) / 1000;
     const qy = fluor.qy || 1;
     const satNote =
       s > 0.005
-        ? `<br><span class="ms-flow__warn">× ${fmt.sig(1 / (1 + s), 2)} saturation (kτ = ${fmt.sig(s, 2)})</span>`
+        ? `<br><span class="ms-flow__warn">× ${fmt.sig(nEm / (qy * k), 2)} saturation (kτ = ${fmt.sig(s, 2)})</span>`
         : !fluor.lifetime_ns
           ? "<br>lifetime unknown: no saturation"
           : "";

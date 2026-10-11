@@ -17,23 +17,31 @@ import {
   stat,
 } from "./lib.js";
 
-// starting values, as in the "SNR against signal" chart; `electronsPerAdu` puts
-// the signal well inside a 16-bit range.  The offset is 5x the largest read
-// noise on the slider (100 e⁻ at 0.5 e⁻/ADU), so the background never clips at 0.
+// The offset is 5x the largest read noise on the slider (100 e⁻ at 0.5 e⁻/ADU), so
+// the background never clips at 0.
 const OFFSET = 1000;
-const CAMERAS = {
-  "ideal (shot noise only)": { readNoise: 0, electronsPerAdu: 1, offset: 0 },
-  CCD: { readNoise: 6, electronsPerAdu: 1, offset: OFFSET },
-  sCMOS: { readNoise: 1, electronsPerAdu: 0.5, offset: OFFSET },
-  EMCCD: { readNoise: 50, electronsPerAdu: 20, emGain: 300, offset: OFFSET },
-};
 
 export default async function (el) {
-  const { image } = await loadData("noise");
+  const [{ image }, { cameras }] = await Promise.all([loadData("noise"), loadData("detectors")]);
+  // read noise and EM gain as in the "SNR against signal" chart (detector_data in
+  // scripts/make_doc_figures.py); `electronsPerAdu` puts the signal well inside a
+  // 16-bit range
+  const CAMERAS = {
+    "ideal (shot noise only)": { readNoise: 0, electronsPerAdu: 1, offset: 0 },
+    CCD: { readNoise: cameras.CCD.read_noise, electronsPerAdu: 1, offset: OFFSET },
+    sCMOS: { readNoise: cameras.sCMOS.read_noise, electronsPerAdu: 0.5, offset: OFFSET },
+    EMCCD: { readNoise: cameras.EMCCD.read_noise, offset: OFFSET },
+  };
   const truth = decodeImage(image);
   const ui = shell(el);
   ui.controls.classList.add("ms-chart__controls--grid");
-  const state = { camera: "CCD", photons: 20, readNoise: 6, emGain: 300, seed: 1 };
+  const state = {
+    camera: "CCD",
+    photons: 20,
+    readNoise: CAMERAS.CCD.readNoise,
+    emGain: cameras.EMCCD.em_gain,
+    seed: 1,
+  };
 
   const panels = document.createElement("div");
   panels.className = "ms-panels";
@@ -116,7 +124,7 @@ export default async function (el) {
     readSlider.input.closest(".ms-control").hidden = state.camera.startsWith("ideal");
     gainSlider.input.closest(".ms-control").hidden = !isEM;
     const gain = isEM ? state.emGain : 1;
-    const enf = isEM ? D.emccdExcessNoiseFactor(gain) : 1;
+    const enf = isEM ? D.emccdExcessNoiseFactor(gain, cameras.EMCCD.em_stages) : 1;
     const readNoise = state.camera.startsWith("ideal") ? 0 : state.readNoise;
     const params = { ...cam, readNoise, gain, enf, bitDepth: 16 };
     // EMCCD: keep the amplified signal inside the ADC range

@@ -68,12 +68,10 @@ export default async function (el) {
       };
     };
     const rows = POWERS.map(at);
-    const tau = fluor.lifetime_ns * 1e-9;
-    const pHalf = 1 / (k1 * tau); // where the saturation parameter k tau is 1
-    const qy = fluor.qy || 1;
+    const pHalf = P.halfSaturationIrradiance(k1, fluor.lifetime_ns);
     const halfRate = at(pHalf).saturated;
     setHalf(`${fmt.si(pHalf)}<small> W/cm²</small>`);
-    setMax(`${fmt.si(qy / tau)}<small> photons/s</small>`);
+    setMax(`${fmt.si(P.maxEmissionRate(fluor))}<small> photons/s</small>`);
 
     const yMax = 1e9;
     const svg = Plot.plot({

@@ -33,14 +33,14 @@ function valueAt(s, nm) {
   return Math.abs(s.w[i] - nm) <= 1 ? s.v[i] : 0;
 }
 
-// detected photons/s per molecule, at 1 W/cm², 1.4 NA, specimen RI 1.47, QE 1
-function detected(channel, fluor) {
-  const b = P.photonBudget({ channel, fluor, power: 1, qe: null, na: 1.4, specimenRI: 1.47 });
-  return P.total(b.collected);
+// detected photons/s per molecule, at 1 W/cm², QE 1, and the default objective
+function detected(channel, fluor, lens) {
+  const opts = { power: 1, qe: null, na: lens.na, specimenRI: lens.specimen_ri };
+  return P.total(P.photonBudget({ channel, fluor, ...opts }).collected);
 }
 
 export default async function (el) {
-  const { fluors, channels } = await loadPhotometry();
+  const { fluors, channels, lens } = await loadPhotometry();
   const ui = shell(el);
   // two columns: the fluorophores on one row, the channels on the next
   ui.controls.classList.add("ms-chart__controls--pairs");
@@ -78,7 +78,7 @@ export default async function (el) {
   const chart = responsive(ui.plot, (width) => {
     const f = [state.f1, state.f2].map((n) => fluors.find((x) => x.name === n));
     const c = [state.c1, state.c2].map((n) => channels.find((x) => x.name === n));
-    const rates = c.map((ch) => f.map((fl) => detected(ch, fl)));
+    const rates = c.map((ch) => f.map((fl) => detected(ch, fl, lens)));
 
     const head = `<tr><th></th>${f.map((fl) => `<th>${fl.name}</th>`).join("")}</tr>`;
     const body = c
@@ -94,7 +94,7 @@ export default async function (el) {
         return `<tr><th>${ch.name}</th>${cells}</tr>`;
       })
       .join("");
-    table.innerHTML = `<caption>detected photons/s per molecule (1 W/cm², 1.4 NA, QE 1)</caption>${head}${body}`;
+    table.innerHTML = `<caption>detected photons/s per molecule (1 W/cm², ${lens.na} NA, QE 1)</caption>${head}${body}`;
 
     const em = f.map((fl) => peakNormalized(fl.em));
     const paths = c.map((ch) => ch.emission);

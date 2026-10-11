@@ -36,9 +36,23 @@ export function hydCountingEfficiency(rate, deadTimeNs = 1.5) {
   return 1 / (1 + rate * deadTimeNs * 1e-9);
 }
 
+// Limit of the recorded rate n / (1 + n tau) (HyD._counting_efficiency) as the
+// true rate n grows: 1 / tau counts/s
+export function hydMaxRate(deadTimeNs = 1.5) {
+  return 1 / (deadTimeNs * 1e-9);
+}
+
+// numpy's round (xp.round in _Detector.simulate and apply_multiplication_gain):
+// halves round to the nearest even integer, unlike Math.round
+export function roundHalfEven(x) {
+  const r = Math.round(x);
+  return Math.abs(x % 1) === 0.5 && r % 2 !== 0 ? r - 1 : r;
+}
+
 // Signal-to-noise ratio of one pixel, from the steps of _Detector.simulate
 // (src/microsim/schema/detectors/_detector.py), ignoring quantization, clipping,
-// and dead time:
+// dead time, clock-induced charge (_Camera `clock_induced_charge`), and the
+// PMT's dwell-dependent read noise (PMT._read_noise_per_pass):
 //   shot noise: Poisson, variance = mean electrons (signal + dark)
 //   multiplication: variance x F (apply_multiplication_gain); read noise, added
 //     after the gain G, is G times smaller relative to the signal
@@ -55,7 +69,8 @@ export function snr({ electrons, dark = 0, readNoise = 0, gain = 1, enf = 1, ave
 
 // One frame from a camera, following _Detector.simulate step by step, for an image
 // of `expected` mean photoelectrons per pixel (QE and exposure already applied).
-// Not modeled here: averaging, binning, dark current, and clock-induced charge.
+// Not modeled here: averaging, binning, dark current, clock-induced charge, and the
+// serial register full well (_Camera `serial_reg_full_well`).
 //   1-2. shot noise: Poisson
 //   3. full well: clip at `fullWell` electrons
 //   4. multiplication (apply_multiplication_gain): Gamma(n / (F - 1), G (F - 1)),
@@ -71,11 +86,11 @@ export function simulateCamera(expected, p, rand) {
     let e = R.poisson(rand, Math.max(expected[i], 0));
     e = Math.min(e, fullWell);
     if (gain !== 1) {
-      if (enf - 1 < 1e-9) e = Math.round(e * gain);
-      else if (e > 0) e = Math.round(R.gamma(rand, e / (enf - 1), gain * (enf - 1)));
+      if (enf - 1 < 1e-9) e = roundHalfEven(e * gain);
+      else if (e > 0) e = roundHalfEven(R.gamma(rand, e / (enf - 1), gain * (enf - 1)));
     }
     const voltage = e + readNoise * R.normal(rand);
-    const signal = Math.min(Math.round(voltage / electronsPerAdu), maxGray);
+    const signal = Math.min(roundHalfEven(voltage / electronsPerAdu), maxGray);
     out[i] = Math.min(Math.max(signal + offset, 0), maxGray);
   }
   return out;

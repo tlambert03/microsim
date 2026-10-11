@@ -22,7 +22,8 @@ import {
 export default async function (el) {
   const { pmts } = await loadData("detectors");
   const ui = shell(el);
-  const state = { pmt: pmts[0].name, hv: 0.8 };
+  // the preset's `hv`, or `ref_hv` if it has none (as in PMT.multiplication_gain)
+  const state = { pmt: pmts[0].name, hv: pmts[0].hv ?? pmts[0].ref_hv };
   const redraw = () => chart.redraw();
   let hvSlider;
   select(ui.controls, {

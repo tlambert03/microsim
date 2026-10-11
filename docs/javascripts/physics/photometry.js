@@ -124,6 +124,19 @@ export function saturationParameter(totalAbsorption, lifetimeNs) {
   return totalAbsorption * lifetimeNs * 1e-9;
 }
 
+// Irradiance (W/cm^2) at which OpticalConfig.saturation_parameter, k tau, is 1.
+// The total absorption rate k is proportional to irradiance; `k1` is its value at
+// 1 W/cm^2 (total of absorptionRate(illum, 1, fluor)).
+export function halfSaturationIrradiance(k1, lifetimeNs) {
+  return 1 / (k1 * lifetimeNs * 1e-9);
+}
+
+// Limit of OpticalConfig.total_emission_rate (saturated) as irradiance grows:
+// QY k / (1 + k tau) tends to QY / tau photons/s (QY is 1 if unknown)
+export function maxEmissionRate(fluor) {
+  return (fluor.qy || 1) / (fluor.lifetime_ns * 1e-9);
+}
+
 // OpticalConfig.total_emission_rate: emission spectrum normalized to sum 1, times
 // QY (1 if unknown) and the total absorption rate, divided by (1 + k tau) if
 // `saturate`

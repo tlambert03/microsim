@@ -1,5 +1,6 @@
-// Fluorophores, channels, and detector QE from photometry.json, decoded, with each
-// channel's illumination and emission path computed as microsim does.
+// Fluorophores, channels, detector QE, and the default objective lens from
+// photometry.json, decoded, with each channel's illumination and emission path
+// computed as microsim does.
 import * as P from "../physics/photometry.js";
 import { loadData } from "./lib.js";
 
@@ -31,6 +32,6 @@ function prepare(data) {
     ...d,
     qe: typeof d.qe === "number" ? d.qe : P.decodeSpectrum(d.qe),
   }));
-  return { fluors, channels, detectors };
+  return { fluors, channels, detectors, lens: data.lens };
 }
 

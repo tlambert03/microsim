@@ -267,10 +267,6 @@ def photometry_data() -> None:
                     }
                     for li in oc.lights
                 ],
-                "illumination": spectrum_json(oc.illumination),
-                "emission": spectrum_json(
-                    oc.emission.spectrum if oc.emission else None
-                ),
             }
         )
     detectors = [
@@ -279,9 +275,15 @@ def photometry_data() -> None:
         {"name": "GaAsP PMT", "qe": spectrum_json(det_lib.PMT_GAASP.qe)},
         {"name": "Power HyD R", "qe": spectrum_json(det_lib.POWER_HYD_R.qe)},
     ]
+    lens = ms.ObjectiveLens()
     write_json(
         "photometry",
-        {"fluorophores": fluors, "channels": channels, "detectors": detectors},
+        {
+            "fluorophores": fluors,
+            "channels": channels,
+            "detectors": detectors,
+            "lens": {"na": lens.numerical_aperture, "specimen_ri": lens.specimen_ri},
+        },
     )
 
 
@@ -307,6 +309,7 @@ def detector_data() -> None:
     pmts = [
         {
             "name": pmt.name,
+            "hv": pmt.hv,
             "ref_hv": pmt.ref_hv,
             "ref_gain": pmt.ref_gain,
             "hv_exponent": pmt.hv_exponent,

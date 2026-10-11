@@ -15,6 +15,7 @@ const out = input.cases.map((c) => {
     emission: P.emissionPath(ch.filters),
   };
   const b = P.photonBudget({ channel, fluor, ...c.params });
+  const k1 = P.total(P.absorptionRate(channel.illumination, 1, fluor));
   return {
     cross_section: totals(P.crossSection(fluor.ex, fluor.ec)),
     illumination_flux_density: totals(
@@ -23,8 +24,13 @@ const out = input.cases.map((c) => {
     absorbed: totals(b.absorbed),
     emitted: totals(b.emitted),
     filtered: totals(b.filtered),
+    collected: totals(b.collected),
     collection: b.collection,
     saturation: b.saturation,
+    half_saturation_irradiance: fluor.lifetime_ns
+      ? P.halfSaturationIrradiance(k1, fluor.lifetime_ns)
+      : null,
+    max_emission_rate: fluor.lifetime_ns ? P.maxEmissionRate(fluor) : null,
   };
 });
 process.stdout.write(JSON.stringify(out));

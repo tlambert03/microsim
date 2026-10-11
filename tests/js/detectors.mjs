@@ -10,6 +10,8 @@ const out = {
     return [gain, D.pmtExcessNoiseFactor(gain, p.dynode_stages)];
   }),
   hyd: input.hyd.map(([rate, tau]) => D.hydCountingEfficiency(rate, tau)),
+  hyd_max: input.hyd.map(([, tau]) => D.hydMaxRate(tau)),
+  round: input.round.map((x) => D.roundHalfEven(x)),
   snr: input.snr.map((p) => D.snr(p)),
 };
 process.stdout.write(JSON.stringify(out));

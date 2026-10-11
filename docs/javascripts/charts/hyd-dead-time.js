@@ -38,7 +38,7 @@ export default async function (el) {
   const chart = responsive(ui.plot, (width) => {
     const rows = RATES.map((n) => ({ n, eff: D.hydCountingEfficiency(n, state.tau) }));
     setLoss(fmt.pct(1 - D.hydCountingEfficiency(4e7, state.tau)));
-    setMax(`${fmt.si(1e9 / state.tau)}<small>cps</small>`);
+    setMax(`${fmt.si(D.hydMaxRate(state.tau))}<small>cps</small>`);
     const svg = Plot.plot({
       ...baseOptions(width),
       height: 220,

@@ -1,5 +1,6 @@
 // Detectors page, EMCCD section: excess noise factor against EM gain
-// (CameraEMCCD.excess_noise_factor, via physics/detectors.js).
+// (CameraEMCCD.excess_noise_factor, via physics/detectors.js), starting at the
+// EMCCD of detector_data in scripts/make_doc_figures.py.
 import * as D from "../physics/detectors.js";
 import {
   C,
@@ -8,6 +9,7 @@ import {
   crosshair,
   decades,
   fmt,
+  loadData,
   responsive,
   shell,
   slider,
@@ -19,8 +21,9 @@ import {
 const GAINS = Array.from({ length: 151 }, (_, i) => 10 ** ((i * 3) / 150)); // 1 to 1000
 
 export default async function (el) {
+  const { cameras } = await loadData("detectors");
   const ui = shell(el);
-  const state = { stages: 604, gain: 300 };
+  const state = { stages: cameras.EMCCD.em_stages, gain: cameras.EMCCD.em_gain };
   const redraw = () => chart.redraw();
   slider(ui.controls, {
     label: "EM gain",
