@@ -20,17 +20,19 @@ sim = ms.Simulation(..., modality=ms.Confocal(pinhole_au=1))
 
 ![The same sample in widefield and confocal](../images/generated/modalities.png)
 /// caption
-The same random lines in widefield and in confocal with a 1 AU pinhole (XY
-plane through the middle of the volume, and an XZ section). The confocal
-removes most of the out-of-focus light.
+The optical image of the same random lines in widefield and in confocal with a
+1 AU pinhole (XY plane through the middle of the volume, and an XZ section).
+This is the noise-free optical image, in the truth space: before binning to
+the output pixels, and before the detector. The confocal removes most of the
+out-of-focus light.
 ///
 
 ## Widefield
 
 The whole field is illuminated uniformly and imaged onto a camera. Each
 fluorophore's emission is convolved with the emission PSF. Every plane of the
-PSF sums to about 1, so a defocused point source spreads its light over more
-pixels without losing it.
+PSF sums to about 1: a defocused point source spreads its light over more
+pixels, but the total light recorded from it is the same at any focus.
 
 ## Confocal
 
@@ -42,6 +44,16 @@ pinhole before reaching a point detector. The confocal PSF is the product of
 - the **effective detection PSF**: the emission PSF convolved with the pinhole,
   which is the fraction of collected light that passes the pinhole for an
   emitter at each position.
+
+\[
+\text{PSF}_\text{confocal}(x, y, z) = \text{PSF}_\text{ex}(x, y, z)
+\cdot \big[\text{PSF}_\text{em}(\cdot, \cdot, z) \ast P\big](x, y)
+\]
+
+where \(P\) is the pinhole, a disk of diameter `pinhole_au`, and \(\ast\) is a
+2D convolution in each plane. \(\text{PSF}_\text{ex}\) is 1 at the focus,
+and \(\text{PSF}_\text{em}\) sums to 1 in each plane, so the confocal PSF at
+the focus is the fraction of the collected light that passes the pinhole.
 
 `pinhole_au` is the pinhole diameter in Airy units, where 1 AU is
 1.22 λ<sub>em</sub> / NA, measured in the sample. Smaller pinholes reject more
@@ -63,7 +75,9 @@ For a point-scanning modality:
 <div class="ms-chart" data-chart="pinhole"></div>
 /// caption
 Widefield and confocal PSFs computed by microsim at 1.4 NA, 525 nm emission and
-488 nm excitation, each scaled to its own peak. *Signal from a thin plane*:
+488 nm excitation, each scaled to its own peak. With *show the signal lost at
+the pinhole*, the confocal PSF is instead scaled by the fraction of the
+collected light that passes the pinhole, so it dims as the pinhole closes. *Signal from a thin plane*:
 the light recorded from a thin, uniform fluorescent layer at each distance from
 the focus. In widefield it is the same at every depth, so out-of-focus planes
 contribute as much as the focal plane; the pinhole removes it, more so the

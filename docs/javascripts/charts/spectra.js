@@ -85,15 +85,6 @@ export default async function (el) {
     label: "emission passed",
     note: "fraction of emitted photons through the emission path",
   });
-  const setRel = stat(ui.stats, {
-    label: "relative signal",
-    note: "ε × QY × both efficiencies, relative to EGFP in FITC",
-  });
-  const ref = (() => {
-    const f = fluors.find((x) => x.name === "EGFP");
-    const c = channels.find((x) => x.name === "FITC");
-    return f.ec * f.qy * excitationEfficiency(c, f) * emissionFraction(c, f);
-  })();
 
   const chart = responsive(ui.plot, (width) => {
     const fluor = fluors.find((f) => f.name === state.fluor);
@@ -109,7 +100,6 @@ export default async function (el) {
     const emFrac = emissionFraction(channel, fluor);
     setEx(fmt.pct(exEff));
     setEm(fmt.pct(emFrac));
-    setRel(fmt.sig((fluor.ec * (fluor.qy || 1) * exEff * emFrac) / ref, 2) + "×");
 
     const svg = Plot.plot({
       ...baseOptions(width),

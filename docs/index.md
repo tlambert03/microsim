@@ -41,7 +41,7 @@ every parameter. Running it takes the sample through four stages:
 
 ``` mermaid
 flowchart LR
-    A["<b>Sample</b><br/>fluorophores per voxel"] --> B["<b>Emission</b><br/>photons/s per fluorophore,<br/>per channel and wavelength"]
+    A["<b>Sample</b><br/>fluorophores per voxel,<br/>in a high-resolution space"] --> B["<b>Emission</b><br/>photons/s per fluorophore,<br/>per channel and wavelength"]
     B --> C["<b>Optical image</b><br/>photons/s, blurred<br/>by the PSF"]
     C --> D["<b>Digital image</b><br/>gray values, with<br/>pixelation and noise"]
 ```

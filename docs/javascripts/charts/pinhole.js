@@ -43,6 +43,12 @@ export default async function (el) {
   ui.controls.append(gammaSel);
   const sqrt = gammaSel.querySelector("input");
   sqrt.addEventListener("input", () => update());
+  const dimSel = document.createElement("label");
+  dimSel.className = "ms-control ms-check";
+  dimSel.innerHTML = `<input type="checkbox"> show the signal lost at the pinhole`;
+  ui.controls.append(dimSel);
+  const dim = dimSel.querySelector("input");
+  dim.addEventListener("input", () => update());
 
   const panels = document.createElement("div");
   panels.className = "ms-panels";
@@ -71,8 +77,13 @@ export default async function (el) {
   const setLat = stat(ui.stats, { label: "lateral FWHM" });
   const setAx = stat(ui.stats, { label: "axial FWHM" });
 
-  const draw = (view, img) =>
-    drawImage(view.canvas, img.data, img.width, img.height, { gamma: sqrt.checked ? 0.5 : 1, lut: LUT.magma });
+  // `brightness` scales the image, which is normalized to its own peak
+  const draw = (view, img, brightness = 1) =>
+    drawImage(view.canvas, img.data, img.width, img.height, {
+      hi: 1 / brightness,
+      gamma: sqrt.checked ? 0.5 : 1,
+      lut: LUT.magma,
+    });
   const zOf = (p) => p.plane_sums.map((v, i) => ({ z: (i - Math.floor(p.plane_sums.length / 2)) * data.dz_um, v }));
 
   const chart = responsive(ui.plot, (width) => {
@@ -129,8 +140,11 @@ export default async function (el) {
     const cur = confocal[state.i];
     draw(views.wfXY, widefield.xy);
     draw(views.wfXZ, widefield.xz);
-    draw(views.cfXY, cur.xy);
-    draw(views.cfXZ, cur.xz);
+    // with `dim`, the confocal peak is the fraction of collected light that passes
+    // the pinhole (1 for an open pinhole), as computed by microsim
+    const brightness = dim.checked ? cur.peak : 1;
+    draw(views.cfXY, cur.xy, brightness);
+    draw(views.cfXZ, cur.xz, brightness);
     views.cfXY.label.textContent = `confocal ${cur.pinhole_au} AU · XY`;
     views.cfXZ.label.textContent = `confocal ${cur.pinhole_au} AU · XZ`;
     setThru(fmt.pct(cur.peak));

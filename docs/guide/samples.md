@@ -139,22 +139,30 @@ import numpy as np
 from microsim import schema as ms
 
 
-class Beads:
-    """Point emitters at random positions."""
+class PointSources:
+    """Single-voxel emitters at random positions."""
 
-    def __init__(self, n: int = 100, fluors_per_bead: int = 500):
+    def __init__(self, n: int = 100, fluors_per_point: int = 500):
         self.n = n
-        self.fluors_per_bead = fluors_per_bead
+        self.fluors_per_point = fluors_per_point
 
     def render(self, space, xp=None):
         idx = tuple(np.random.randint(0, s, self.n) for s in space.shape)
         data = np.zeros(space.shape, dtype=space.dtype)
-        np.add.at(data, idx, self.fluors_per_bead)
+        np.add.at(data, idx, self.fluors_per_point)
         return space + data
 
 
-sample = [ms.FluorophoreDistribution(distribution=Beads(), fluorophore="mCherry")]
+sample = [
+    ms.FluorophoreDistribution(distribution=PointSources(), fluorophore="mCherry")
+]
 ```
+
+Each emitter here occupies a single voxel of the truth space, so it is a true
+point source, much smaller than the PSF. Fluorescent beads are often 100 nm or
+larger, not much smaller than the PSF; to simulate those, fill a sphere of
+voxels for each bead instead (as with the shells in the
+[own ground truth tutorial](../tutorials/your-own-ground-truth.md)).
 
 `np.random` is seeded from
 [`Settings.random_seed`](settings.md#reproducibility) before rendering, so this
@@ -179,8 +187,10 @@ coefficient, quantum yield, and lifetime are then loaded from
 ms.FluorophoreDistribution(distribution=..., fluorophore="mNeonGreen")
 ```
 
-Any fluorescent protein or dye on FPbase with spectra can be used. This needs
-network access the first time.
+Any fluorescent protein or dye on FPbase with spectra can be used. The name
+must match the name FPbase displays (case doesn't matter, but other spellings
+don't work: `"Alexa Fluor 488"`, not `"AF488"`); the error message suggests the
+closest match. This needs network access the first time.
 
 To define a fluorophore yourself, give its spectra and photophysical
 properties:
@@ -231,11 +241,25 @@ def patchy(truth):
 ms.FluorophoreDistribution(distribution=..., fluorophore="EGFP", concentration=patchy)
 ```
 
-Distributions such as `MatsLines` and `CosemLabel` put one fluorophore in each
-labeled voxel. Brightness depends strongly on voxel size: a 10 nm voxel with
-one fluorophore is a very sparse label, while real labeled structures can carry
-hundreds to thousands of fluorophores per cubic micrometer. Use
-`concentration` to bring the labeling density in line with your experiment.
+What the values of a distribution mean depends on the distribution:
+
+- `MatsLines` puts one fluorophore in each voxel of a line (more where lines
+  cross).
+- `CosemLabel` with a segmentation layer (names ending in `_seg`) gives the
+  number of labeled 4 nm source voxels inside each truth voxel: up to 4096 in
+  a 64 nm voxel. With a prediction layer (names ending in `_pred`), it gives
+  the stored 8-bit prediction score (0–255) at the matching resolution level.
+  Neither is a number of fluorophores.
+
+So the brightness of a simulation depends strongly on the distribution and the
+voxel size, and `concentration` is how you bring the labeling density in line
+with your experiment. For scale: an EGFP molecule is a barrel about 4.2 nm long
+and 2.4 nm wide
+([Yang, Moss & Phillips 1996](https://doi.org/10.1038/nbt1096-1246)), about
+19 nm³. Even a 10 nm voxel (1000 nm³) could hold only about 50 of them packed
+solid, and a 64 nm voxel about 14,000. Real labeled structures are much
+sparser than that: often hundreds to thousands of fluorophores per cubic
+micrometer.
 
 ## Caching
 

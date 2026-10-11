@@ -55,7 +55,7 @@ export default async function (el) {
     detector: detectors[0].name,
     power: 1, // W/cm^2
     na: 1.4,
-    ns: 1.47,
+    ns: 1.47, // ObjectiveLens.specimen_ri default
     exposure: 100, // ms
   };
   const redraw = () => chart.redraw();
@@ -102,15 +102,6 @@ export default async function (el) {
     value: state.na,
     format: (v) => v.toFixed(2),
     onInput: (v) => ((state.na = v), redraw()),
-  });
-  slider(row2, {
-    label: "Specimen RI",
-    min: 1.33,
-    max: 1.52,
-    step: 0.01,
-    value: state.ns,
-    format: (v) => v.toFixed(2),
-    onInput: (v) => ((state.ns = v), redraw()),
   });
   slider(row2, {
     label: "Exposure",

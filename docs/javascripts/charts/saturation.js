@@ -18,10 +18,10 @@ import {
 import { loadPhotometry } from "./photometry-data.js";
 
 const POWERS = Array.from({ length: 181 }, (_, i) => 10 ** (-1 + i / 20)); // 0.1 to 1e8
-// typical irradiance, as in the photon budget caption (docs/guide/photometry.md)
+// typical irradiance (see the table in docs/guide/channels.md)
 const RANGES = [
   { label: "widefield", x1: 0.1, x2: 10 },
-  { label: "confocal spot", x1: 1e3, x2: 1e5 },
+  { label: "confocal spot", x1: 1e4, x2: 1e6 },
 ];
 const tick = (x) => (x < 1 ? `${x}` : fmt.si(x));
 
@@ -75,7 +75,7 @@ export default async function (el) {
     setHalf(`${fmt.si(pHalf)}<small> W/cm²</small>`);
     setMax(`${fmt.si(qy / tau)}<small> photons/s</small>`);
 
-    const yMax = Math.max(...rows.map((r) => r.saturated)) * 2;
+    const yMax = 1e9;
     const svg = Plot.plot({
       ...baseOptions(width),
       height: Math.max(220, Math.min(300, width * 0.38)),

@@ -546,3 +546,60 @@
 .ms-legend__note {
   margin-right: auto;
 }
+
+/* --- 2 x 2 matrix (crosstalk) -------------------------------------------- */
+
+.md-typeset table.ms-matrix {
+  display: table;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  font-size: 0.66rem;
+  border-collapse: separate;
+  border-spacing: 0.4rem;
+  background: none;
+}
+
+.md-typeset table.ms-matrix caption {
+  caption-side: top;
+  text-align: left;
+  font-size: 0.6rem;
+  color: var(--ms-ink-muted);
+  padding: 0 0.4rem;
+}
+
+.md-typeset table.ms-matrix th {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--ms-ink-muted);
+  background: none;
+  border: 0;
+  padding: 0.2rem 0.4rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.md-typeset table.ms-matrix td {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--ms-card-border);
+  border-radius: 8px;
+  background: var(--ms-surface);
+}
+
+.md-typeset table.ms-matrix td.ms-matrix__cross {
+  border-color: var(--ms-c2);
+  border-style: dashed;
+}
+
+.ms-matrix__value {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ms-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ms-matrix__share {
+  font-size: 0.58rem;
+  color: var(--ms-ink-muted);
+}

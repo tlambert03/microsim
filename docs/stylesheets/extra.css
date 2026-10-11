@@ -60,6 +60,11 @@
   text-align: left;
 }
 
+/* code in the first column of a prose table (parameter names) doesn't wrap */
+.md-typeset table:not([class]) td:first-child > code {
+  white-space: nowrap;
+}
+
 /* matplotlib output with a white background (tutorial pages) */
 .md-typeset img.plot {
   background: #fff;
@@ -119,9 +124,43 @@
   font-weight: 600;
 }
 
-/* field tables: keep the "default" column compact */
-.md-typeset .doc-param-default code {
-  white-space: nowrap;
+/* parameter tables: fit the content width.  Types wrap between the `|` of a
+   union, not inside names; long defaults (reprs of default factories) wrap
+   anywhere and are clamped to three lines. */
+.md-typeset .doc-contents .md-typeset__scrollwrap {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.md-typeset .doc-contents .md-typeset__table {
+  display: block;
+  width: 100%;
+  padding: 0;
+}
+
+.md-typeset .doc-contents .md-typeset__table table {
+  display: table;
+  width: 100%;
+  max-width: 100%;
+}
+
+.md-typeset .doc-contents td code {
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.md-typeset .doc-contents table:not([class]) td:first-child > code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.md-typeset .doc-contents td:nth-child(4):last-child code {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
 /* external links get a small arrow */

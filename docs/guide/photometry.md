@@ -12,10 +12,13 @@ before anything spatial is computed.
 <div class="ms-chart" data-chart="photon-budget"></div>
 /// caption
 Photons absorbed, emitted, and detected per second by one molecule, calculated
-as microsim does. With the defaults (EGFP, FITC channel, 1 W/cm², 1.4 NA, no
-detector QE), one molecule gives about 6 photons in a 100 ms exposure. Typical
-widefield irradiance is 0.1–10 W/cm²; the peak irradiance of a confocal spot
-is 10³–10⁵ W/cm². Fluorophores without a known lifetime do not saturate.
+as microsim does, for a specimen refractive index of 1.47 (the
+`ObjectiveLens` default). With the defaults (EGFP, FITC channel, 1 W/cm²,
+1.4 NA, no detector QE), one molecule gives about 6 photons in a 100 ms
+exposure. Typical widefield irradiance is 0.1–10 W/cm²; the peak irradiance of
+a confocal spot is 1–1000 kW/cm² and above
+([Channels](channels.md#illumination-power)). Fluorophores without a known
+lifetime do not saturate.
 ///
 
 ## In short

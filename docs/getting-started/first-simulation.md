@@ -56,8 +56,8 @@ Everything not given has a default value. In this case:
 
 !!! tip "Dictionaries work too"
 
-    Any parameter can be given as a dictionary (or loaded from JSON) instead
-    of an object. These are equivalent:
+    As usual with pydantic models, any parameter can be given as a dictionary
+    (or loaded from JSON) instead of an object. These are equivalent:
 
     ```python
     output_space = ms.DownscaledSpace(downscale=8)
@@ -70,8 +70,8 @@ Everything not given has a default value. In this case:
 
 ## Look at each stage
 
-`run()` is shorthand for the last of four methods. Each one can be called
-separately, and each returns an [`xarray.DataArray`][xarray.DataArray] with
+`run()` computes four stages in order and returns the last one. Each stage
+also has its own method, and each returns an [`xarray.DataArray`][xarray.DataArray] with
 named dimensions and physical coordinates (µm):
 
 | Method                                                                         | Dimensions          | Units                       |
@@ -144,7 +144,8 @@ with a 0.5 AU pinhole. Each panel is scaled to its own range.
 
 ## Reproducibility
 
-The random lines and the noise come from a random number generator. To get the
+The random lines in the sample and the noise come from a random number
+generator. To get the
 same result every time, set a seed:
 
 ```py

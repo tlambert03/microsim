@@ -185,11 +185,23 @@ CHART_FLUOROPHORES = [
     "Alexa Fluor 488",
     "mVenus",
     "tdTomato",
+    "mRFP1",
     "mScarlet-I",
     "Alexa Fluor 568",
     "mCherry",
     "Alexa Fluor 647",
 ]
+
+
+# FITC with a longpass emission filter: collects more green, and more crosstalk
+FITC_LP = ms.OpticalConfig(
+    name="FITC, 500 LP emission",
+    filters=[
+        ms.Bandpass(bandcenter=470, bandwidth=40, placement="EX"),
+        ms.Longpass(cuton=495, placement="BS"),
+        ms.Longpass(cuton=500, placement="EM"),
+    ],
+)
 
 
 def _filter_label(f: ms.Filter) -> str:
@@ -220,6 +232,7 @@ def photometry_data() -> None:
         )
     configs = [
         *(getattr(oc_lib, n) for n in ["DAPI", "ECFP", "FITC", "EYFP", "TRITC"]),
+        FITC_LP,
         *(getattr(oc_lib, n) for n in ["DSRED", "CY5", "CY7"]),
         *(
             ms.OpticalConfig.from_fpbase(microscope_id="wKqWbg", config_name=n)
@@ -422,6 +435,75 @@ def pinhole_data() -> None:
             "psfs": entries,
         },
     )
+
+
+@figure
+def crosstalk() -> None:
+    """EGFP (ER) and tdTomato (mito) in a bandpass and a longpass green channel."""
+    sim = ms.Simulation(
+        truth_space=ms.ShapeScaleSpace(shape=(64, 512, 512), scale=0.064),
+        sample=[
+            ms.FluorophoreDistribution(
+                distribution=ms.CosemLabel(dataset="jrc_hela-3", label="er-mem_pred"),
+                fluorophore="EGFP",
+            ),
+            ms.FluorophoreDistribution(
+                distribution=ms.CosemLabel(dataset="jrc_hela-3", label="mito-mem_pred"),
+                fluorophore="tdTomato",
+            ),
+        ],
+        channels=[oc_lib.FITC, FITC_LP],
+        settings=ms.Settings(random_seed=0),
+    )
+    per_fluor = _np(sim.optical_image_per_fluor())  # (c, f, z, y, x)
+    z = 18
+    fig, axes = plt.subplots(2, 3, figsize=(11, 7.7), gridspec_kw={"hspace": 0.12})
+    for row, oc in enumerate(sim.channels):
+        totals = per_fluor[row].sum(axis=(1, 2, 3))
+        share = totals / totals.sum()
+        panels = [
+            (per_fluor[row, 0, z], f"from EGFP (ER): {share[0]:.1%}"),
+            (per_fluor[row, 1, z], f"from tdTomato (mito): {share[1]:.1%}"),
+            (per_fluor[row, :, z].sum(axis=0), f"{oc.name}: recorded"),
+        ]
+        # one display range per row, so each panel shows its true share
+        vmax = np.percentile(panels[2][0], 99.8)
+        for ax, (img, title) in zip(axes[row], panels, strict=True):
+            ax.imshow(img, cmap="gray", vmin=0, vmax=vmax)
+            image_axes(ax, title)
+    save(fig, OUT / "crosstalk.png")
+
+
+def _save_plain(fig: plt.Figure, name: str) -> None:
+    """Save a figure made by microsim's own plotting functions (white background)."""
+    path = OUT / name
+    fig.savefig(path, dpi=100, bbox_inches="tight")
+    plt.close(fig)
+    print("wrote", path.relative_to(DOCS.parent))
+
+
+@figure
+def spectra_plots() -> None:
+    """The output of the plotting methods on the channels page."""
+    oc = ms.OpticalConfig.from_fpbase("wKqWbg", "Widefield Green")
+    oc.plot(show=False)
+    _save_plain(plt.gcf(), "plot-config.png")
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 3.2))
+    oc.plot_excitation(ax=axes[0])
+    oc.plot_emission(ax=axes[1])
+    _save_plain(fig, "plot-paths.png")
+
+    sim = ms.Simulation(
+        truth_space=ms.ShapeScaleSpace(shape=(8, 64, 64), scale=0.05),
+        sample=[
+            ms.FluorophoreDistribution(distribution=ms.MatsLines(), fluorophore=f)
+            for f in ("EGFP", "mCherry")
+        ],
+        channels=[oc_lib.FITC, oc_lib.TRITC],
+    )
+    sim.plot()
+    _save_plain(plt.gcf(), "plot-simulation.png")
 
 
 @figure

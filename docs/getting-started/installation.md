@@ -4,8 +4,6 @@ icon: lucide/download
 
 # Installation
 
-microsim requires Python 3.12 or later.
-
 ## From PyPI
 
 ```bash

@@ -30,8 +30,9 @@ and the emission that passes the emission path. Hover for values.
 ## Built-in filter sets
 
 [`microsim.schema.optical_config.lib`][microsim.schema.optical_config.lib]
-has models of common Chroma ET filter sets, built from ideal bandpass and
-longpass filters:
+has idealized versions of common filter sets, built from smooth bandpass and
+longpass edges. They are not models of real filters, and are meant for quick
+simulations; for real filters, load them from FPbase (below).
 
 | Name    | Excitation  | Dichroic | Emission   |
 | ------- | ----------- | -------- | ---------- |
@@ -48,9 +49,12 @@ Bandpass filters are written as center/width in nm.
 
 ## Filter sets from FPbase
 
-[FPbase](https://www.fpbase.org/microscopes) has measured spectra for many
-microscopes and commercial filter sets. Load an optical configuration with a
-string of the form `"<microscope id>::<config name>"`:
+FPbase lets you
+[enter the optical configurations of your own microscope](https://www.fpbase.org/microscope/create/),
+with measured spectra of its light sources, filters, and detectors, and has
+[many microscopes](https://www.fpbase.org/microscopes/) entered by others.
+These configurations can be loaded in microsim with a string of the form
+`"<microscope id>::<config name>"`:
 
 ```py
 sim = ms.Simulation(..., channels=["wKqWbg::Widefield Green"])
@@ -59,7 +63,7 @@ ms.OpticalConfig.from_fpbase("wKqWbg", "Widefield Green")
 ```
 
 The microscope ID is in the URL of its FPbase page, e.g.
-`fpbase.org/microscope/wKqWbgApvguSNDSRZNSfpN/` (the first few characters are
+[`fpbase.org/microscope/wKqWbgApvguSNDSRZNSfpN/`](https://www.fpbase.org/microscope/wKqWbgApvguSNDSRZNSfpN/) (the first few characters are
 enough). Configuration names are not case-sensitive. Some FPbase microscopes
 with filter catalogs:
 
@@ -95,8 +99,8 @@ ms.OpticalConfig(
 
 | `placement` | Excitation path         | Emission path           | Typical use                    |
 | ----------- | ----------------------- | ----------------------- | ------------------------------ |
-| `"EX"`      | transmission            | —                       | excitation filter              |
-| `"EM"`      | —                       | transmission            | emission filter                |
+| `"EX"`      | transmission            | (not used)              | excitation filter              |
+| `"EM"`      | (not used)              | transmission            | emission filter                |
 | `"BS"`      | 1 − transmission        | transmission            | dichroic that reflects excitation |
 | `"BSi"`     | transmission            | 1 − transmission        | dichroic that reflects emission |
 | `"ALL"`     | transmission            | transmission            | e.g. a neutral density filter  |
@@ -132,7 +136,7 @@ Rough orders of magnitude for the irradiance at the sample:
 | ----------------------------------- | ----------------------- |
 | widefield, arc lamp or LED          | 0.1–10 W/cm²            |
 | widefield, laser                    | 10–1000 W/cm²           |
-| point-scanning confocal, at focus   | 1–100 kW/cm² and above  |
+| point-scanning confocal, at focus   | 1–1000 kW/cm² and above |
 
 For point-scanning modalities, `power` is the peak irradiance at the center of
 the focused spot. See [Modalities](modalities.md#confocal).
@@ -158,33 +162,89 @@ channels = [
 ## Bleedthrough and cross-excitation
 
 microsim computes every fluorophore in every channel, so crosstalk needs no
-extra setup. A fluorophore excited by another channel's light, or whose
-emission tail passes another channel's filter, appears in that channel in
-proportion to the overlap of the spectra.
+extra setup. A fluorophore excited by another channel's light
+(**cross-excitation**), or whose emission passes another channel's filter
+(**bleedthrough**), appears in that channel in proportion to the overlap of the
+spectra.
 
-To see where the signal in each channel comes from, use
+<div class="ms-chart" data-chart="crosstalk"></div>
+/// caption
+Detected photons per molecule for two fluorophores in two channels. Dashed
+cells are crosstalk: the fluorophore gives less than half of that channel's
+signal. tdTomato absorbs only weakly in the FITC excitation band, but it is
+bright, and a 500 nm longpass emission filter passes nearly all of its
+emission: per molecule, it gives almost as much signal in the green channel as
+EGFP. With the 525/50 bandpass emission filter of `FITC`, its share drops below
+1%. Select `FITC` as channel 1 to compare.
+///
+
+To see where the signal in each channel comes from in an image, use
 [`optical_image_per_fluor()`][microsim.Simulation.optical_image_per_fluor],
 which keeps the fluorophore dimension:
 
 ```py
+sim = ms.Simulation(
+    truth_space=ms.ShapeScaleSpace(shape=(64, 512, 512), scale=0.064),
+    sample=[
+        ms.FluorophoreDistribution(
+            distribution=ms.CosemLabel(dataset="jrc_hela-3", label="er-mem_pred"),
+            fluorophore="EGFP",
+        ),
+        ms.FluorophoreDistribution(
+            distribution=ms.CosemLabel(dataset="jrc_hela-3", label="mito-mem_pred"),
+            fluorophore="tdTomato",
+        ),
+    ],
+    channels=[lib.FITC, fitc_longpass],  # (1)!
+)
 per_fluor = sim.optical_image_per_fluor()  # (c, f, z, y, x)
 per_fluor.sum(["z", "y", "x"])  # total photons/s from each fluorophore in each channel
 ```
 
+1.  `fitc_longpass` is `lib.FITC` with its emission filter replaced by
+    `ms.Longpass(cuton=500, placement="EM")`.
+
+![EGFP and tdTomato in two green channels](../images/generated/crosstalk.png)
+/// caption
+A HeLa cell with EGFP on the ER and tdTomato on the mitochondria, recorded in
+the green channel with a 525/50 bandpass (top) and a 500 nm longpass (bottom)
+emission filter. Each row has one display range, so each panel shows its true
+contribution. With the longpass filter, the mitochondria appear in the green
+channel.
+///
+
 ## Plotting spectra
 
-These need the `view` extra:
+These need the `view` extra. For one channel:
 
 ```py
-lib.FITC.plot()  # all filter spectra of one channel
-lib.FITC.plot_excitation()  # excitation path, with the combined photon flux
-lib.FITC.plot_emission()  # emission path, with the combined transmission
-sim.plot()  # summary of every fluorophore in every channel
+oc = ms.OpticalConfig.from_fpbase("wKqWbg", "Widefield Green")
+oc.plot()  # all filter spectra
 ```
 
-[`Simulation.plot()`][microsim.Simulation.plot] shows, for each channel:
-absorption spectra, the excitation path, absorption and emission rates, the
-emission path, and the photons collected from each fluorophore.
+![Output of OpticalConfig.plot](../images/generated/plot-config.png){ .plot }
+
+```py
+fig, axes = plt.subplots(1, 2, figsize=(12, 3.2))
+oc.plot_excitation(
+    ax=axes[0]
+)  # light source and excitation filters, and the photon flux
+oc.plot_emission(ax=axes[1])  # emission filters, and their combined transmission
+```
+
+![Output of plot_excitation and plot_emission](../images/generated/plot-paths.png){ .plot }
+
+For a whole simulation, [`Simulation.plot()`][microsim.Simulation.plot] shows,
+for each channel (columns): the absorption cross sections, the excitation
+path, the absorption rates (with the emission spectra, dashed), the emission
+path, and the photons collected from each fluorophore. Here EGFP and mCherry
+in the `FITC` and `TRITC` channels:
+
+```py
+sim.plot()
+```
+
+![Output of Simulation.plot](../images/generated/plot-simulation.png){ .plot }
 
 ## Spectral detection
 
