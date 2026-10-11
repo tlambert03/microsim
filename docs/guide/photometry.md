@@ -9,13 +9,13 @@ emits and how many of them reach the detector. These calculations happen in
 [`filtered_emission_rates()`][microsim.Simulation.filtered_emission_rates],
 before anything spatial is computed.
 
-![Absorbed, emitted, filtered, and collected photons for EGFP in the FITC channel](../images/generated/photon-budget-light.png#only-light)
-![Absorbed, emitted, filtered, and collected photons for EGFP in the FITC channel](../images/generated/photon-budget-dark.png#only-dark)
+<div class="ms-chart" data-chart="photon-budget"></div>
 /// caption
-One EGFP molecule in the FITC channel at the default irradiance of 1 W/cm²,
-with no detector (QE = 1). Of 392 photons absorbed per second, 235 are emitted
-(quantum yield 0.6), 166 fall within the emission filter, and 58 enter a 1.4 NA
-objective. In a 100 ms exposure, that is about 6 photons.
+Photons absorbed, emitted, and detected per second by one molecule, calculated
+as microsim does. With the defaults (EGFP, FITC channel, 1 W/cm², 1.4 NA, no
+detector QE), one molecule gives about 6 photons in a 100 ms exposure. Typical
+widefield irradiance is 0.1–10 W/cm²; the peak irradiance of a confocal spot
+is 10³–10⁵ W/cm². Fluorophores without a known lifetime do not saturate.
 ///
 
 ## In short
@@ -149,6 +149,13 @@ The product \(s = k\tau\) is the saturation parameter
 ([`OpticalConfig.saturation_parameter`][microsim.schema.OpticalConfig.saturation_parameter]).
 When \(s \ll 1\), emission is proportional to irradiance. At \(s = 1\) it is
 half of what a linear response would give.
+
+<div class="ms-chart" data-chart="saturation"></div>
+/// caption
+Emission rate of one molecule against irradiance, uniform over the molecule as
+in widefield. The rate approaches \(\phi / \tau\), one photon per lifetime
+times the quantum yield.
+///
 
 How saturation is applied depends on the modality:
 

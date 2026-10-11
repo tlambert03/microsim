@@ -1,6 +1,7 @@
 // Channels page: a fluorophore's spectra against a channel's excitation light and
 // emission path, with the parts that get through shaded.
 import * as P from "../physics/photometry.js";
+import { loadPhotometry } from "./photometry-data.js";
 import {
   C,
   Plot,
@@ -10,7 +11,6 @@ import {
   d3,
   fmt,
   legendItem,
-  loadData,
   responsive,
   select,
   shell,
@@ -23,30 +23,6 @@ import {
 } from "./lib.js";
 
 const DOMAIN = [350, 800];
-
-export function prepare(data) {
-  const fluors = data.fluorophores.map((f) => ({
-    ...f,
-    ex: P.decodeSpectrum(f.ex),
-    em: P.decodeSpectrum(f.em),
-  }));
-  const channels = data.channels.map((c) => {
-    const filters = c.filters.map((f) => ({ ...f, spectrum: P.decodeSpectrum(f.spectrum) }));
-    const lights = c.lights.map((l) => ({ ...l, spectrum: P.decodeSpectrum(l.spectrum) }));
-    return {
-      name: c.name,
-      filters,
-      lights,
-      illumination: P.illumination(lights, P.excitationPath(filters)),
-      emission: P.emissionPath(filters),
-    };
-  });
-  const detectors = data.detectors.map((d) => ({
-    ...d,
-    qe: typeof d.qe === "number" ? d.qe : P.decodeSpectrum(d.qe),
-  }));
-  return { fluors, channels, detectors };
-}
 
 const peakNormalized = (s) => P.scale(s, 1 / Math.max(...s.v));
 const toRows = (s) => s.w.map((w, i) => ({ w, v: s.v[i] }));
@@ -72,7 +48,7 @@ function emissionFraction(channel, fluor) {
 }
 
 export default async function (el) {
-  const { fluors, channels } = prepare(await loadData("photometry"));
+  const { fluors, channels } = await loadPhotometry();
   const ui = shell(el);
   const state = {
     fluor: el.dataset.fluor ?? "EGFP",

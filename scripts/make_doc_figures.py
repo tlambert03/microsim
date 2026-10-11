@@ -211,41 +211,6 @@ def pipeline() -> None:
     save(fig, OUT / "spaces-crop.png")
 
 
-@figure
-def photon_budget() -> None:
-    """Absorption, emission, and filtered emission rates for EGFP in FITC."""
-    egfp = ms.Fluorophore.from_fpbase("EGFP")
-    fitc = oc_lib.FITC
-    obj = ms.ObjectiveLens(numerical_aperture=1.4)
-    absr = fitc.absorption_rate(egfp).squeeze()
-    emr = fitc.total_emission_rate(egfp).squeeze()
-    filt = fitc.filtered_emission_rate(egfp).squeeze()
-    coll = filt * obj.collection_efficiency
-    for t in themed("photon-budget"):
-        fig, ax = plt.subplots(figsize=(8, 3.4))
-        s = t["series"]
-        rows = [
-            (absr, s[0], "absorbed"),
-            (emr, s[1], "emitted"),
-            (filt, s[2], "passes emission filters"),
-            (coll, s[4], "collected by a 1.4 NA objective"),
-        ]
-        for da, color, label in rows:
-            w = da.coords["w"].values
-            ax.plot(w, da.values, color=color, label=f"{label}: {float(da.sum()):.0f}")
-        ax.set_xlim(400, 650)
-        ax.set_xlabel("wavelength (nm)")
-        ax.set_ylabel("photons / s / nm")
-        ax.legend(
-            title="per EGFP molecule, total photons/s",
-            alignment="left",
-            fontsize=9,
-            title_fontsize=9,
-            loc="upper right",
-        )
-        save(fig, t["path"])
-
-
 # offered in the interactive spectra and photon budget charts, blue to far red
 CHART_FLUOROPHORES = [
     "DAPI",
