@@ -1,8 +1,10 @@
 import time
 import warnings
+from collections import OrderedDict
+from collections.abc import Iterable, Iterator, Mapping
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import TYPE_CHECKING, Annotated, Any
 
 import numpy as np
 import pandas as pd
@@ -21,7 +23,7 @@ from .lens import ObjectiveLens
 from .modality import Modality, Widefield
 from .optical_config import OpticalConfig, Placement
 from .optical_config.lib import FITC
-from .sample import FluorophoreDistribution, Sample
+from .sample import Fluorophore, FluorophoreDistribution, Sample
 from .settings import Settings
 from .space import ShapeScaleSpace, Space, _RelativeSpace
 from .spectrum import Spectrum
@@ -49,6 +51,10 @@ def _check_extensions(path: Path) -> Path:
 
 OutPath = Annotated[Path, AfterValidator(_check_extensions)]
 xr.set_options(keep_attrs=True)  # type: ignore [no-untyped-call]
+
+# LRU cache of `Simulation.filtered_emission_rates` results (small C x F x W arrays)
+_RATES_CACHE: OrderedDict[tuple, xr.DataArray] = OrderedDict()
+_RATES_CACHE_SIZE = 32
 
 
 class Simulation(SimBaseModel):
@@ -129,6 +135,39 @@ class Simulation(SimBaseModel):
             self.output_space.reference = self.truth_space
         return self
 
+    def __setattr__(self, name: str, value: Any) -> None:
+        super().__setattr__(name, value)
+        if name in type(self).model_fields:
+            # any field may affect the ground truth (sample, spaces, settings...)
+            vars(self).pop("_ground_truth", None)
+
+    if not TYPE_CHECKING:
+
+        def model_copy(
+            self, *, update: Mapping[str, Any] | None = None, deep: bool = False
+        ) -> "Self":
+            """Copy the simulation, applying (and validating) any `update` fields.
+
+            Unlike pydantic's default, the updated simulation is validated as a
+            whole (so relative spaces are re-resolved), and the cached ground truth
+            is dropped.
+            """
+            copied = super().model_copy(deep=deep)
+            # `_resolve_spaces` sets the `reference` of a relative space, which a
+            # shallow copy shares with `self`: give the copy its own.
+            for name in ("truth_space", "output_space"):
+                if isinstance(space := getattr(copied, name), _RelativeSpace):
+                    vars(copied)[name] = space.model_copy()
+            if not update:
+                return copied
+
+            # validate all fields at once (not one at a time), since intermediate
+            # states may be invalid (e.g. swapping which space is relative)
+            fields = {name: getattr(copied, name) for name in type(self).model_fields}
+            new = type(self).model_validate({**fields, **update})
+            new.__pydantic_fields_set__ = copied.model_fields_set | set(update)
+            return new
+
     @property
     def _xp(self) -> "NumpyAPI":
         return self.settings.backend_module()
@@ -206,27 +245,55 @@ class Simulation(SimBaseModel):
         >>> rates.isel(c=0).plot.line(x='w') # plot emission of all fluors in channel 0
         >>> plt.show()
         """
-        qe = self.detector.qe if self.detector else None
         fluors = list({lbl.fluorophore: None for lbl in self.sample.labels})
+        key = self._rates_cache_key(fluors)
+        if key is not None and (cached := _RATES_CACHE.get(key)) is not None:
+            _RATES_CACHE.move_to_end(key)
+            # use this simulation's own (equal) channel and fluorophore objects
+            return cached.copy().assign_coords({Axis.C: self.channels, Axis.F: fluors})
+
         # point-scanning modalities apply saturation spatially, in the PSF
         sat = not self.modality.point_scanning
+        # fraction of isotropic emission entering the objective. PSFs are normalized
+        # to collected light, so this is not double-counted (see `make_confocal_psf`)
+        collection = self.objective_lens.collection_efficiency
+        qe = self.detector.qe if self.detector else None
         nested_rates: list[list[xr.DataArray]] = [
             [oc.filtered_emission_rate(f, detector_qe=qe, saturate=sat) for f in fluors]
             for oc in self.channels
         ]
-        # fraction of isotropic emission entering the objective. PSFs are normalized
-        # to collected light, so this is not double-counted (see `make_confocal_psf`)
-        collection = self.objective_lens.collection_efficiency
 
         # combine xarray objects along the C and F axes, with outer join on W
-        rates = xr.combine_nested(
+        rates: xr.DataArray = xr.combine_nested(  # type: ignore [assignment]
             nested_rates,
             concat_dim=[Axis.C, Axis.F],
             combine_attrs="override",
             join="outer",
             fill_value=0,
         ).transpose(Axis.C, Axis.F, Axis.W)
-        return rates * collection  # type: ignore [return-value]
+        rates = rates * collection
+        if key is not None:
+            _RATES_CACHE[key] = rates.copy()
+            if len(_RATES_CACHE) > _RATES_CACHE_SIZE:
+                _RATES_CACHE.popitem(last=False)
+        return rates
+
+    def _rates_cache_key(self, fluors: list[Fluorophore]) -> tuple | None:
+        """Key identifying `filtered_emission_rates` output, or None if unhashable.
+
+        The rates depend only on the optics and fluorophores (not on where the
+        fluorophores are), so they can be reused across simulations.
+        """
+        try:
+            return (
+                tuple(oc.model_dump_json() for oc in self.channels),
+                tuple(f.model_dump_json() for f in fluors),
+                self.detector.model_dump_json(include={"qe"}) if self.detector else "",
+                self.modality.point_scanning,
+                self.objective_lens.collection_efficiency,
+            )
+        except PydanticSerializationError:
+            return None
 
     def emission_flux(self) -> xr.DataArray:
         """Return the spatial emission in photons per second (after emission filters).
@@ -255,7 +322,9 @@ class Simulation(SimBaseModel):
             return truth
 
         # total photons/s emitted by each fluorophore in each channel
-        total_flux = self.filtered_emission_rates().sum(Axis.W) * truth
+        em_rates = self.filtered_emission_rates().sum(Axis.W)
+        em_rates = em_rates.copy(data=self._xp.asarray(em_rates.data))
+        total_flux = em_rates * truth
         total_flux.attrs.update(units="photon/sec", long_name="Emission Flux")
 
         # (C, F, Z, Y, X)
@@ -364,6 +433,34 @@ class Simulation(SimBaseModel):
         """
         self._write(image := self.digital_image())
         return image
+
+    def run_batch(self, samples: Iterable[Sample]) -> Iterator[xr.DataArray]:
+        """Run this simulation once per sample, yielding each result.
+
+        Everything but the sample is shared, so PSFs and emission rates are computed
+        once and reused (see `Settings.cache.in_mem_size`).  Each sample gets its own
+        random seed (derived from `settings.random_seed`, so batches are
+        reproducible), and if `output_path` is set, result `i` is written to
+        `<stem>_<i>.<suffix>`.
+
+        Examples
+        --------
+        >>> images = list(sim.run_batch(samples))
+        >>> stacked = xr.concat(images, dim="s")  # if all samples share a shape
+        """
+        seeds = np.random.SeedSequence(self.settings.random_seed)
+        for i, sample in enumerate(samples):
+            seed = None
+            if self.settings.random_seed is not None:
+                seed = int(seeds.spawn(1)[0].generate_state(1)[0])
+            update: dict[str, Any] = {
+                "sample": sample,
+                "settings": self.settings.model_copy(update={"random_seed": seed}),
+            }
+            if self.output_path is not None:
+                stem = f"{self.output_path.stem}_{i}"
+                update["output_path"] = self.output_path.with_stem(stem)
+            yield self.model_copy(update=update).run()
 
     def _truth_cache_path(
         self,

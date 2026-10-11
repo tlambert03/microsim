@@ -8,6 +8,9 @@ import pytest
 from pydantic import ValidationError
 
 import microsim.schema as ms
+from microsim.fft import convolve
+from microsim.schema import simulation
+from microsim.schema.dimensions import Axis
 from microsim.schema.optical_config.lib import FITC
 
 MATSLINES = ms.MatsLines(density=0.4, length=30, azimuth=5, max_r=1)
@@ -166,3 +169,142 @@ def test_simulation_write_from_ground_truth(tmp_path: Path) -> None:
     )
     sim.run()
     assert (tmp_path / "output.zarr").exists()
+
+
+def test_reused_caches_across_simulations() -> None:
+    """Simulations with the same optics reuse PSF transforms and emission rates."""
+    convolve._KERNEL_FT_CACHE.clear()
+    simulation._RATES_CACHE.clear()
+
+    def _sim(seed: int) -> ms.Simulation:
+        return ms.Simulation(
+            truth_space=ms.ShapeScaleSpace(
+                shape=(16, 32, 32), scale=(0.04, 0.02, 0.02)
+            ),
+            sample=ms.Sample(labels=[GREEN_MATSLINES]),
+            objective_lens=NA1_4,
+            channels=[FITC],
+            settings=ms.Settings(random_seed=seed, cache=False),
+        )
+
+    sim_a, sim_b = _sim(1), _sim(2)
+    img_a = sim_a.optical_image()
+    assert len(convolve._KERNEL_FT_CACHE) == 1
+    assert len(simulation._RATES_CACHE) == 1
+
+    # the second simulation hits both caches...
+    img_b = sim_b.optical_image()
+    assert len(convolve._KERNEL_FT_CACHE) == 1
+    assert len(simulation._RATES_CACHE) == 1
+    # ... but with its own coordinate objects, and its own (different) sample
+    rates_b = sim_b.filtered_emission_rates()
+    assert rates_b.coords[Axis.C].values[0] is sim_b.channels[0]
+    assert not np.allclose(img_a, img_b)
+    # mutating a returned (cached) result doesn't corrupt the cache
+    rates_b *= 0
+    assert _sim(3).filtered_emission_rates().sum() > 0
+
+    # and the result is the same as without the caches
+    convolve._KERNEL_FT_CACHE.clear()
+    simulation._RATES_CACHE.clear()
+    np.testing.assert_allclose(_sim(2).optical_image(), img_b, rtol=1e-6)
+
+
+def test_psf_cache_respects_float_dtype() -> None:
+    """PSFs cached by a float64 simulation are not reused by a float32 one."""
+
+    def _sim(dtype: str) -> ms.Simulation:
+        return ms.Simulation(
+            truth_space=ms.ShapeScaleSpace(shape=(8, 16, 16), scale=(0.04, 0.02, 0.02)),
+            sample=ms.Sample(labels=[GREEN_MATSLINES]),
+            settings=ms.Settings(float_dtype=dtype, cache=False),
+        )
+
+    assert _sim("float64").optical_image().dtype == np.float64
+    assert _sim("float32").optical_image().dtype == np.float32
+
+
+def test_run_batch(tmp_path: Path) -> None:
+    sim = ms.Simulation(
+        truth_space=ms.ShapeScaleSpace(shape=(8, 16, 16), scale=(0.04, 0.02, 0.02)),
+        output_space={"downscale": 2},
+        sample=ms.Sample(labels=[GREEN_MATSLINES]),
+        settings=ms.Settings(random_seed=1, cache=False),
+        output_path=tmp_path / "out.zarr",
+    )
+    sim.run()  # populates (and must not leak) the template's ground truth
+    samples = [ms.Sample(labels=[GREEN_MATSLINES]) for _ in range(3)]
+    images = list(sim.run_batch(samples))
+
+    assert len(images) == 3
+    # same sample definition, but each gets its own seed -> different images
+    assert not np.allclose(images[0], images[1])
+    assert not np.allclose(images[0], sim.run())
+    # reproducible
+    for a, b in zip(images, sim.run_batch(samples), strict=True):
+        np.testing.assert_array_equal(a, b)
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "out.zarr",
+        "out_0.zarr",
+        "out_1.zarr",
+        "out_2.zarr",
+    ]
+
+
+def test_changing_fields_resets_ground_truth() -> None:
+    """model_copy(update=...) and field assignment don't reuse stale state."""
+
+    def _sim() -> ms.Simulation:
+        sim = ms.Simulation(
+            truth_space=ms.ShapeScaleSpace(shape=(8, 16, 16), scale=(0.04, 0.02, 0.02)),
+            output_space={"downscale": 2},
+            sample=ms.Sample(labels=[GREEN_MATSLINES]),
+            settings=ms.Settings(random_seed=1, cache=False),
+        )
+        sim.ground_truth()  # populate the cache
+        return sim
+
+    sim = _sim()
+    truth = sim.ground_truth()
+    other = {"labels": [{"distribution": {"type": "matslines", "density": 3}}]}
+
+    copied = sim.model_copy(update={"sample": other})
+    assert isinstance(copied.sample, ms.Sample)  # update is validated
+    assert not truth.equals(copied.ground_truth())
+    assert sim.model_copy().ground_truth().equals(truth)  # plain copy can reuse it
+
+    sim.sample = other
+    assert not truth.equals(sim.ground_truth())
+
+    # relative spaces are re-resolved in the copy, without touching the original
+    sim = _sim()
+    big = ms.ShapeScaleSpace(shape=(8, 32, 32), scale=(0.04, 0.02, 0.02))
+    copied = sim.model_copy(update={"truth_space": big})
+    assert copied.output_space.shape == (4, 16, 16)
+    assert sim.output_space.shape == (4, 8, 8)
+    assert "truth_space" in copied.model_fields_set
+    # ... also when assigning to a plain copy
+    copied = sim.model_copy()
+    copied.truth_space = big
+    assert copied.output_space.shape == (4, 16, 16)
+    assert sim.output_space.shape == (4, 8, 8)
+    # ... and when swapping which space is relative
+    out = ms.ShapeScaleSpace(shape=(4, 8, 8), scale=(0.08, 0.04, 0.04))
+    copied = sim.model_copy(update={"truth_space": {"upscale": 2}, "output_space": out})
+    assert copied.truth_space.shape == (8, 16, 16)
+
+
+def test_identity_modality_backend_conversion(np_backend: ms.BackendName) -> None:
+    """Regression test for #124: em_rates must be converted to the active
+    backend before use in Identity.render(), same as truth already is."""
+    sim = ms.Simulation(
+        truth_space=ms.ShapeScaleSpace(shape=(8, 32, 32), scale=(0.2, 0.1, 0.1)),
+        output_space={"downscale": 1},
+        sample=ms.Sample(labels=[MATSLINES]),
+        modality=ms.Identity(),
+        settings=ms.Settings(np_backend=np_backend),
+    )
+    result = sim.optical_image()
+    assert result.shape[1:] == sim.truth_space.shape
+    flux = sim.emission_flux()
+    assert flux.shape[2:] == sim.truth_space.shape
