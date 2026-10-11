@@ -30,6 +30,16 @@ class CosemLabel(BaseDistribution):
 
     Go to https://openorganelle.janelia.org/datasets/ to find a dataset, and then
     chose a label from the dataset to render.
+
+    Parameters
+    ----------
+    dataset : str
+        Dataset ID, e.g. `"jrc_hela-3"`.
+    label : str
+        Name (or description) of a segmentation or prediction layer in the dataset,
+        e.g. `"er-mem_pred"`.
+    position : tuple[float, float, float], optional
+        Position of the region to extract.  By default, the center of the dataset.
     """
 
     type: Literal["cosem"] = "cosem"

@@ -21,7 +21,7 @@ class _Camera(_Detector):
 
     A camera has an array of pixels, each storing charge during the exposure.
 
-    Attributes
+    Parameters
     ----------
     full_well : int
         Maximum number of electrons a pixel can hold.
@@ -114,7 +114,7 @@ class CameraEMCCD(_Camera):
     amplifier.  `relative_gain` is relative to the pixel `full_well`, so at high EM
     gain `electrons_per_adu` is usually more convenient.
 
-    Attributes
+    Parameters
     ----------
     em_gain : float
         Mean gain of the EM register.

@@ -18,6 +18,8 @@ Transmission = Annotated[float, Interval(ge=0, le=1.0)]
 
 
 class Placement(Enum):
+    """Position of a filter in the light path."""
+
     EX_PATH = "EX"
     EM_PATH = "EM"
     BS = "BS"
@@ -77,6 +79,22 @@ class _FilterBase(SimBaseModel):
 
 
 class Bandpass(_FilterBase):
+    """Bandpass filter with smooth edges.
+
+    Parameters
+    ----------
+    bandcenter : float
+        Center wavelength, in nm.
+    bandwidth : float
+        Full width of the passband, in nm.
+    transmission : float
+        Peak transmission, from 0 to 1.
+    placement : Placement
+        Where the filter sits: `"EX"`, `"EM"`, `"BS"`, `"BSi"`, or `"ALL"`.
+    name : str
+        Name of the filter.
+    """
+
     type: Literal["bandpass"] = "bandpass"
     bandcenter: float  # nm
     bandwidth: float  # nm
@@ -101,6 +119,22 @@ class Bandpass(_FilterBase):
 
 
 class Shortpass(_FilterBase):
+    """Shortpass filter (transmits below `cutoff`).
+
+    Parameters
+    ----------
+    cutoff : float
+        Edge wavelength, in nm.
+    slope : float, optional
+        Steepness of the edge.  Defaults to 5.
+    transmission : float
+        Maximum transmission, from 0 to 1.
+    placement : Placement
+        Where the filter sits.  Defaults to the excitation path.
+    name : str
+        Name of the filter.
+    """
+
     type: Literal["shortpass"] = "shortpass"
     cutoff: float  # nm
     slope: float | None = None
@@ -127,6 +161,22 @@ class Shortpass(_FilterBase):
 
 
 class Longpass(_FilterBase):
+    """Longpass filter (transmits above `cuton`).
+
+    Parameters
+    ----------
+    cuton : float
+        Edge wavelength, in nm.
+    slope : float, optional
+        Steepness of the edge.  Defaults to 5.
+    transmission : float
+        Maximum transmission, from 0 to 1.
+    placement : Placement
+        Where the filter sits.  Defaults to the emission path.
+    name : str
+        Name of the filter.
+    """
+
     type: Literal["longpass"] = "longpass"
     cuton: float  # nm
     slope: float | None = None
@@ -153,6 +203,18 @@ class Longpass(_FilterBase):
 
 
 class SpectrumFilter(_FilterBase):
+    """Filter defined by a measured transmission spectrum.
+
+    Parameters
+    ----------
+    transmission : Spectrum
+        Transmission (0 to 1) as a function of wavelength.
+    placement : Placement
+        Where the filter sits: `"EX"`, `"EM"`, `"BS"`, `"BSi"`, or `"ALL"`.
+    name : str
+        Name of the filter.
+    """
+
     type: Literal["spectrum"] = "spectrum"
     transmission: Spectrum = Field(..., repr=False)  # because of spectrum on super()
 

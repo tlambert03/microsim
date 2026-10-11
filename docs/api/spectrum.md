@@ -1,0 +1,3 @@
+# Spectrum
+
+::: microsim.schema.Spectrum

@@ -52,7 +52,38 @@ xr.set_options(keep_attrs=True)  # type: ignore [no-untyped-call]
 
 
 class Simulation(SimBaseModel):
-    """Top level Simulation object."""
+    """Top level Simulation object.
+
+    Holds every parameter of a simulation.  Call `run()` to compute the digital
+    image, or the stage methods (`ground_truth`, `filtered_emission_rates`,
+    `optical_image`, `digital_image`) to compute intermediate results.
+
+    Parameters
+    ----------
+    truth_space : Space
+        Grid on which the sample is drawn and the optical image is computed.
+    output_space : Space, optional
+        Pixel grid of the digital image.  May be relative to `truth_space` (e.g.
+        `{"downscale": 4}`).  If `None`, the truth space is used.
+    sample : Sample
+        The fluorophore distributions (labels) to image.
+    modality : Modality
+        How the optical image is formed (e.g. `Widefield`, `Confocal`).
+    objective_lens : ObjectiveLens
+        Numerical aperture and refractive indices used for the PSF.
+    channels : list[OpticalConfig]
+        Optical configurations (light sources and filters), one per channel.
+    detector : Detector, optional
+        Detector model.  If `None`, the digital image is the expected number of
+        photons per pixel, without noise.
+    exposure_ms : float
+        Integration time per pixel in ms: camera exposure, or pixel dwell time for
+        point-scanning modalities.  Can be overridden per channel.
+    settings : Settings
+        Computation settings (backend, random seed, caching, ...).
+    output_path : Path, optional
+        If set, `run()` writes the result here (`.zarr`, `.nc`, `.tif`, `.tiff`).
+    """
 
     truth_space: Space
     output_space: Space | None = None

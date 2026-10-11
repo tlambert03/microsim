@@ -92,7 +92,7 @@ def _per_channel(value: "Any", ndim: int) -> "Any":
 class _Detector(SimBaseModel):
     """Base detector model (see module docstring for the simulation steps).
 
-    Attributes
+    Parameters
     ----------
     camera_type : str
         Type of detector, for discriminated union.

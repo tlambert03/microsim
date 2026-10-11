@@ -10,18 +10,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
-    if: github.event_name == 'pull_request'
+  docs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
-      - run: uv run --group docs mkdocs build --strict
-
-  deploy:
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7  # v10.2.0
-      - run: uv run --group docs mkdocs gh-deploy --force
+      # PSFs, ground truth, and OpenOrganelle downloads used by the figures
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/microsim
+          key: microsim-docs-${{ hashFiles('scripts/make_doc_figures.py', 'uv.lock') }}
+          restore-keys: microsim-docs-
+      - name: Generate figures
+        run: uv run --group docs python scripts/make_doc_figures.py
+      - name: Build
+        run: uv run --group docs zensical build --strict
+      # zensical has no gh-deploy; push the built site to the gh-pages branch
+      - name: Deploy
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          uvx ghp-import --no-jekyll --push --force site

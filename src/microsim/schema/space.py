@@ -141,6 +141,19 @@ class _AxesSpace(_Space):
 
 
 class ShapeScaleSpace(_AxesSpace):
+    """Space defined by its shape and voxel size.
+
+    Parameters
+    ----------
+    shape : tuple[int, ...]
+        Number of voxels along each axis (Z, Y, X).
+    scale : tuple[float, ...] | float
+        Voxel size along each axis, in µm.  A single number applies to all axes.
+        Defaults to 1.
+    axes : tuple[Axis, ...]
+        Axis names, by default the last `len(shape)` of (Z, Y, X).
+    """
+
     shape: tuple[int, ...]
     scale: tuple[float, ...] = ()
 
@@ -164,6 +177,18 @@ class ShapeScaleSpace(_AxesSpace):
 
 
 class ExtentScaleSpace(_AxesSpace):
+    """Space defined by its physical extent and voxel size.
+
+    Parameters
+    ----------
+    extent : tuple[float, ...]
+        Size of the space along each axis, in µm.
+    scale : tuple[float, ...] | float
+        Voxel size along each axis, in µm.  A single number applies to all axes.
+    axes : tuple[Axis, ...]
+        Axis names, by default the last `len(extent)` of (Z, Y, X).
+    """
+
     extent: tuple[float, ...]
     scale: tuple[float, ...]
 
@@ -187,6 +212,18 @@ class ExtentScaleSpace(_AxesSpace):
 
 
 class ShapeExtentSpace(_AxesSpace):
+    """Space defined by its shape and physical extent.
+
+    Parameters
+    ----------
+    shape : tuple[int, ...]
+        Number of voxels along each axis (Z, Y, X).
+    extent : tuple[float, ...]
+        Size of the space along each axis, in µm.
+    axes : tuple[Axis, ...]
+        Axis names, by default the last `len(shape)` of (Z, Y, X).
+    """
+
     shape: tuple[int, ...]
     extent: tuple[float, ...]
 
@@ -218,6 +255,16 @@ class _RelativeSpace(_Space):
 
 
 class DownscaledSpace(_RelativeSpace):
+    """Space with voxels `downscale` times larger than the other space.
+
+    Parameters
+    ----------
+    downscale : int | tuple[int, ...]
+        Integer factor, for all axes or per axis.
+    reference : Space, optional
+        The space this one is relative to.  Set automatically by `Simulation`.
+    """
+
     downscale: tuple[int, ...] | int
 
     def rescale(self, img: xrDataArray, mean_axes: Collection[str] = ()) -> xrDataArray:
@@ -257,6 +304,16 @@ class DownscaledSpace(_RelativeSpace):
 
 
 class UpscaledSpace(_RelativeSpace):
+    """Space with voxels `upscale` times smaller than the other space.
+
+    Parameters
+    ----------
+    upscale : int | tuple[float, ...]
+        Factor, for all axes or per axis.
+    reference : Space, optional
+        The space this one is relative to.  Set automatically by `Simulation`.
+    """
+
     upscale: tuple[float, ...] | int
 
     @computed_field  # type: ignore

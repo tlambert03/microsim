@@ -20,10 +20,16 @@ The goal of this library is to generate highly realistic simulated data such as 
 
 ## Documentation
 
-Start with the [tutorial](https://www.talleylambert.com/microsim/tutorial/), and read about the
-[simulation stages](https://www.talleylambert.com/microsim/stages/), then see the 
-[API Reference](<https://tlambert03.github.io/microsim/api/>) for details
-on the `Simulation` object and options for all of the fields.
+Documentation is at <https://www.talleylambert.com/microsim/>. Start with
+[First simulation](https://www.talleylambert.com/microsim/getting-started/first-simulation/),
+read the [User guide](https://www.talleylambert.com/microsim/guide/) for how each part
+of the simulation works, and see the
+[API reference](https://www.talleylambert.com/microsim/api/) for every option.
+
+> [!WARNING]
+> microsim is in early development and changes quickly. Releases may break the API
+> or change simulation results for the same parameters. If you depend on it, pin a
+> specific version and record it with your results.
 
 ## Installation
 
@@ -67,7 +73,7 @@ paying attention to your GPU requirements.  Support for torch is planned.
 ## Usage
 
 Construct and run a
-[`microsim.Simulation`](https://www.talleylambert.com/microsim/api/#microsim.schema.simulation.Simulation)
+[`microsim.Simulation`](https://www.talleylambert.com/microsim/api/simulation/)
 object.
 
 ```python
