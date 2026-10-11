@@ -292,3 +292,19 @@ def test_changing_fields_resets_ground_truth() -> None:
     out = ms.ShapeScaleSpace(shape=(4, 8, 8), scale=(0.08, 0.04, 0.04))
     copied = sim.model_copy(update={"truth_space": {"upscale": 2}, "output_space": out})
     assert copied.truth_space.shape == (8, 16, 16)
+
+
+def test_identity_modality_backend_conversion(np_backend: ms.BackendName) -> None:
+    """Regression test for #124: em_rates must be converted to the active
+    backend before use in Identity.render(), same as truth already is."""
+    sim = ms.Simulation(
+        truth_space=ms.ShapeScaleSpace(shape=(8, 32, 32), scale=(0.2, 0.1, 0.1)),
+        output_space={"downscale": 1},
+        sample=ms.Sample(labels=[MATSLINES]),
+        modality=ms.Identity(),
+        settings=ms.Settings(np_backend=np_backend),
+    )
+    result = sim.optical_image()
+    assert result.shape[1:] == sim.truth_space.shape
+    flux = sim.emission_flux()
+    assert flux.shape[2:] == sim.truth_space.shape

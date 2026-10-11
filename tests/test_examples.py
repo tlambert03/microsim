@@ -39,6 +39,7 @@ def test_examples(fpath: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) 
     try:
         runpy.run_path(str(fpath), run_name="__main__")
     except ImportError as e:
-        if "microsim" in str(e):
+        # missing optional dependencies (e.g. the `view` extra in the minimal CI job)
+        if "microsim" in str(e) or e.name == "matplotlib":
             pytest.skip(f"Skipping {fpath} due to missing dependencies")
         raise

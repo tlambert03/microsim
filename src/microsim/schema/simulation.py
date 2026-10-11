@@ -4,7 +4,7 @@ from collections import OrderedDict
 from collections.abc import Iterable, Iterator, Mapping
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any
 
 import numpy as np
 import pandas as pd
@@ -291,7 +291,9 @@ class Simulation(SimBaseModel):
             return truth
 
         # total photons/s emitted by each fluorophore in each channel
-        total_flux = self.filtered_emission_rates().sum(Axis.W) * truth
+        em_rates = self.filtered_emission_rates().sum(Axis.W)
+        em_rates = em_rates.copy(data=self._xp.asarray(em_rates.data))
+        total_flux = em_rates * truth
         total_flux.attrs.update(units="photon/sec", long_name="Emission Flux")
 
         # (C, F, Z, Y, X)
@@ -351,12 +353,16 @@ class Simulation(SimBaseModel):
         # rather than a user-specified output space
         if self.output_space is not None:
             logger.info(f"Rescaling to output space {self.output_space.shape}")
-            # point-scanning: each output pixel is the signal at its scan position,
-            # (averaged over sub-positions), not a sum over a camera pixel's area.
-            mode: Literal["sum", "mean"] = (
-                "mean" if self.modality.point_scanning else "sum"
+            # A camera pixel collects all light falling on its area, so sum over Y/X.
+            # A point scanner records the signal at each scan position, so average.
+            # Each Z plane is a separate exposure at one focal position (it does not
+            # collect light from neighboring focal planes), so always average over Z.
+            mean_axes = (
+                [str(d) for d in image.dims]
+                if self.modality.point_scanning
+                else [Axis.Z]
             )
-            image = self.output_space.rescale(image, mode=mode)
+            image = self.output_space.rescale(image, mean_axes=mean_axes)
 
         # simulate detector
         # NOTE: exposure is a per-pixel integration time (camera exposure, or pixel
