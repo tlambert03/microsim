@@ -23,6 +23,15 @@ class InMemoryCacheSizes(SimBaseModel):
         ),
         frozen=True,
     )
+    otf_mb: float = Field(
+        default=1000,
+        description=(
+            "The maximum total size (in MB) of Fourier-transformed PSFs that will be "
+            "kept in memory (LRU) for reuse across simulations with the same optics. "
+            "Set to 0 to disable. Unaffected by `cache.read`/`cache.write`, which "
+            "control on-disk caching. For GPU backends, this is GPU memory."
+        ),
+    )
 
 
 class CacheSettings(SimBaseModel):

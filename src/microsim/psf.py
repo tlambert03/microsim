@@ -461,7 +461,8 @@ def cached_psf(
                 f"Found cached PSF {nz=} {nx=} {dz=} {dx=} "
                 f"{ex_wvl_um=:.2f} {pinhole_au=}"
             )
-            return xp.asarray(np.load(cache_path))
+            # the file may have been written by a simulation of another precision
+            return xp.asarray(np.load(cache_path), dtype=xp.float_dtype)
 
     logger.info(
         f"Creating new PSF {nz=} {nx=} {dz=} {dx=} {ex_wvl_um=:.2f} {pinhole_au=}"

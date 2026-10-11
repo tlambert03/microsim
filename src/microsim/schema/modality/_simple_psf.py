@@ -1,4 +1,5 @@
 import warnings
+from collections.abc import Hashable
 from typing import Annotated, Any, ClassVar, Literal
 
 import numpy as np
@@ -6,6 +7,7 @@ from annotated_types import Ge
 
 from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
 from microsim._logger import logger, logging_indented
+from microsim.fft.convolve import fftconvolve_same_pairs
 from microsim.psf import make_psf
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
@@ -54,19 +56,16 @@ class _PSFModality(SimBaseModel):
         xp: NumpyAPI,
     ) -> xrDataArray:
         """Render a 3D image of the truth for F fluorophores, in C channels."""
-        # for every channel in the emission rates...
-        channels = []
-        for ch in em_rates.coords[Axis.C].values:
-            logger.info(f"Rendering {type(self).__name__} channel {ch} ---------------")
+        space = truth.attrs["space"]
 
+        # summed (spectrally weighted) PSF for every channel/fluorophore pair
+        psfs: dict[tuple[int, int], tuple[Hashable, ArrayProtocol]] = {}
+        for c_idx, ch in enumerate(em_rates.coords[Axis.C].values):
+            logger.info(f"Rendering {type(self).__name__} channel {ch} ---------------")
             with logging_indented():
-                # for every fluorophore in the sample...
-                fluors = []
                 for f_idx, fluor in enumerate(truth.coords[Axis.F].values):
                     logger.info(f"Fluor: {fluor}")
                     with logging_indented():
-                        f_truth = truth.isel({Axis.F: f_idx})
-
                         # discretize the em spectrum for this specific ch/fluor pair
                         em_spectrum = em_rates.sel({Axis.C: ch, Axis.F: fluor})
                         # if we happen to have 2 spectra for the same fluorophore
@@ -76,24 +75,22 @@ class _PSFModality(SimBaseModel):
 
                         if not (em_spectrum > 1e-12).any():
                             # no emission at all for this fluorophore in this channel
-                            fluors.append(xp.zeros_like(f_truth))
                             continue
 
-                        summed_psf = self._summed_weighted_psf(
-                            em_spectrum,
-                            settings,
-                            truth.attrs["space"],
-                            objective_lens,
-                            xp,
+                        psfs[(c_idx, f_idx)] = self._summed_weighted_psf(
+                            em_spectrum, settings, space, objective_lens, xp
                         )
-                        fluor_sum = xp.fftconvolve(f_truth, summed_psf, mode="same")
-                        fluors.append(fluor_sum)
 
-            # stack the fluorophores together to create the channel
-            channels.append(xp.stack(fluors, axis=0))
-
+        # convolve each fluorophore's truth with its PSF in each channel -> [c][f]
+        channels = fftconvolve_same_pairs(
+            [truth.data[f_idx] for f_idx in range(truth.sizes[Axis.F])],
+            psfs,
+            n_out=em_rates.sizes[Axis.C],
+            xp=xp,
+            cache_mb=settings.cache.in_mem_size.otf_mb,
+        )
         return DataArray(
-            channels,
+            [xp.stack(fluors, axis=0) for fluors in channels],
             dims=[Axis.C, Axis.F, Axis.Z, Axis.Y, Axis.X],
             coords={
                 Axis.C: em_rates.coords[Axis.C],
@@ -103,7 +100,7 @@ class _PSFModality(SimBaseModel):
                 Axis.X: truth.coords[Axis.X],
             },
             attrs={
-                "space": truth.attrs["space"],
+                "space": space,
                 "objective": objective_lens,
                 "units": "photons",
             },
@@ -116,7 +113,7 @@ class _PSFModality(SimBaseModel):
         space: SpaceProtocol,
         objective_lens: ObjectiveLens,
         xp: NumpyAPI,
-    ) -> ArrayProtocol:
+    ) -> tuple[Hashable, ArrayProtocol]:
         """Create a weighted sum of PSFs based on the emission spectrum.
 
         This takes advantage of the distributive property of convolution
@@ -126,6 +123,9 @@ class _PSFModality(SimBaseModel):
         to convolving with the truth.
         This creates a more realistic PSF for the fluorophore/channel, as it
         accounts for the full emission spectrum.
+
+        Returns a hashable key that uniquely identifies the summed PSF, and the PSF
+        itself.
         """
         binned = bin_spectrum(
             em_spectrum,
@@ -147,12 +147,22 @@ class _PSFModality(SimBaseModel):
         )
 
         saturation = self._saturation_parameter(em_spectrum)
-        summed_psf: Any = 0
+        components: list[tuple[float, float]] = []
         for em_rate in binned:
             em_wvl_nm = em_rate.w.item()
             if em_rate.isnull().any() or em_rate == 0 or xp.isnan(em_wvl_nm):
                 continue
-            weight = em_rate.item()
+            components.append((em_wvl_nm, em_rate.item()))
+
+        key = (
+            self.model_dump_json(),
+            objective_lens.cache_key(),
+            (nz, nx, dz, dx, saturation),
+            tuple(components),
+            type(xp),
+        )
+        summed_psf: Any = 0
+        for em_wvl_nm, weight in components:
             logger.info(f"Need PSF ({nz},{nx}) @ {em_wvl_nm:.1f} nm ({weight=:.2f})")
             psf = self.psf(
                 nz=nz,
@@ -165,7 +175,7 @@ class _PSFModality(SimBaseModel):
                 xp=xp,
             )
             summed_psf += psf * weight
-        return summed_psf  # type: ignore [no-any-return]
+        return key, summed_psf
 
     def _saturation_parameter(self, em_spectrum: xrDataArray) -> float:
         """Saturation parameter to apply in the PSF (0 if not applied spatially)."""
