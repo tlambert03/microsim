@@ -82,7 +82,30 @@ export default async function (el) {
   const actions = document.createElement("div");
   actions.className = "ms-control ms-control--button";
   ui.controls.append(actions);
-  button(actions, { label: "New noise", onClick: () => (state.seed++, update()) });
+  // play: a new noise draw every 100 ms (10 fps), until stopped or the page changes
+  const PLAY = "▶ Play noise";
+  const STOP = "■ Stop";
+  let timer = 0;
+  const stop = () => {
+    clearInterval(timer);
+    timer = 0;
+    play.textContent = PLAY;
+    play.setAttribute("aria-pressed", "false");
+  };
+  const play = button(actions, {
+    label: PLAY,
+    onClick: () => {
+      if (timer) return stop();
+      play.textContent = STOP;
+      play.setAttribute("aria-pressed", "true");
+      timer = setInterval(() => {
+        if (!el.isConnected) return stop();
+        state.seed++;
+        update();
+      }, 100);
+    },
+  });
+  play.setAttribute("aria-pressed", "false");
 
   const setSnr = stat(ui.stats, { label: "SNR at the brightest pixel" });
   const setRel = stat(ui.stats, { label: "relative to an ideal detector" });
