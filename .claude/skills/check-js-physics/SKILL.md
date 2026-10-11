@@ -11,8 +11,9 @@ code is a copy, and copies drift. This skill is how to check it.
 
 ## Layout
 
-- `docs/javascripts/physics/*.js`: the copied physics. Pure functions, no DOM, no
-  imports. Every function has a comment naming the Python it mirrors.
+- `docs/javascripts/physics/*.js`: the copied physics. Pure functions, no DOM, and
+  no imports from outside `physics/`. Every function has a comment naming the
+  Python it mirrors.
 - `docs/javascripts/charts/*.js`: rendering. These should contain **no physics**:
   they call the physics modules, and only choose parameters, axes, and labels.
 - `scripts/make_doc_figures.py`: exports the data the charts load
@@ -48,6 +49,13 @@ code is a copy, and copies drift. This skill is how to check it.
    | `detectors.js` `pmtGain`, `pmtExcessNoiseFactor` | `detectors/_point.py` `PMT.multiplication_gain`, `.excess_noise_factor` |
    | `detectors.js` `hydCountingEfficiency` | `detectors/_point.py` `HyD._counting_efficiency` |
    | `detectors.js` `snr` | derived from `detectors/_detector.py` `_Detector.simulate` and `apply_multiplication_gain` (tested against a Monte Carlo run of `render`) |
+   | `detectors.js` `simulateCamera` | `_Detector.simulate` steps 1-5 for cameras, and `apply_multiplication_gain` (tested statistically against `render`: mean, variance, quantiles) |
+   | `random.js` `poisson`, `normal`, `gamma` | the distributions of `backend.py` `poisson_rvs`, `norm_rvs`, and `scipy.stats.gamma` (same distributions, not the same random streams) |
+
+   Charts that only display arrays computed by microsim (`pinhole.js`, the noise-free
+   image in `noise.js`) have nothing to mirror; check instead that the export
+   function in `scripts/make_doc_figures.py` uses microsim, and that captions
+   describe what was computed.
 
    If the Python has gained a step (a new factor, a new parameter that changes the
    result), the JavaScript needs it too, or the chart's caption must say what it
