@@ -5,6 +5,8 @@
 // other, and run `uv run pytest tests/test_js_physics.py`.  See
 // .claude/skills/check-js-physics/SKILL.md.
 
+import * as R from "./random.js";
+
 // CameraEMCCD.excess_noise_factor (src/microsim/schema/detectors/_camera.py):
 // F = 2 (G - 1) G^(-(N + 1) / N) + 1 / G, for mean gain G over N stages
 export function emccdExcessNoiseFactor(gain, stages = 604) {
@@ -49,4 +51,32 @@ export function snr({ electrons, dark = 0, readNoise = 0, gain = 1, enf = 1, ave
   const shot = enf * (signal + dark * averaging);
   const read = (readNoise ** 2 * averaging) / gain ** 2;
   return signal / Math.sqrt(shot + read);
+}
+
+// One frame from a camera, following _Detector.simulate step by step, for an image
+// of `expected` mean photoelectrons per pixel (QE and exposure already applied).
+// Not modeled here: averaging, binning, dark current, and clock-induced charge.
+//   1-2. shot noise: Poisson
+//   3. full well: clip at `fullWell` electrons
+//   4. multiplication (apply_multiplication_gain): Gamma(n / (F - 1), G (F - 1)),
+//      rounded; exactly n * G if F = 1
+//   5. readout: Gaussian read noise, / electrons_per_adu, round, clip to the bit
+//      depth, + offset, clip at 0 and at the maximum
+export function simulateCamera(expected, p, rand) {
+  const { readNoise = 6, gain = 1, enf = 1, electronsPerAdu = 1, offset = 100 } = p;
+  const { bitDepth = 16, fullWell = Infinity } = p;
+  const maxGray = 2 ** bitDepth - 1;
+  const out = new Float64Array(expected.length);
+  for (let i = 0; i < expected.length; i++) {
+    let e = R.poisson(rand, Math.max(expected[i], 0));
+    e = Math.min(e, fullWell);
+    if (gain !== 1) {
+      if (enf - 1 < 1e-9) e = Math.round(e * gain);
+      else if (e > 0) e = Math.round(R.gamma(rand, e / (enf - 1), gain * (enf - 1)));
+    }
+    const voltage = e + readNoise * R.normal(rand);
+    const signal = Math.min(Math.round(voltage / electronsPerAdu), maxGray);
+    out[i] = Math.min(Math.max(signal + offset, 0), maxGray);
+  }
+  return out;
 }

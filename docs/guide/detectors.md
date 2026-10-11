@@ -30,13 +30,14 @@ In dictionary form, `camera_type` selects the class:
     binned to the output space, **with no noise of any kind**. Add a detector
     to get shot noise.
 
-![One dim optical image recorded with different cameras](../images/generated/detectors.png)
+<div class="ms-chart" data-chart="noise"></div>
 /// caption
-The same optical image, about 20 photons at the brightest pixel, recorded by
-three cameras (all with QE = 1). With 6 e⁻ of read noise the CCD image is
-dominated by read noise. The sCMOS image is close to the photon shot noise
-limit. The EMCCD amplifies each photoelectron above its read noise, at the
-cost of extra gain noise.
+A noise-free image (the ER of a HeLa cell, simulated by microsim) recorded by
+different cameras, all with QE = 1. The noise is drawn in your browser, with
+the same steps and distributions as microsim's detector model. At a few
+photons per pixel, the CCD's read noise dominates; the sCMOS is close to the
+shot-noise limit; the EMCCD's gain lifts single photons above its read noise,
+at the cost of extra gain noise.
 ///
 
 ## Exposure time

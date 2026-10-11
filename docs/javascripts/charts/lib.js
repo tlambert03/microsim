@@ -304,3 +304,71 @@ export const fmt = {
   pct: d3.format(".1~%"),
   int: d3.format(",.0f"),
 };
+
+// ---------------------------------------------------------------------------
+// Images
+
+// Inverse of `image_json` in scripts/make_doc_figures.py: values 0-1.
+export function decodeImage({ shape, data }) {
+  const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+  const u16 = new Uint16Array(bytes.buffer);
+  return { width: shape[1], height: shape[0], data: Float32Array.from(u16, (x) => x / 65535) };
+}
+
+// 256-entry RGB lookup tables
+export const LUT = {
+  gray: Array.from({ length: 256 }, (_, i) => [i, i, i]),
+  magma: Array.from({ length: 256 }, (_, i) => {
+    const c = d3.rgb(d3.interpolateMagma(i / 255));
+    return [c.r, c.g, c.b];
+  }),
+};
+
+// The `lo`-th and `hi`-th percentiles of `values`, for display contrast.
+export function percentiles(values, lo = 0.001, hi = 0.999) {
+  const s = Float64Array.from(values).sort();
+  return [s[Math.floor(lo * (s.length - 1))], s[Math.floor(hi * (s.length - 1))]];
+}
+
+// Draws `values` (width x height, row-major) on `canvas`, mapping [lo, hi] through
+// `gamma` and `lut`.
+export function drawImage(canvas, values, width, height, { lo = 0, hi = 1, gamma = 1, lut = LUT.gray } = {}) {
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  const img = ctx.createImageData(width, height);
+  const span = hi - lo || 1;
+  for (let i = 0; i < width * height; i++) {
+    const t = Math.min(Math.max((values[i] - lo) / span, 0), 1) ** gamma;
+    const [r, g, b] = lut[Math.round(t * 255)];
+    img.data[4 * i] = r;
+    img.data[4 * i + 1] = g;
+    img.data[4 * i + 2] = b;
+    img.data[4 * i + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+// A labeled canvas panel.
+export function imagePanel(parent, label) {
+  const fig = document.createElement("div");
+  fig.className = "ms-panel";
+  const canvas = document.createElement("canvas");
+  const cap = document.createElement("div");
+  cap.className = "ms-panel__label";
+  cap.textContent = label;
+  fig.append(canvas, cap);
+  parent.append(fig);
+  return { canvas, label: cap };
+}
+
+// A plain button.
+export function button(parent, { label, onClick }) {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "ms-button";
+  b.textContent = label;
+  b.addEventListener("click", onClick);
+  parent.append(b);
+  return b;
+}

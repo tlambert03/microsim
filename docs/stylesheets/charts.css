@@ -470,3 +470,79 @@
   flex-wrap: wrap;
   gap: 0.5rem 24px;
 }
+
+/* --- image panels and buttons ------------------------------------------- */
+
+.ms-panels {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.ms-panel canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  background: #000;
+  image-rendering: pixelated;
+}
+
+.ms-panel--smooth canvas {
+  image-rendering: auto;
+}
+
+.ms-panel__label {
+  margin-top: 0.3rem;
+  font-size: 0.62rem;
+  color: var(--ms-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ms-button {
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--ms-ink);
+  background: var(--ms-control);
+  border: 1px solid var(--ms-control-border);
+  border-radius: 6px;
+  padding: 0.32rem 0.7rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ms-button:hover,
+.ms-button:focus-visible {
+  border-color: var(--md-accent-fg-color);
+  color: var(--md-accent-fg-color);
+  outline: none;
+}
+
+.ms-control[hidden] {
+  display: none;
+}
+
+.ms-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.62rem;
+  color: var(--ms-ink-muted);
+  cursor: pointer;
+}
+
+.ms-check input {
+  accent-color: var(--md-accent-fg-color);
+}
+
+.ms-control--button {
+  justify-content: flex-end;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.ms-legend__note {
+  margin-right: auto;
+}

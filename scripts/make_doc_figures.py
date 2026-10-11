@@ -12,6 +12,7 @@ Usage (some figures fetch data from FPbase and OpenOrganelle, so need network):
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -77,6 +78,12 @@ def spectrum_json(spec: ms.Spectrum) -> dict:
     if len(w) > 1 and np.all(steps == steps[0]):
         return {"w0": float(w[0]), "dw": float(steps[0]), "v": v}
     return {"w": w.tolist(), "v": v}
+
+
+def image_json(img: np.ndarray) -> dict:
+    """An image normalized to its maximum, as base64 little-endian uint16."""
+    q = np.round(np.clip(img / img.max(), 0, 1) * 65535).astype("<u2")
+    return {"shape": list(q.shape), "data": base64.b64encode(q.tobytes()).decode()}
 
 
 def norm(img: np.ndarray, lo: float = 0.1, hi: float = 99.9) -> np.ndarray:
@@ -318,36 +325,6 @@ def detector_data() -> None:
     )
 
 
-@figure
-def psf() -> None:
-    """Widefield vs confocal PSFs (XZ and XY sections)."""
-    obj = ms.ObjectiveLens(numerical_aperture=1.4)
-    kw = {"nz": 65, "nx": 65, "dx": 0.04, "dz": 0.04, "objective": obj}
-    psfs = {
-        "widefield": make_psf(em_wvl_nm=525, **kw),
-        "confocal, 1 AU": make_psf(ex_wvl_nm=488, em_wvl_nm=525, pinhole_au=1, **kw),
-        "confocal, 0.25 AU": make_psf(
-            ex_wvl_nm=488, em_wvl_nm=525, pinhole_au=0.25, **kw
-        ),
-    }
-    fig, axes = plt.subplots(
-        2, 3, figsize=(9, 6.2), gridspec_kw={"hspace": 0.12, "wspace": 0.05}
-    )
-    for col, (name, p) in enumerate(psfs.items()):
-        p = _np(p)
-        p = p / p.max()
-        mid = p.shape[0] // 2
-        kws = {"cmap": "magma", "vmin": 0, "vmax": 1, "interpolation": "bilinear"}
-        axes[0, col].imshow(p[mid] ** 0.5, **kws)
-        image_axes(axes[0, col], f"{name}  ·  XY")
-        axes[1, col].imshow(p[:, mid] ** 0.5, **kws)
-        image_axes(axes[1, col], "XZ")
-    # 1 µm scale bar
-    axes[1, 0].plot([5, 30], [60, 60], color="white", lw=2)
-    axes[1, 0].text(17.5, 57, "1 µm", color="white", ha="center", fontsize=8)
-    save(fig, OUT / "psf-comparison.png")
-
-
 def _lines_sim(**kwargs: object) -> ms.Simulation:
     return ms.Simulation(
         truth_space=ms.ShapeScaleSpace(shape=(64, 256, 256), scale=(0.04, 0.02, 0.02)),
@@ -380,32 +357,71 @@ def modalities() -> None:
 
 
 @figure
-def detectors() -> None:
-    """One dim optical image through different cameras."""
-    sim = _lines_sim()
-    optical = sim.optical_image()
-    # scale so the brightest output pixel expects ~20 photons in the exposure
-    expected = sim.digital_image(optical, with_detector_noise=False)
-    optical = optical * (20 / float(expected.max()))
-    cams = {
-        "expected photons (no noise)": None,
-        "CCD, 6 e⁻ read noise": ms.CameraCCD(
-            qe=1, read_noise=6, electrons_per_adu=1, bit_depth=16
-        ),
-        "sCMOS, 1.5 e⁻ read noise": ms.CameraCMOS(
-            qe=1, read_noise=1.5, electrons_per_adu=0.5, bit_depth=16
-        ),
-        "EMCCD, EM gain 300": ms.CameraEMCCD(
-            qe=1, read_noise=50, em_gain=300, electrons_per_adu=20, bit_depth=16
-        ),
-    }
-    fig, axes = plt.subplots(1, 4, figsize=(13, 3.6), gridspec_kw={"wspace": 0.04})
-    for ax, (name, det) in zip(axes, cams.items(), strict=True):
-        sim.detector = det
-        img = _np(sim.digital_image(optical, with_detector_noise=det is not None))
-        ax.imshow(norm(img[0, img.shape[1] // 2], 0.5, 99.8), cmap="gray")
-        image_axes(ax, name)
-    save(fig, OUT / "detectors.png")
+def noise_data() -> None:
+    """Noise-free expected image (ER channel of the HeLa cell), for the noise chart."""
+    sim = _cell_sim()
+    expected = sim.digital_image(sim.optical_image(), with_detector_noise=False)
+    write_json("noise", {"image": image_json(_np(expected)[0, 9].astype(float))})
+
+
+PINHOLES_AU = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3]
+
+
+def _fwhm(profile: np.ndarray, step: float) -> float:
+    """Full width at half maximum of a peaked 1D profile, linearly interpolated."""
+    half = profile.max() / 2
+    i = int(np.argmax(profile))
+    lo = i
+    while lo > 0 and profile[lo - 1] > half:
+        lo -= 1
+    hi = i
+    while hi < len(profile) - 1 and profile[hi + 1] > half:
+        hi += 1
+    left = lo - (profile[lo] - half) / (profile[lo] - profile[lo - 1])
+    right = hi + (profile[hi] - half) / (profile[hi] - profile[hi + 1])
+    return float((right - left) * step)
+
+
+@figure
+def pinhole_data() -> None:
+    """Widefield and confocal PSFs across pinhole sizes, for the pinhole chart."""
+    obj = ms.ObjectiveLens(numerical_aperture=1.4)
+    # fine enough to resolve small pinholes, and wide enough (6 µm) that defocused
+    # widefield planes (up to ±0.96 µm) keep their light
+    dx, dz = 0.02, 0.04
+    kw = {"nz": 49, "nx": 301, "dx": dx, "dz": dz, "objective": obj, "em_wvl_nm": 525}
+    psfs = {"widefield": make_psf(**kw)}
+    for au in PINHOLES_AU:
+        psfs[au] = make_psf(ex_wvl_nm=488, pinhole_au=au, **kw)
+
+    entries = []
+    for key, psf in psfs.items():
+        p = _np(psf).astype(float)
+        cz, cy = p.shape[0] // 2, p.shape[1] // 2
+        crop = slice(cy - 40, cy + 41, 2)  # 1.6 µm, displayed at 40 nm
+        planes = p.sum(axis=(1, 2))
+        entries.append(
+            {
+                "pinhole_au": None if key == "widefield" else key,
+                "peak": float(p[cz, cy, cy]),
+                "fwhm_lateral_nm": 1000 * _fwhm(p[cz, cy, :], dx),
+                "fwhm_axial_nm": 1000 * _fwhm(p[:, cy, cy], dz),
+                "plane_sums": [round(float(x), 5) for x in planes / planes.max()],
+                "xy": image_json(p[cz, crop, crop]),
+                "xz": image_json(p[cz - 20 : cz + 21, cy, crop]),  # 1.6 µm square
+            }
+        )
+    write_json(
+        "pinhole",
+        {
+            "na": obj.numerical_aperture,
+            "ex_nm": 488,
+            "em_nm": 525,
+            "image_dx_um": 2 * dx,
+            "dz_um": dz,
+            "psfs": entries,
+        },
+    )
 
 
 @figure

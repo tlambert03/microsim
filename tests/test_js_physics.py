@@ -220,3 +220,48 @@ def test_detectors() -> None:
         _measured_snr(det, n) for det, _ in SNR_CASES for n in (0.5, 5, 50, 500)
     ]
     np.testing.assert_allclose(js["snr"], measured, rtol=0.03)
+
+
+CAMERA_CASES = [
+    # (electrons per pixel, camera)
+    (20, ms.CameraCCD(read_noise=6, electrons_per_adu=1, bit_depth=16)),
+    (3, ms.CameraCMOS(read_noise=1.5, electrons_per_adu=0.5, bit_depth=16)),
+    (200, ms.CameraCMOS(read_noise=0, electrons_per_adu=1, bit_depth=16)),
+    (120, ms.CameraCCD(full_well=100, read_noise=2, electrons_per_adu=1)),
+    (0.5, ms.CameraEMCCD(em_gain=300, read_noise=50, electrons_per_adu=20)),
+    (5, ms.CameraEMCCD(em_gain=300, read_noise=50, electrons_per_adu=20)),
+    (5, ms.CameraEMCCD(em_gain=2, read_noise=1, electrons_per_adu=1)),
+]
+
+
+def _camera_params(cam: ms.Detector) -> dict:
+    return {
+        "readNoise": cam.read_noise,
+        "gain": cam.multiplication_gain,
+        "enf": cam.excess_noise_factor,
+        "electronsPerAdu": cam.conversion_factor,
+        "offset": cam.offset,
+        "bitDepth": cam.bit_depth,
+        "fullWell": cam.full_well,
+    }
+
+
+def test_camera_simulation() -> None:
+    size = 200_000
+    payload = [
+        {"electrons": n, "params": _camera_params(cam), "size": size}
+        for n, cam in CAMERA_CASES
+    ]
+    js = _run("camera.mjs", payload)
+    for (n, cam), result in zip(CAMERA_CASES, js, strict=True):
+        cam = cam.model_copy(update={"dark_current": 0})
+        xp = NumpyAPI()
+        xp.set_random_seed(0)
+        image = DataArray(np.full((1, 1, 1, size), n), dims=("c", "z", "y", "x"))
+        py = np.asarray(cam.render(image, exposure_ms=1000, xp=xp), dtype=float)
+        assert result["mean"] == pytest.approx(py.mean(), rel=0.01), cam
+        assert result["var"] == pytest.approx(py.var(), rel=0.04), cam
+        expected_q = np.quantile(py, [0.05, 0.5, 0.95])
+        np.testing.assert_allclose(
+            result["quantiles"], expected_q, atol=1.01, rtol=0.02
+        )

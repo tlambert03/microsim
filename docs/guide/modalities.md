@@ -60,12 +60,15 @@ For a point-scanning modality:
 - A point detector ([PMT or HyD](detectors.md#point-detectors)) is the natural
   choice, though any detector works.
 
-![Widefield and confocal PSFs](../images/generated/psf-comparison.png)
+<div class="ms-chart" data-chart="pinhole"></div>
 /// caption
-Widefield and confocal PSFs at 1.4 NA, 525 nm emission and 488 nm excitation,
-in XY (top) and XZ (bottom). Square-root display. With the pinhole closed
-to 0.25 AU, the confocal PSF approaches the product of the excitation and
-emission PSFs.
+Widefield and confocal PSFs computed by microsim at 1.4 NA, 525 nm emission and
+488 nm excitation, each scaled to its own peak. *Signal from a thin plane*:
+the light recorded from a thin, uniform fluorescent layer at each distance from
+the focus. In widefield it is the same at every depth, so out-of-focus planes
+contribute as much as the focal plane; the pinhole removes it, more so the
+smaller it is. Smaller pinholes also narrow the PSF, mostly below 1 AU, while
+passing less light.
 ///
 
 !!! info "Excitation wavelength"
