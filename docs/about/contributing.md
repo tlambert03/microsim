@@ -36,16 +36,34 @@ uv run --group docs zensical serve   # live preview at http://localhost:8000
 uv run --group docs zensical build   # build to site/
 ```
 
-Most figures are made by microsim when the docs are built, and are not
-checked in. Generate them once before previewing (this needs network access
-for FPbase and OpenOrganelle, and takes a few minutes the first time):
+Most figures, and the data for the interactive charts, are made by microsim
+when the docs are built, and are not checked in. Generate them once before
+previewing (this needs network access for FPbase and OpenOrganelle, and takes a
+few minutes the first time):
 
 ```bash
-uv run --group docs python scripts/make_doc_figures.py              # all figures
-uv run --group docs python scripts/make_doc_figures.py psf spectra  # some
+uv run --group docs python scripts/make_doc_figures.py                  # everything
+uv run --group docs python scripts/make_doc_figures.py psf detector_data  # some
 ```
 
-They are written to `docs/images/generated/`, which is ignored by git. The
-figures of the [two-color tutorial](../tutorials/two-color-cell.md) are made by
-running the code blocks of that page, so the code shown always matches the
-images.
+Images are written to `docs/images/generated/` and chart data to
+`docs/data/generated/`, both ignored by git. The figures of the
+[two-color tutorial](../tutorials/two-color-cell.md) are made by running the
+code blocks of that page, so the code shown always matches the images.
+
+### Interactive charts
+
+The interactive charts are drawn in the browser with
+[Observable Plot](https://observablehq.com/plot/) and
+[D3](https://d3js.org), loaded from jsDelivr. A chart is a placeholder in the
+Markdown,
+
+```html
+<div class="ms-chart" data-chart="spectra"></div>
+```
+
+and a module in `docs/javascripts/charts/` with the same name. Where a chart
+recomputes microsim's physics (so readers can change parameters), the
+calculation lives in `docs/javascripts/physics/`, and
+`tests/test_js_physics.py` runs it in node and compares it with microsim. Run
+that test after changing photometry or detector code; it needs `node`.
