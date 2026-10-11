@@ -16,7 +16,7 @@ as microsim does, for a specimen refractive index of 1.47 (the
 `ObjectiveLens` default). With the defaults (EGFP, FITC channel, 1 W/cm²,
 1.4 NA, no detector QE), one molecule gives about 6 photons in a 100 ms
 exposure. Typical widefield irradiance is 0.1–10 W/cm²; the peak irradiance of
-a confocal spot is 1–1000 kW/cm² and above
+a confocal spot is 10–1000 kW/cm²
 ([Channels](channels.md#illumination-power)). Fluorophores without a known
 lifetime do not saturate.
 ///

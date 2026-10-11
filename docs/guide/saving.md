@@ -34,9 +34,9 @@ sim = ms.Simulation.model_validate_json(result.attrs["microsim.Simulation"])
 !!! tip "Prefer Zarr"
 
     Without the `netCDF4` package installed, xarray writes NetCDF files in the
-    older NetCDF-3 format, which has no unsigned integer types. Gray values
-    above 32,767 (possible with a 16-bit detector) do not survive the round
-    trip. Zarr has no such limit.
+    older NetCDF-3 format, which has no unsigned integer types. Writing a
+    16-bit image with gray values above 32,767 fails with a `ValueError`.
+    Zarr has no such limit.
 
 To save intermediate stages, use xarray directly, for example
 `sim.optical_image().to_netcdf("optical.nc")`.
@@ -55,7 +55,8 @@ sim = ms.Simulation.model_validate_json(Path("sim.json").read_text())
 ```
 
 The JSON is complete: fluorophores loaded from FPbase are saved with their
-spectra, so loading does not need network access. It also includes the random
+spectra, so loading does not need network access (except for a `CosemLabel`
+sample, which queries OpenOrganelle when it is loaded). It also includes the random
 seed, so loading and running the simulation in the same environment reproduces
 the result.
 

@@ -31,6 +31,7 @@ from `microsim.schema`, as above. The main objects, by topic:
 | --- | --- |
 | [`Simulation`][microsim.schema.simulation.Simulation] | the top-level model |
 | [`Simulation.run`][microsim.schema.simulation.Simulation.run] | run every stage and return the digital image |
+| [`Simulation.run_batch`][microsim.schema.simulation.Simulation.run_batch] | run once per sample, reusing PSFs and emission rates |
 | [`ground_truth`][microsim.schema.simulation.Simulation.ground_truth], [`filtered_emission_rates`][microsim.schema.simulation.Simulation.filtered_emission_rates], [`optical_image`][microsim.schema.simulation.Simulation.optical_image], [`digital_image`][microsim.schema.simulation.Simulation.digital_image] | the stages, run one at a time ([guide](../guide/index.md)) |
 
 ## Spaces

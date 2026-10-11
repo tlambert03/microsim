@@ -39,9 +39,9 @@ sim = ms.Simulation(
 optical_image = sim.optical_image()
 ```
 
-1.  20 kW/cm² at the focus, about 25 µW in a diffraction-limited spot. The
+1.  20 kW/cm² at the focus, about 10 µW in a diffraction-limited spot. The
     brightest pixels receive tens of millions of photons per second. EGFP is
-    only slightly saturated at this irradiance (\(k\tau \approx 0.03\)).
+    only slightly saturated at this irradiance (\(k\tau \approx 0.02\)).
 2.  The detector's QE is applied when the optical image is computed. All the
     detectors compared below have GaAsP photocathodes with nearly identical QE
     spectra, so one optical image serves for all of them.

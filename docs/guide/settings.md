@@ -16,7 +16,7 @@ sim = ms.Simulation(..., settings=ms.Settings(random_seed=42, np_backend="jax"))
 | `random_seed`                        | random    | seed for the ground truth and noise                            |
 | `np_backend`                         | `"auto"`  | array library used for computation                             |
 | `float_dtype`                        | `float32` | floating-point precision                                       |
-| `max_psf_radius_aus`                 | 6         | lateral size limit of each PSF, in Airy units                  |
+| `max_psf_radius_aus`                 | 6         | lateral size limit of each PSF, in Airy radii                  |
 | `spectral_bins_per_emission_channel` | 1         | number of PSFs used per fluorophore and channel                |
 | `spectral_bin_threshold_percentage`  | 1         | part of the emission spectrum that is ignored when binning     |
 | `cache`                              | on        | read and write the on-disk ground-truth cache                  |
@@ -83,6 +83,12 @@ microsim caches results that are slow to compute and depend only on their
 parameters:
 
 - **PSFs**, in memory (the most recent 64) and on disk.
+- **Fourier transforms of PSFs**, in memory, up to
+  `Settings.cache.in_mem_size.otf_mb` (1000 MB by default; GPU memory for GPU
+  backends).
+- **Emission rates** (the result of `filtered_emission_rates`), in memory, for
+  the most recent 32 combinations of channels, fluorophores, detector QE, and
+  objective.
 - **Ground truth** from `MatsLines` and `CosemLabel`, on disk, keyed by the
   distribution's parameters, the truth space, the concentration, and the random
   seed.

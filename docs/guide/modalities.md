@@ -91,7 +91,7 @@ passing less light.
     In a simulation, the confocal excitation PSF is currently computed at the
     emission wavelength, not at the wavelength of the light source. This makes
     the simulated excitation spot slightly larger than it should be (by the
-    ratio of the wavelengths, about 7% for GFP).
+    ratio of the wavelengths, about 7% for EGFP excited at 488 nm).
 
 ## Identity
 

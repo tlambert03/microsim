@@ -45,7 +45,7 @@ flowchart TB
       direction LR
       fl[fluorophore spectra] --> em["photons/s per fluorophore<br/><code>(c, f, w)</code>"]
       ch[channels] --> em
-      ob1[objective NA] --> em
+      ob1[objective NA, specimen RI] --> em
       dq[detector QE] --> em
     end
     subgraph S3 ["<span class='ms-stage'>3</span> optical_image()"]
@@ -103,6 +103,13 @@ returns the optical image before fluorophores are summed, as
 `(c, f, z, y, x)`, which shows how much of each channel comes from each
 fluorophore. [`emission_flux()`][microsim.schema.simulation.Simulation.emission_flux] returns the
 emitted photons per voxel before blurring.
+
+To simulate many samples with the same optics,
+[`run_batch()`][microsim.schema.simulation.Simulation.run_batch] runs the
+simulation once per sample and yields each digital image. PSFs and emission
+rates are computed once and reused. Each sample gets its own random seed,
+derived from `settings.random_seed`, and if `output_path` is set, result `i`
+is written to `<stem>_<i>.<suffix>`.
 
 ## Units
 

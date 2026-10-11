@@ -205,7 +205,7 @@ larger, not much smaller than the PSF; to simulate those, fill a sphere of
 voxels for each bead instead (as with the shells in the
 [own ground truth tutorial](../tutorials/your-own-ground-truth.md)).
 
-`np.random` is seeded from
+With the NumPy backend, `np.random` is seeded from
 [`Settings.random_seed`](settings.md#reproducibility) before rendering, so this
 example is reproducible. Generators like this cannot be saved to JSON. To make
 one that can, subclass
@@ -261,7 +261,7 @@ What each property does:
 ### The placeholder fluorophore
 
 A label without a fluorophore uses `mockFluorophore`: flat excitation and
-emission spectra from 300 to 800 nm, an extinction coefficient of
+emission spectra from 300 to 799 nm, an extinction coefficient of
 50,000 M⁻¹ cm⁻¹, a quantum yield of 1, and a 1 ns lifetime. It is excited by
 any light source and passes any emission filter. Use it for testing; for
 realistic brightness, color, and bleedthrough, use a real fluorophore.

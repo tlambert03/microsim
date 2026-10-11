@@ -72,9 +72,10 @@ parameters, and in which steps do nothing for them.
 3. **Full well.** A camera pixel cannot hold more than `full_well` electrons.
 4. **Multiplication.** EMCCDs and PMTs multiply each electron by a random gain
    before readout. The randomness adds noise.
-5. **Readout.** The amplifier adds Gaussian read noise, the ADC converts
-   electrons to gray values, the `offset` is added, and the result is rounded
-   and clipped to the range of `bit_depth`.
+5. **Readout.** The amplifier adds Gaussian read noise, and the ADC converts
+   electrons to gray values, rounded and clipped to the top of the `bit_depth`
+   range. Then any digital gain and the `offset` are applied, and the result is
+   clipped to the range again.
 
 The parameters shared by all detectors:
 

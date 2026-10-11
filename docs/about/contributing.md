@@ -46,7 +46,7 @@ few minutes the first time):
 
 ```bash
 uv run --group docs python scripts/make_doc_figures.py                  # everything
-uv run --group docs python scripts/make_doc_figures.py psf detector_data  # some
+uv run --group docs python scripts/make_doc_figures.py pinhole_data detector_data  # some
 ```
 
 Images are written to `docs/images/generated/` and chart data to

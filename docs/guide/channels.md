@@ -136,7 +136,7 @@ Rough orders of magnitude for the irradiance at the sample:
 | ----------------------------------- | ----------------------- |
 | widefield, arc lamp or LED          | 0.1–10 W/cm²            |
 | widefield, laser                    | 10–1000 W/cm²           |
-| point-scanning confocal, at focus   | 1–1000 kW/cm² and above |
+| point-scanning confocal, at focus   | 10–1000 kW/cm²          |
 
 For point-scanning modalities, `power` is the peak irradiance at the center of
 the focused spot. See [Modalities](modalities.md#confocal).
@@ -173,8 +173,8 @@ Detected photons per molecule for two fluorophores in two channels. Dashed
 cells are crosstalk: the fluorophore gives less than half of that channel's
 signal. tdTomato absorbs only weakly in the FITC excitation band, but it is
 bright, and a 500 nm longpass emission filter passes nearly all of its
-emission: per molecule, it gives almost as much signal in the green channel as
-EGFP. With the 525/50 bandpass emission filter of `FITC`, its share drops below
+emission: per molecule, it gives about 80% as much signal in the green channel
+as EGFP. With the 525/50 bandpass emission filter of `FITC`, its share drops below
 1%. Select `FITC` as channel 1 to compare.
 ///
 
