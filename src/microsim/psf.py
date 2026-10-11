@@ -354,7 +354,7 @@ def _detection_psf(
 
     # light through the pinhole: the image of the point source, summed over the
     # pinhole area (i.e. convolved with the pinhole mask)
-    pinhole = xp.asarray(_pinhole_mask(psf.shape[-1], pinhole_radius_um, dxy, xp))
+    pinhole = xp.asarray(_pinhole_mask(psf.shape[-1], pinhole_radius_um, dxy))
     out = xp.empty_like(psf)
     for i in tqdm.trange(len(psf), desc="convolving em_psf with pinhole..."):
         plane = xp.fftconvolve(xp.asarray(psf[i]), pinhole, mode="same")
@@ -467,15 +467,31 @@ def _norm_psf(
     return psf
 
 
-def _pinhole_mask(
-    nxy: int, radius_um: float, dxy: float, xp: NumpyAPI | None = None
-) -> npt.NDArray:
-    """Create a 2D circular pinhole mask of radius `radius_um` (in sample space)."""
-    xp = NumpyAPI.create(xp)
-    x = xp.arange(nxy) - nxy // 2
-    xx, yy = xp.meshgrid(x, x)
-    r = xp.sqrt(xx**2 + yy**2)
-    return (r <= radius_um / dxy).astype(int)  # type: ignore
+# minimum pinhole radius, in subpixels, used to compute the open area of pixels at
+# the pinhole edge (area error < 0.5%)
+_PINHOLE_RADIUS_SUBPX = 64
+
+
+def _pinhole_mask(nxy: int, radius_um: float, dxy: float) -> npt.NDArray:
+    """Create a 2D circular pinhole mask of radius `radius_um` (in sample space).
+
+    Each pixel is the fraction of its area inside the pinhole, so the total open
+    area matches the pinhole's (a pinhole only a few pixels across would otherwise
+    snap to whole pixels, e.g. 9 px instead of 11.3 px for a radius of 1.9 px).
+    """
+    radius_px = radius_um / dxy
+    # only pixels near the pinhole can be (partly) open
+    half = min(int(np.ceil(radius_px)) + 1, (nxy - 1) // 2)
+    x = np.arange(-half, half + 1)
+    ss = max(4, int(np.ceil(_PINHOLE_RADIUS_SUBPX / max(radius_px, 1e-3))))
+    sub = (x[:, None] + (np.arange(ss) + 0.5) / ss - 0.5).ravel()
+    inside = np.hypot(sub[:, None], sub[None, :]) <= radius_px
+    local = inside.reshape(x.size, ss, x.size, ss).mean(axis=(1, 3))
+
+    mask = np.zeros((nxy, nxy))
+    center = nxy // 2
+    mask[center - half : center + half + 1, center - half : center + half + 1] = local
+    return mask
 
 
 def make_psf(
@@ -607,6 +623,7 @@ def _psf_cache_path(
 ) -> Path:
     """Return the cache location for a PSF array."""
     # "v4": PSFs are cached as separate excitation spots and detection PSFs
-    parts = [*name, grid.nz, grid.nx, grid.dz, grid.dx, "v4"]
+    # "v5": anti-aliased pinhole mask
+    parts = [*name, grid.nz, grid.nx, grid.dz, grid.dx, "v5"]
     stem = "_".join(str(x).replace(".", "-") for x in parts)
     return (microsim_cache("psf") / objective.cache_key() / stem).with_suffix(".npy")
