@@ -84,11 +84,12 @@ can be used to make the simulation reproducible, and other general parameters.
 
 ### Point Spread Functions
 
-There is no top-level point spread function object in the simulation: most
-modalities will be responsible for generating their own point spread function
-based on the objective lens and other parameter that are passed into their
-`render()` method.  The `microsim.psf` module contains some common point spread
-functions, with `make_psf()` being the most common entrypoint.
+There is no top-level point spread function object in the simulation: each
+modality builds a *system PSF* for every fluorophore in every channel (the
+excitation spot times the detection PSF), based on the objective lens and the
+`ChannelFluorescence` objects passed into its `render()` method.  The
+`microsim.psf` module contains the building blocks (`excitation_spot()` and
+`detection_psf()`), with `make_psf()` being the most common entrypoint.
 
 ### FPbase
 

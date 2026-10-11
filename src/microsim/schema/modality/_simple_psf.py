@@ -10,7 +10,7 @@ from pydantic import Field
 from microsim._data_array import DataArray, xrDataArray
 from microsim._logger import logger, logging_indented
 from microsim.fft.convolve import fftconvolve_same_pairs
-from microsim.psf import PSFGrid, airy_radius_um, saturate
+from microsim.psf import PSFGrid, airy_radius_um, apply_saturation
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.dimensions import Axis
 
@@ -68,12 +68,14 @@ class _PSFModality(SimBaseModel):
         for c_idx, channel in enumerate(fluorescence):
             logger.info(f"Rendering {type(self).__name__} channel {channel[0].channel}")
             with logging_indented():
-                detection = self._detection(channel, objective_lens)
+                detection: Detection | None = None
                 by_fluor = {fl.fluorophore: fl for fl in channel}
                 for f_idx, fluor in enumerate(truth.coords[Axis.F].values):
                     fl = by_fluor[fluor]
                     if fl.detected_rate(saturate=False) <= 1e-12:
                         continue  # this fluorophore is not seen in this channel
+                    if detection is None:  # (only needed if something is seen)
+                        detection = self._detection(channel, objective_lens)
                     logger.info(f"Fluor: {fluor}")
                     with logging_indented():
                         key, psf, bright = self._system_psf(
@@ -132,12 +134,12 @@ class _PSFModality(SimBaseModel):
         is likewise a weighted sum over the excitation wavelengths.
         """
         emission = emission_lines(
-            fl.detection,
+            fl.detected_fraction,
             bins=settings.spectral_bins_per_emission_channel,
             threshold_percentage=settings.spectral_bin_threshold_percentage,
         )
         excitation = excitation_lines(
-            fl.absorption,
+            fl.absorption_spectrum,
             threshold_percentage=settings.spectral_bin_threshold_percentage,
             bin_nm=settings.excitation_bin_width_nm,
         )
@@ -156,14 +158,14 @@ class _PSFModality(SimBaseModel):
         spot = self._illumination().spot(excitation, grid, objective_lens, xp)
         if isinstance(spot, float):
             # uniform illumination: excitation (and saturation) is just a factor
-            brightness = fl.detected_rate(saturate=False) * saturate(
+            brightness = fl.detected_rate(saturate=False) * apply_saturation(
                 spot, fl.saturation
             )
             return key, detected, brightness
         key = (*key, excitation, saturation)
         return (
             key,
-            saturate(spot, saturation) * detected,
+            apply_saturation(spot, saturation) * detected,
             fl.detected_rate(saturate=False),
         )
 
@@ -205,6 +207,7 @@ class Confocal(_PSFModality):
     pinhole_au: Annotated[float, Ge(0)] = 1
     airy_unit_wavelength_nm: float | None = Field(
         default=None,
+        gt=0,
         description="Wavelength (nm) at which `pinhole_au` is defined.  By default, "
         "1 AU is matched to the center of each channel's emission filter band.",
     )
@@ -223,11 +226,13 @@ class Confocal(_PSFModality):
             # no band-limited emission filter (e.g. a longpass): use the center of
             # the light detected in this channel instead
             wvl_nm = _detected_light_center(channel)
-            logger.warning(
+            # (warnings are shown once per distinct message)
+            warnings.warn(
                 f"Channel {channel[0].channel.name!r} has no band-limited emission "
                 f"filter to match the pinhole size to; using 1 AU at {wvl_nm:.0f} nm "
                 "(the center of the detected emission).  Set "
-                "`Confocal.airy_unit_wavelength_nm` to choose."
+                "`Confocal.airy_unit_wavelength_nm` to choose.",
+                stacklevel=2,
             )
         radius_um = self.pinhole_au * airy_radius_um(
             wvl_nm / 1000, objective.numerical_aperture
@@ -325,8 +330,7 @@ def emission_lines(
         if weight > 0 and not np.isnan(wvl)
     ]
     total = sum(weight for _, weight in lines)
-    # round, to keep PSF cache keys stable
-    return tuple((round(wvl, 2), float(f"{w / total:.4g}")) for wvl, w in lines)
+    return tuple((_round_nm(wvl), float(f"{w / total:.4g}")) for wvl, w in lines)
 
 
 def excitation_lines(
@@ -348,11 +352,20 @@ def excitation_lines(
     sums = np.bincount(idx, weights=rate)
     centroids = np.bincount(idx, weights=rate * wvl)[sums > 0] / sums[sums > 0]
     weights = sums[sums > 0] / sums.sum()
-    # round, to keep PSF cache keys stable
     return tuple(
-        (round(float(w), 2), float(f"{f:.4g}"))
+        (_round_nm(w), float(f"{f:.4g}"))
         for w, f in zip(centroids, weights, strict=True)
     )
+
+
+# PSF wavelengths are rounded to this step, so that fluorophores with nearly the
+# same (centroid) wavelength share PSFs.  The PSF width scales with wavelength, so
+# this changes it by < 0.1%.
+_WAVELENGTH_STEP_NM = 0.5
+
+
+def _round_nm(wvl_nm: float) -> float:
+    return float(round(wvl_nm / _WAVELENGTH_STEP_NM) * _WAVELENGTH_STEP_NM)
 
 
 def bin_spectrum(

@@ -271,7 +271,7 @@ def airy_radius_um(wvl_um: float, na: float) -> float:
     return 0.61 * wvl_um / na
 
 
-def saturate(spot: Any, saturation: float) -> Any:
+def apply_saturation(spot: Any, saturation: float) -> Any:
     """Apply excitation saturation to a relative excitation intensity (1 at focus).
 
     `saturation` is the fluorophore's saturation at the reference (focal) intensity
@@ -399,7 +399,7 @@ def make_confocal_psf(
     objective = _cast_objective(objective)
     kw: dict[str, Any] = {"nz": nz, "dz": dz, "pz": pz, "nx": nx, "ny": ny}
     kw.update(pos=pos, dxy=dxy, objective=objective, sf=sf, xp=xp)
-    spot = saturate(_excitation_spot(wvl_um=ex_wvl_um, **kw), saturation)
+    spot = apply_saturation(_excitation_spot(wvl_um=ex_wvl_um, **kw), saturation)
     pinhole_um = pinhole_au * airy_radius_um(em_wvl_um, objective.numerical_aperture)
     det = _detection_psf(wvl_um=em_wvl_um, pinhole_radius_um=pinhole_um, **kw)
     return _norm_psf(xp.asarray(spot) * det, normalize, xp)
@@ -424,7 +424,7 @@ def _norm_to_collected_light(
     conserves energy across planes, so every plane holds the same total, and dividing
     by it makes each plane sum to ~1: a camera focused at any depth receives all the
     light collected from the point source.  (Collection efficiency itself is applied
-    to the emission rates, in `Simulation.filtered_emission_rates`.)
+    to the detected fraction of emitted light, in `ChannelFluorescence.create`.)
 
     The total is the sum of the in-focus plane over at least `_NORM_RADIUS_AU`, rather
     than over `psf` itself: if `psf` is laterally truncated, its own planes miss some
@@ -521,6 +521,7 @@ def make_psf(
         ex_wvl_nm = em_wvl_nm
     if em_wvl_nm is None:
         em_wvl_nm = ex_wvl_nm
+    ex_wvl_nm, em_wvl_nm = float(ex_wvl_nm), float(em_wvl_nm)
 
     objective = _cast_objective(objective)
     na = objective.numerical_aperture
@@ -531,10 +532,11 @@ def make_psf(
     xp = NumpyAPI.create(xp)
 
     if pinhole_au is None:
-        return detection_psf(grid, em_wvl_nm, objective, xp)
+        # a copy: the cached PSF must not be modified
+        return detection_psf(grid, em_wvl_nm, objective, xp).copy()  # type: ignore [attr-defined, no-any-return]
     pinhole_um = pinhole_au * airy_radius_um(em_wvl_nm * 1e-3, na)
     det = detection_psf(grid, em_wvl_nm, objective, xp, pinhole_radius_um=pinhole_um)
-    spot = saturate(excitation_spot(grid, ex_wvl_nm, objective, xp), saturation)
+    spot = apply_saturation(excitation_spot(grid, ex_wvl_nm, objective, xp), saturation)
     return spot * det  # type: ignore [no-any-return]
 
 
@@ -608,14 +610,21 @@ def _disk_cached(
     if use_cache and path.exists():
         logger.info(f"Found cached PSF {path.stem}")
         # the file may have been written by a simulation of another precision
-        return xp.asarray(np.load(path), dtype=xp.float_dtype)
+        return _read_only(xp.asarray(np.load(path), dtype=xp.float_dtype))
 
     logger.info(f"Creating new PSF {path.stem}")
     psf = compute()
     if use_cache:
         path.parent.mkdir(parents=True, exist_ok=True)
         np.save(path, psf)
-    return xp.asarray(psf)
+    return _read_only(xp.asarray(psf))
+
+
+def _read_only(psf: ArrayProtocol) -> ArrayProtocol:
+    """Protect a cached (shared) numpy array from in-place modification."""
+    if isinstance(psf, np.ndarray):
+        psf.setflags(write=False)
+    return psf
 
 
 def _psf_cache_path(
@@ -624,6 +633,8 @@ def _psf_cache_path(
     """Return the cache location for a PSF array."""
     # "v4": PSFs are cached as separate excitation spots and detection PSFs
     # "v5": anti-aliased pinhole mask
+    # e.g. 520 and 520.0 nm share a file
+    name = tuple(float(x) if isinstance(x, int | float) else x for x in name)
     parts = [*name, grid.nz, grid.nx, grid.dz, grid.dx, "v5"]
     stem = "_".join(str(x).replace(".", "-") for x in parts)
     return (microsim_cache("psf") / objective.cache_key() / stem).with_suffix(".npy")

@@ -10,10 +10,10 @@ from microsim import schema as ms
 from microsim.psf import (
     PSFGrid,
     airy_radius_um,
+    apply_saturation,
     detection_psf,
     excitation_spot,
     make_confocal_psf,
-    saturate,
 )
 from microsim.schema.lens import ObjectiveLens
 from microsim.schema.modality._optics import (
@@ -219,10 +219,12 @@ def test_confocal_psf_uses_excitation_wavelength(power: float) -> None:
     # the excitation spot is computed at the laser wavelength, not the emission
     xp, objective = sim._xp, sim.objective_lens
     grid = PSFGrid(nz=9, nx=33, dz=0.1, dx=0.03)
-    emission = emission_lines(fl.detection, bins=1, threshold_percentage=1)
+    emission = emission_lines(fl.detected_fraction, bins=1, threshold_percentage=1)
     [(em_nm, _)] = emission
     pinhole_um = airy_radius_um(0.52, 1.4)
-    expected = saturate(excitation_spot(grid, 488, objective, xp), fl.saturation)
+    expected = apply_saturation(
+        excitation_spot(grid, 488, objective, xp), fl.saturation
+    )
     expected = expected * detection_psf(grid, em_nm, objective, xp, pinhole_um)
     np.testing.assert_allclose(psf, expected, rtol=1e-3)
     assert psf.max() == pytest.approx(
@@ -260,9 +262,7 @@ def test_confocal_polychromatic_excitation() -> None:
     assert WidefieldIllumination().spot(((405, 1),), grid, objective, xp) == 1
 
 
-def test_confocal_pinhole_matched_to_emission_band(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
+def test_confocal_pinhole_matched_to_emission_band() -> None:
     """1 AU is defined at the center of the emission filter band, per channel."""
     objective = ObjectiveLens(numerical_aperture=1.4)
     green, flat = _green_fluor(), FLAT
@@ -293,9 +293,49 @@ def test_confocal_pinhole_matched_to_emission_band(
     # a longpass emission filter has no band center: fall back to detected light
     lp = ms.Longpass(cuton=500, placement="EM")
     open_ended = oc.model_copy(update={"filters": [lp]})
-    with caplog.at_level("WARNING"):
+    with pytest.warns(UserWarning, match="no band-limited emission filter"):
         assert _pinhole(open_ended).radius_um > 0
-    assert "no band-limited emission filter" in caplog.text
+
+    # a filter spectrum covering only its passband is band-limited
+    passband = ms.SpectrumFilter(
+        transmission={"wavelength": [500, 525, 550], "intensity": [1, 1, 1]},
+        placement="EM",
+    )
+    narrow = oc.model_copy(update={"filters": [passband]})
+    assert narrow.emission_band_center() == pytest.approx(525)
+    assert _pinhole(narrow).radius_um == pytest.approx(expected, rel=1e-3)
+
+    with pytest.raises(ValidationError):
+        ms.Confocal(airy_unit_wavelength_nm=0)
+
+
+def test_confocal_channel_without_signal() -> None:
+    """A channel that detects nothing is dark (no pinhole size is needed)."""
+    far_red = ms.OpticalConfig(
+        lights=[ms.LightSource.laser(700)],
+        filters=[ms.Longpass(cuton=720, placement="EM")],
+    )
+    sim = ms.Simulation(
+        truth_space={"shape": (4, 16, 16), "scale": (0.1, 0.05, 0.05)},
+        sample=[{"distribution": ms.MatsLines(), "fluorophore": _green_fluor()}],
+        channels=[FITC, far_red],
+        modality=ms.Confocal(),
+        settings=ms.Settings(cache=False),
+    )
+    img = sim.optical_image()
+    assert float(img[0].sum()) > 0
+    assert float(img[1].sum()) == 0
+
+
+def test_single_wavelength_light() -> None:
+    light = ms.LightSource(spectrum={"wavelength": [488], "intensity": [1]})
+    sim = ms.Simulation(
+        truth_space={"shape": (4, 16, 16), "scale": (0.1, 0.05, 0.05)},
+        sample=[{"distribution": ms.MatsLines(), "fluorophore": _green_fluor()}],
+        channels=[ms.OpticalConfig(lights=[light])],
+        settings=ms.Settings(cache=False),
+    )
+    assert float(sim.optical_image().sum()) > 0
 
 
 def test_emission_binning_preserves_brightness() -> None:

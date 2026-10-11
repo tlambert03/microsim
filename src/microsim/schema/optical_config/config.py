@@ -20,6 +20,11 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
 
+# emission bandpass filters are rarely wider than this; a wider band that runs off
+# the end of the filter's spectrum is treated as open-ended (e.g. a longpass)
+_MAX_EMISSION_BAND_NM = 150
+
+
 class LightSource(SimBaseModel):
     name: str = ""
     spectrum: Spectrum
@@ -198,8 +203,9 @@ class OpticalConfig(SimBaseModel):
         """Center (transmission-weighted mean wavelength) of the emission filter band.
 
         This combines all filters in the emission path.  Returns None if there are no
-        emission filters, or if the band is open-ended (e.g. a longpass filter, still
-        transmitting at the end of its spectrum).
+        emission filters, or if the band is open-ended: e.g. a longpass filter, which
+        is still transmitting at the end of its spectrum.  (A spectrum that only
+        covers a narrow passband is fine: beyond its data, transmission is 0.)
         """
         if (emission := self.emission) is None:
             return None
@@ -207,9 +213,14 @@ class OpticalConfig(SimBaseModel):
         order = np.argsort(spectrum.wavelength)
         wvl, trans = spectrum.wavelength[order], spectrum.intensity[order]
         peak = trans.max()
-        if peak <= 0 or trans[0] > peak / 2 or trans[-1] > peak / 2:
+        if peak <= 0:
             return None
-        return float(np.average(wvl, weights=trans))
+        passing = wvl[trans > peak / 2]
+        open_end = trans[0] > peak / 2 or trans[-1] > peak / 2
+        if open_end and passing.max() - passing.min() > _MAX_EMISSION_BAND_NM:
+            return None
+        center = np.trapezoid(wvl * trans, wvl) / np.trapezoid(trans, wvl)
+        return float(center)
 
     @property
     def excitation(self) -> Filter | None:

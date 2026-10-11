@@ -31,9 +31,9 @@ class ChannelFluorescence:
         The channel (light sources, filters).
     fluorophore : Fluorophore
         The fluorophore.
-    absorption : xr.DataArray
+    absorption_spectrum : xr.DataArray
         Photons absorbed per second by one fluorophore, at each excitation wavelength.
-    detection : xr.DataArray
+    detected_fraction : xr.DataArray
         Photons detected per photon absorbed, at each emission wavelength: quantum
         yield x emission spectrum x emission filters x detector QE x the fraction of
         emitted light collected by the objective.
@@ -41,8 +41,8 @@ class ChannelFluorescence:
 
     channel: OpticalConfig
     fluorophore: Fluorophore
-    absorption: xr.DataArray  # (W,)
-    detection: xr.DataArray  # (W,)
+    absorption_spectrum: xr.DataArray  # (W,)
+    detected_fraction: xr.DataArray  # (W,)
 
     @classmethod
     def create(
@@ -53,7 +53,8 @@ class ChannelFluorescence:
         detector: Detector | None = None,
     ) -> ChannelFluorescence:
         qe = detector.qe if detector else None
-        absorption = channel.absorption_rate(fluorophore).squeeze(drop=True)
+        absorption = channel.absorption_rate(fluorophore)
+        absorption = absorption.squeeze([Axis.F, Axis.C], drop=True)
         detected = channel.detected_fraction(fluorophore, detector_qe=qe)
         # fraction of isotropic emission entering the objective. PSFs are normalized
         # to collected light, so this is not double-counted (see `detection_psf`)
@@ -61,9 +62,9 @@ class ChannelFluorescence:
         return cls(channel, fluorophore, absorption, detected)
 
     @property
-    def absorption_rate(self) -> float:
+    def total_absorption_rate(self) -> float:
         """Photons absorbed per second by one fluorophore (all wavelengths)."""
-        return float(self.absorption.sum())
+        return float(self.absorption_spectrum.sum())
 
     @property
     def saturation(self) -> float:
@@ -76,14 +77,14 @@ class ChannelFluorescence:
         """
         if not (lifetime_ns := self.fluorophore.lifetime_ns):
             return 0.0
-        return self.absorption_rate * lifetime_ns * 1e-9
+        return self.total_absorption_rate * lifetime_ns * 1e-9
 
     def detected_rate(self, *, saturate: bool = True) -> float:
         """Photons detected per second from one fluorophore (all wavelengths).
 
         If `saturate` is True, saturation at the reference intensity is applied.
         """
-        rate = self.absorption_rate * float(self.detection.sum())
+        rate = self.total_absorption_rate * float(self.detected_fraction.sum())
         return rate / (1 + self.saturation) if saturate else rate
 
     def detected_spectrum(self, *, saturate: bool = True) -> xr.DataArray:
@@ -91,10 +92,10 @@ class ChannelFluorescence:
 
         If `saturate` is True, saturation at the reference intensity is applied.
         """
-        rate = self.absorption_rate
+        rate = self.total_absorption_rate
         if saturate:
             rate /= 1 + self.saturation
-        out = self.detection * rate
+        out = self.detected_fraction * rate
         out = out.expand_dims({Axis.F: [self.fluorophore], Axis.C: [self.channel]})
         out.name = "filtered_emission_rate"
         out.attrs.update(long_name="Filtered Emission rate", units="photons/s")

@@ -6,7 +6,7 @@ import xarray.testing as xrt
 
 import microsim.schema as ms
 from microsim import _data_array
-from microsim.psf import PSFGrid, detection_psf
+from microsim.psf import PSFGrid, detection_psf, make_psf
 
 
 def test_cache(sim1: ms.Simulation) -> None:
@@ -42,3 +42,24 @@ def test_cache_psf(caplog: pytest.LogCaptureFixture) -> None:
     assert "Found cached PSF" in caplog.text
 
     np.testing.assert_array_equal(psf1, psf2)
+
+
+def test_cached_psfs_are_protected() -> None:
+    """Modifying a PSF returned by `make_psf` doesn't corrupt the PSF cache."""
+    kwargs = {
+        "nz": 5,
+        "nx": 15,
+        "dx": 0.05,
+        "dz": 0.1,
+        "objective": ms.ObjectiveLens(numerical_aperture=1.4),
+        "em_wvl_nm": 520,
+    }
+    psf = make_psf(**kwargs)
+    expected = psf.copy()
+    psf *= 0
+    np.testing.assert_array_equal(make_psf(**kwargs), expected)
+    # the cached arrays themselves are read-only
+    grid = PSFGrid(nz=5, nx=15, dz=0.1, dx=0.05)
+    cached = detection_psf(grid, 520.0, kwargs["objective"], ms.NumpyAPI())
+    with pytest.raises(ValueError, match="read-only"):
+        cached *= 0

@@ -120,7 +120,9 @@ class PinholeDetection:
         self, wvl_nm: float, grid: PSFGrid, objective: ObjectiveLens, xp: NumpyAPI
     ) -> ArrayProtocol:
         """Fraction of collected light passing the pinhole, at each source position."""
-        return detection_psf(grid, wvl_nm, objective, xp, self.radius_um)
+        return detection_psf(
+            grid, wvl_nm, objective, xp, pinhole_radius_um=self.radius_um
+        )
 
     def psf_radius_aus(
         self, depth_um: float, wvl_um: float, objective: ObjectiveLens
