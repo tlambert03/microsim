@@ -18,12 +18,14 @@ import {
 } from "./lib.js";
 
 // starting values, as in the "Which camera when" chart; `electronsPerAdu` puts
-// the signal well inside a 16-bit range
+// the signal well inside a 16-bit range.  The offset is 5x the largest read
+// noise on the slider (100 e⁻ at 0.5 e⁻/ADU), so the background never clips at 0.
+const OFFSET = 1000;
 const CAMERAS = {
   "ideal (shot noise only)": { readNoise: 0, electronsPerAdu: 1, offset: 0 },
-  CCD: { readNoise: 6, electronsPerAdu: 1 },
-  sCMOS: { readNoise: 1.5, electronsPerAdu: 0.5 },
-  EMCCD: { readNoise: 50, electronsPerAdu: 20, emGain: 300 },
+  CCD: { readNoise: 6, electronsPerAdu: 1, offset: OFFSET },
+  sCMOS: { readNoise: 1.5, electronsPerAdu: 0.5, offset: OFFSET },
+  EMCCD: { readNoise: 50, electronsPerAdu: 20, emGain: 300, offset: OFFSET },
 };
 
 export default async function (el) {
