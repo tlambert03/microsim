@@ -603,3 +603,13 @@
   font-size: 0.58rem;
   color: var(--ms-ink-muted);
 }
+
+/* controls in two equal columns, filled row by row */
+.ms-chart__controls--pairs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ms-chart__controls--pairs .ms-select {
+  width: 100%;
+}

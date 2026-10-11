@@ -42,6 +42,8 @@ function detected(channel, fluor) {
 export default async function (el) {
   const { fluors, channels } = await loadPhotometry();
   const ui = shell(el);
+  // two columns: the fluorophores on one row, the channels on the next
+  ui.controls.classList.add("ms-chart__controls--pairs");
   const state = {
     f1: "EGFP",
     f2: "tdTomato",
