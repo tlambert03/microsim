@@ -62,7 +62,7 @@ export default async function (el) {
   for (const name of Object.keys(color)) legendItem(ui.legend, { label: name, color: color[name] });
   legendItem(ui.legend, { label: "microsim simulation (starting values)", color: C.muted, swatch: "dotmark" });
 
-  const setCross = stat(ui.stats, { label: "EMCCD beats sCMOS", note: "" });
+  const setCross = stat(ui.stats, { label: "EMCCD SNR above sCMOS", note: "" });
   const setCCD = stat(ui.stats, { label: "CCD reaches 90% of ideal", note: "" });
 
   const chart = responsive(ui.plot, (width) => {
@@ -89,10 +89,10 @@ export default async function (el) {
         pts.map((p) => ({ name, e: p.electrons, rel: p.snr / D.snr({ electrons: p.electrons }) })),
       );
 
-    const better = LEVELS.filter((e) => relative("EMCCD", e) > relative("sCMOS", e));
+    const higher = LEVELS.filter((e) => relative("EMCCD", e) > relative("sCMOS", e));
     setCross(
-      better.length ? `< ${fmt.sig(better.at(-1), 2)}<small> e⁻</small>` : "never",
-      better.length ? "photoelectrons per pixel, with these settings" : "with these settings",
+      higher.length ? `< ${fmt.sig(higher.at(-1), 2)}<small> e⁻</small>` : "never",
+      higher.length ? "photoelectrons per pixel, with these settings" : "with these settings",
     );
     const good = LEVELS.find((e) => relative("CCD", e) >= 0.9);
     setCCD(good ? `${fmt.sig(good, 2)}<small> e⁻</small>` : "> 10k", "photoelectrons per pixel");
