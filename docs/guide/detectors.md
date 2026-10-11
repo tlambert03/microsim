@@ -59,7 +59,7 @@ short = sim.digital_image(optical, exposure_ms=10)
 long = sim.digital_image(optical, exposure_ms=1000)
 ```
 
-## What every detector does
+## The detector simulation pipeline
 
 All detectors run the same sequence of steps. They differ in their
 parameters, and in which steps do nothing for them.
