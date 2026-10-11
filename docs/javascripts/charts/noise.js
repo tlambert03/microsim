@@ -24,7 +24,7 @@ const OFFSET = 1000;
 const CAMERAS = {
   "ideal (shot noise only)": { readNoise: 0, electronsPerAdu: 1, offset: 0 },
   CCD: { readNoise: 6, electronsPerAdu: 1, offset: OFFSET },
-  sCMOS: { readNoise: 1.5, electronsPerAdu: 0.5, offset: OFFSET },
+  sCMOS: { readNoise: 1, electronsPerAdu: 0.5, offset: OFFSET },
   EMCCD: { readNoise: 50, electronsPerAdu: 20, emGain: 300, offset: OFFSET },
 };
 

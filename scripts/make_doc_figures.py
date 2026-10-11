@@ -288,7 +288,7 @@ def photometry_data() -> None:
 # cameras in the interactive SNR chart, with the parameters it starts from
 SNR_CAMERAS = {
     "CCD": ms.CameraCCD(read_noise=6),
-    "sCMOS": ms.CameraCMOS(read_noise=1.5),
+    "sCMOS": ms.CameraCMOS(read_noise=1),
     "EMCCD": ms.CameraEMCCD(em_gain=300, read_noise=50),
 }
 
