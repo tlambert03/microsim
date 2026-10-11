@@ -61,10 +61,11 @@ class NumpyAPI:
     _float_dtype: np.dtype | None = None
 
     def __init__(self) -> None:
-        from scipy import signal, special, stats
+        from scipy import fft, signal, special, stats
         from scipy.ndimage import map_coordinates
 
         self.xp = np
+        self.fft = fft
         self.signal = signal
         self.stats = stats
         self.j0 = special.j0
@@ -145,12 +146,15 @@ class NumpyAPI:
 
     # WARNING: these hash and eq methods may be problematic later?
     # the goal is to make any instance of a NumpyAPI hashable and equal to any
-    # other instance, as long as they are of the same type and random seed.
+    # other instance of the same type and float dtype, so that it can be used in
+    # cache keys of deterministic functions (e.g. PSFs, which are cast to the
+    # float dtype).  The random seed is deliberately excluded: including it made
+    # every new seed miss the in-memory PSF cache.
     def __hash__(self) -> int:
-        return hash(type(self)) + hash(self._random_seed)
+        return hash((type(self), self._float_dtype))
 
     def __eq__(self, other: Any) -> bool:
-        return type(self) is type(other)
+        return type(self) is type(other) and self._float_dtype == other._float_dtype
 
 
 class JaxAPI(NumpyAPI):
@@ -163,6 +167,7 @@ class JaxAPI(NumpyAPI):
         from ._jax_bessel import j0, j1
 
         self.xp = jax.numpy
+        self.fft = jax.numpy.fft
         self.signal = signal
         self.stats = stats
         self.map_coordinates = map_coordinates
@@ -232,9 +237,10 @@ class CupyAPI(NumpyAPI):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            from cupyx.scipy import signal, special, stats
+            from cupyx.scipy import fft, signal, special, stats
 
         self.xp = cupy
+        self.fft = fft
         self.signal = signal
         self.stats = stats
         self.j0 = special.j0

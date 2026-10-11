@@ -1,5 +1,6 @@
 import time
 import warnings
+from collections import OrderedDict
 from contextlib import suppress
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Literal
@@ -21,7 +22,7 @@ from .lens import ObjectiveLens
 from .modality import Modality, Widefield
 from .optical_config import OpticalConfig, Placement
 from .optical_config.lib import FITC
-from .sample import FluorophoreDistribution, Sample
+from .sample import Fluorophore, FluorophoreDistribution, Sample
 from .settings import Settings
 from .space import ShapeScaleSpace, Space, _RelativeSpace
 from .spectrum import Spectrum
@@ -49,6 +50,10 @@ def _check_extensions(path: Path) -> Path:
 
 OutPath = Annotated[Path, AfterValidator(_check_extensions)]
 xr.set_options(keep_attrs=True)  # type: ignore [no-untyped-call]
+
+# LRU cache of `Simulation.filtered_emission_rates` results (small C x F x W arrays)
+_RATES_CACHE: OrderedDict[tuple, xr.DataArray] = OrderedDict()
+_RATES_CACHE_SIZE = 32
 
 
 class Simulation(SimBaseModel):
@@ -175,27 +180,55 @@ class Simulation(SimBaseModel):
         >>> rates.isel(c=0).plot.line(x='w') # plot emission of all fluors in channel 0
         >>> plt.show()
         """
-        qe = self.detector.qe if self.detector else None
         fluors = list({lbl.fluorophore: None for lbl in self.sample.labels})
+        key = self._rates_cache_key(fluors)
+        if key is not None and (cached := _RATES_CACHE.get(key)) is not None:
+            _RATES_CACHE.move_to_end(key)
+            # use this simulation's own (equal) channel and fluorophore objects
+            return cached.copy().assign_coords({Axis.C: self.channels, Axis.F: fluors})
+
         # point-scanning modalities apply saturation spatially, in the PSF
         sat = not self.modality.point_scanning
+        # fraction of isotropic emission entering the objective. PSFs are normalized
+        # to collected light, so this is not double-counted (see `make_confocal_psf`)
+        collection = self.objective_lens.collection_efficiency
+        qe = self.detector.qe if self.detector else None
         nested_rates: list[list[xr.DataArray]] = [
             [oc.filtered_emission_rate(f, detector_qe=qe, saturate=sat) for f in fluors]
             for oc in self.channels
         ]
-        # fraction of isotropic emission entering the objective. PSFs are normalized
-        # to collected light, so this is not double-counted (see `make_confocal_psf`)
-        collection = self.objective_lens.collection_efficiency
 
         # combine xarray objects along the C and F axes, with outer join on W
-        rates = xr.combine_nested(
+        rates: xr.DataArray = xr.combine_nested(  # type: ignore [assignment]
             nested_rates,
             concat_dim=[Axis.C, Axis.F],
             combine_attrs="override",
             join="outer",
             fill_value=0,
         ).transpose(Axis.C, Axis.F, Axis.W)
-        return rates * collection  # type: ignore [return-value]
+        rates = rates * collection
+        if key is not None:
+            _RATES_CACHE[key] = rates.copy()
+            if len(_RATES_CACHE) > _RATES_CACHE_SIZE:
+                _RATES_CACHE.popitem(last=False)
+        return rates
+
+    def _rates_cache_key(self, fluors: list[Fluorophore]) -> tuple | None:
+        """Key identifying `filtered_emission_rates` output, or None if unhashable.
+
+        The rates depend only on the optics and fluorophores (not on where the
+        fluorophores are), so they can be reused across simulations.
+        """
+        try:
+            return (
+                tuple(oc.model_dump_json() for oc in self.channels),
+                tuple(f.model_dump_json() for f in fluors),
+                self.detector.model_dump_json(include={"qe"}) if self.detector else "",
+                self.modality.point_scanning,
+                self.objective_lens.collection_efficiency,
+            )
+        except PydanticSerializationError:
+            return None
 
     def emission_flux(self) -> xr.DataArray:
         """Return the spatial emission in photons per second (after emission filters).
