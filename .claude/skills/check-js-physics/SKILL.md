@@ -12,15 +12,37 @@ code is a copy, and copies drift. This skill is how to check it.
 ## Layout
 
 - `docs/javascripts/physics/*.js`: the copied physics. Pure functions, no DOM, and
-  no imports from outside `physics/`. Every function has a comment naming the
-  Python it mirrors.
+  no imports from outside `physics/`. Every function that mirrors microsim has a
+  comment naming the Python it mirrors (helpers like `scale`, `total`, and `rng`
+  don't).
 - `docs/javascripts/charts/*.js`: rendering. These should contain **no physics**:
   they call the physics modules, and only choose parameters, axes, and labels.
-- `scripts/make_doc_figures.py`: exports the data the charts load
-  (`*_data` functions, written to `docs/data/generated/*.json`): spectra, presets,
-  and Monte Carlo results computed by microsim itself.
+  `lib.js` (plot helpers), `index.js` (mounting), and `photometry-data.js`
+  (decodes `photometry.json`) are infrastructure.
+- `scripts/make_doc_figures.py`: exports the data the charts load, written to
+  `docs/data/generated/` (gitignored): `photometry_data` → `photometry.json`,
+  `detector_data` → `detectors.json`, `noise_data` → `noise.json`,
+  `pinhole_data` → `pinhole.json`. Spectra, presets, default lens values, and
+  images computed by microsim itself.
 - `tests/test_js_physics.py` and `tests/js/*.mjs`: run the physics modules in node
   on the same inputs as microsim, and compare. Skipped if `node` is not installed.
+
+### The charts
+
+| Chart | Page | Physics used | Data | Starting values |
+| --- | --- | --- | --- | --- |
+| `spectra.js` | `guide/channels.md` | `absorptionRate`, `crossSection`, `filteredEmissionRate`, `fluxDensity`, `irradiance`, `mulArrays` | `photometry.json` | fluorophore and channel menus |
+| `crosstalk.js` | `guide/channels.md` | `photonBudget` | `photometry.json` (incl. `lens`) | EGFP + tdTomato, FITC 500 LP + TRITC; numbers in the caption |
+| `photon-budget.js` | `guide/photometry.md` | `photonBudget` | `photometry.json` (incl. `lens`) | EGFP, FITC, 1 W/cm², 100 ms; "about 6 photons" in the page text |
+| `saturation.js` | `guide/photometry.md` | `absorptionRate`, `totalEmissionRate`, `halfSaturationIrradiance`, `maxEmissionRate` | `photometry.json` | irradiance bands from the table in `guide/channels.md` |
+| `noise.js` | `guide/detectors.md` | `simulateCamera`, `snr`, `emccdExcessNoiseFactor` | `noise.json`, `detectors.json` (`cameras`) | camera presets shared with `detector-snr.js` |
+| `detector-snr.js` | `guide/detectors.md` | `snr`, `emccdExcessNoiseFactor` | `detectors.json` (`cameras`) | ≈71% cap in the caption |
+| `emccd-enf.js` | `guide/detectors.md` | `emccdExcessNoiseFactor` | `detectors.json` (`cameras.EMCCD`) | |
+| `pmt-gain.js` | `guide/detectors.md` | `pmtGain`, `pmtExcessNoiseFactor` | `detectors.json` (`pmts`) | F ≈ 1.3 / 1.5 in the page text |
+| `hyd-dead-time.js` | `guide/detectors.md` | `hydCountingEfficiency`, `hydMaxRate` | `detectors.json` | "about 6% low at 40 Mcps" in the page text |
+| `pinhole.js` | `guide/modalities.md` | none (displays microsim PSFs) | `pinhole.json` | |
+
+Update this table when you add, rename, or remove a chart.
 
 ## Procedure
 
@@ -32,25 +54,31 @@ code is a copy, and copies drift. This skill is how to check it.
    branch. For every function in `docs/javascripts/physics/`, open the Python it
    names and compare line by line: constants, normalizations (sum vs. peak vs.
    integral), units (nm vs. m, ns vs. s, W vs. photons), defaults (`|| 1`, `?? null`),
-   and how arrays are aligned. Current pairs:
+   how arrays are aligned, and rounding (`np.round` rounds halves to even, unlike
+   `Math.round`; use `roundHalfEven`). Current pairs:
 
-   | JavaScript (`docs/javascripts/physics/`) | Python (`src/microsim/schema/`) |
+   | JavaScript (`docs/javascripts/physics/`) | Python (`src/microsim/` unless noted) |
    | --- | --- |
-   | `photometry.js` `mulSpectra` | `spectrum.py` `Spectrum._intensity_op` (outer join, fill 0) |
+   | `photometry.js` `decodeSpectrum` | `scripts/make_doc_figures.py` `spectrum_json` (inverse) |
+   | `photometry.js` `mulSpectra` | `schema/spectrum.py` `Spectrum._intensity_op` (outer join, fill 0) |
    | `photometry.js` `mulArrays` | xarray arithmetic (inner join) |
-   | `photometry.js` `excitationPath`, `emissionPath` | `optical_config/config.py` `OpticalConfig.excitation`, `.emission`, `._merge` |
+   | `photometry.js` `inverted` | `schema/spectrum.py` `Spectrum.inverted` |
+   | `photometry.js` `excitationPath`, `emissionPath` | `schema/optical_config/config.py` `OpticalConfig.excitation`, `.emission`, `._merge` |
    | `photometry.js` `illumination` | `OpticalConfig.illumination`, `LightSource.scaled_spectrum` |
    | `photometry.js` `irradiance`, `fluxDensity` | `OpticalConfig.irradiance`, `.illumination_flux_density` |
-   | `photometry.js` `crossSection` | `sample/fluorophore.py` `Fluorophore.absorption_cross_section` |
+   | `photometry.js` `crossSection` | `schema/sample/fluorophore.py` `Fluorophore.absorption_cross_section` |
    | `photometry.js` `absorptionRate`, `saturationParameter`, `totalEmissionRate`, `filteredEmissionRate` | `OpticalConfig` methods of the same names |
-   | `photometry.js` `collectionEfficiency` | `lens.py` `ObjectiveLens.collection_efficiency` |
-   | `photometry.js` `photonBudget` | `Simulation.filtered_emission_rates` (collection applied after filtering) |
-   | `detectors.js` `emccdExcessNoiseFactor` | `detectors/_camera.py` `CameraEMCCD.excess_noise_factor` |
-   | `detectors.js` `pmtGain`, `pmtExcessNoiseFactor` | `detectors/_point.py` `PMT.multiplication_gain`, `.excess_noise_factor` |
-   | `detectors.js` `hydCountingEfficiency` | `detectors/_point.py` `HyD._counting_efficiency` |
-   | `detectors.js` `snr` | derived from `detectors/_detector.py` `_Detector.simulate` and `apply_multiplication_gain` (tested against a Monte Carlo run of `render`) |
+   | `photometry.js` `halfSaturationIrradiance`, `maxEmissionRate` | derived from `OpticalConfig.saturation_parameter` and `.total_emission_rate` |
+   | `photometry.js` `collectionEfficiency` | `schema/lens.py` `ObjectiveLens.collection_efficiency` |
+   | `photometry.js` `photonBudget` | `Simulation.filtered_emission_rates` (tested end to end) |
+   | `detectors.js` `emccdExcessNoiseFactor` | `schema/detectors/_camera.py` `CameraEMCCD.excess_noise_factor` |
+   | `detectors.js` `pmtGain`, `pmtExcessNoiseFactor` | `schema/detectors/_point.py` `PMT.multiplication_gain`, `.excess_noise_factor` |
+   | `detectors.js` `hydCountingEfficiency`, `hydMaxRate` | `schema/detectors/_point.py` `HyD._counting_efficiency` |
+   | `detectors.js` `roundHalfEven` | `np.round`, as used in `_Detector.simulate` |
+   | `detectors.js` `snr` | derived from `schema/detectors/_detector.py` `_Detector.simulate` and `apply_multiplication_gain` (tested against a Monte Carlo run of `render`) |
    | `detectors.js` `simulateCamera` | `_Detector.simulate` steps 1-5 for cameras, and `apply_multiplication_gain` (tested statistically against `render`: mean, variance, quantiles) |
-   | `random.js` `poisson`, `normal`, `gamma` | the distributions of `backend.py` `poisson_rvs`, `norm_rvs`, and `scipy.stats.gamma` (same distributions, not the same random streams) |
+   | `random.js` `poisson`, `normal`, `gamma` | the distributions of `schema/backend.py` `poisson_rvs`, `norm_rvs`, and `scipy.stats.gamma` (same distributions, not the same random streams) |
+   | `random.js` `rng` | no mirror (seeded PRNG for the browser) |
 
    Charts that only display arrays computed by microsim (`pinhole.js`, the noise-free
    image in `noise.js`) have nothing to mirror; check instead that the export
@@ -58,27 +86,41 @@ code is a copy, and copies drift. This skill is how to check it.
    describe what was computed.
 
    If the Python has gained a step (a new factor, a new parameter that changes the
-   result), the JavaScript needs it too, or the chart's caption must say what it
-   leaves out.
+   result), the JavaScript needs it too, or the function's comment (and the chart's
+   caption, if it matters there) must say what it leaves out.
 
-3. **Find physics outside the physics modules.** In `docs/javascripts/charts/`, look
-   for formulas: constants like `1e-9`, `Math.exp`, `Math.sqrt`, `** 2`, `/ (1 +`.
-   Ratios of physics outputs for display (e.g. "fraction passed") are fine. Anything
-   that computes a physical quantity belongs in `physics/`, with a mirror comment
-   and a test.
+3. **Find physics outside the physics modules.** Search the charts for formulas:
+
+   ```bash
+   grep -nE '1e-?[0-9]|Math\.(exp|sqrt|log|pow)|\*\* ?-?[0-9]|/ ?\(1 \+' docs/javascripts/charts/*.js
+   ```
+
+   Ratios of physics outputs for display (e.g. "fraction passed") are fine.
+   Anything that computes a physical quantity belongs in `physics/`, with a mirror
+   comment and a test.
 
 4. **Check the exported data.** `scripts/make_doc_figures.py` writes presets and
    spectra from microsim objects. Make sure the chart uses the exported values
-   (e.g. PMT presets, the HyD dead time), not numbers typed into the JavaScript.
-   Starting values typed into a chart (e.g. a default slider position) should match
-   the parameters named in the page text or caption.
+   (e.g. PMT presets, the HyD dead time, the `ObjectiveLens` defaults), not numbers
+   typed into the JavaScript. If two charts share starting values (e.g. the camera
+   presets of `noise.js` and `detector-snr.js`), both must read them from the same
+   export. Display-only settings (slider ranges, `electronsPerAdu` chosen to fit
+   16 bits) can stay in the chart.
 
-5. **Check the captions and page text.** Numbers quoted in the docs (e.g. "about 6
-   photons in a 100 ms exposure", "71%") should match what the chart shows at its
-   starting values. Serve the docs and look:
+5. **Check the captions and page text.** Numbers quoted in the docs (see the
+   "Starting values" column above) should match what the chart shows at its
+   starting values. Regenerate the data first; without it, a chart shows "This
+   interactive chart failed to load":
 
    ```bash
-   uv run --group docs python scripts/make_doc_figures.py photometry_data detector_data
+   # noise_data needs network access (FPbase, OpenOrganelle) the first time
+   uv run --group docs python scripts/make_doc_figures.py photometry_data detector_data noise_data pinhole_data
+   ```
+
+   Then either compute the numbers in node, importing `docs/javascripts/physics/*.js`
+   with the generated JSON (fastest), or serve the docs and look:
+
+   ```bash
    uv run --group docs zensical serve
    ```
 
@@ -86,4 +128,4 @@ code is a copy, and copies drift. This skill is how to check it.
 
 - Put the physics in `docs/javascripts/physics/`, with a comment naming the Python.
 - Add a case to `tests/test_js_physics.py` that compares it with microsim.
-- Add a row to the table above.
+- Add rows to the tables above.
