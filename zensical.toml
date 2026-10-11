@@ -39,19 +39,7 @@ nav = [
     "tutorials/your-own-ground-truth.md",
     "tutorials/point-scanning-detectors.md",
   ] },
-  { "API reference" = [
-    "api/index.md",
-    "api/simulation.md",
-    "api/space.md",
-    "api/sample.md",
-    "api/optical-config.md",
-    "api/modality.md",
-    "api/detectors.md",
-    "api/settings.md",
-    "api/spectrum.md",
-    "api/psf.md",
-    "api/util.md",
-  ] },
+  { "API reference" = ["api/index.md"] },
   { "About" = [
     "about/contributing.md",
     "about/citing.md",
@@ -209,3 +197,21 @@ docstring_section_style = "table"
 show_if_no_docstring = true
 
 [project.plugins.markdown-exec]
+
+# one page per public module, from the source; see docs/api/index.md
+[project.plugins.api-autonav]
+modules = ["src/microsim"]
+api_root_uri = "api"
+nav_section_title = "API reference"
+# document each object once: these modules' contents are re-exported, and
+# documented, by their package (e.g. microsim.schema.optical_config)
+exclude = [
+  "microsim.schema.optical_config.config",
+  "microsim.schema.optical_config.filter",
+  "microsim.schema.sample.sample",
+  "microsim.schema.sample.fluorophore",
+]
+
+# the top-level packages re-export everything: list their members, don't repeat them
+[project.plugins.api-autonav.module_options."^microsim(\\.schema)?$"]
+members = false

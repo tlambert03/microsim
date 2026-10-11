@@ -73,7 +73,7 @@ paying attention to your GPU requirements.  Support for torch is planned.
 ## Usage
 
 Construct and run a
-[`microsim.Simulation`](https://www.talleylambert.com/microsim/api/simulation/)
+[`microsim.Simulation`](https://www.talleylambert.com/microsim/api/microsim/schema/simulation/)
 object.
 
 ```python

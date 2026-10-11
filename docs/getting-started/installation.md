@@ -31,7 +31,7 @@ or fetch ground truth from OpenOrganelle.
 
     | Extra   | Adds                                           | Needed for                                                                 |
     | ------- | ---------------------------------------------- | -------------------------------------------------------------------------- |
-    | `view`  | matplotlib, [ndv](https://github.com/pyapp-kit/ndv) | [`ortho_plot`][microsim.util.ortho_plot], [`Simulation.plot`][microsim.Simulation.plot], interactive viewing |
+    | `view`  | matplotlib, [ndv](https://github.com/pyapp-kit/ndv) | [`ortho_plot`][microsim.util.ortho_plot], [`Simulation.plot`][microsim.schema.simulation.Simulation.plot], interactive viewing |
     | `io`    | tifffile, imageio                              | writing `.tif` output                                                      |
     | `cosem` | boto3, s3fs, supabase                          | [`CosemLabel`](../guide/samples.md#openorganelle-cosem) ground truth        |
     | `jax`   | jax                                            | the `jax` backend                                                          |

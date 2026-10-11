@@ -6,7 +6,7 @@ icon: lucide/save
 
 ## Saving the result
 
-Set `output_path` and [`run()`][microsim.Simulation.run] writes the digital
+Set `output_path` and [`run()`][microsim.schema.simulation.Simulation.run] writes the digital
 image to disk:
 
 ```py

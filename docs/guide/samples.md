@@ -27,7 +27,7 @@ sample = ms.Sample(
 )
 ```
 
-[`ground_truth()`][microsim.Simulation.ground_truth] draws each label into the
+[`ground_truth()`][microsim.schema.simulation.Simulation.ground_truth] draws each label into the
 truth space and stacks them along the `f` dimension. The values are
 fluorophores per voxel.
 
@@ -106,7 +106,7 @@ nucleus.
 
 ### Allen Institute neurons
 
-[`microsim.allen`](../api/util.md#allen-institute-neurons) fetches neuron reconstructions from the
+[`microsim.allen`][microsim.allen] fetches neuron reconstructions from the
 [Allen Cell Types Database](https://celltypes.brain-map.org) and renders them as
 a 3D mask, which can be used as a [fixed array](#your-own-array):
 
@@ -133,7 +133,7 @@ Reconstruction 638976782 rendered at 1 µm voxels (maximum projections).
 
 If you already have a ground truth as an array, for example from a
 segmentation, pass it directly with
-[`Simulation.from_ground_truth`][microsim.Simulation.from_ground_truth]:
+[`Simulation.from_ground_truth`][microsim.schema.simulation.Simulation.from_ground_truth]:
 
 ```py
 sim = ms.Simulation.from_ground_truth(

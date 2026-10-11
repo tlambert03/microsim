@@ -29,7 +29,10 @@ uv run prek run -a
 
 The docs are built with [Zensical](https://zensical.org) from the Markdown
 files in `docs/`, configured in `zensical.toml`. The API reference is generated
-from docstrings with [mkdocstrings](https://mkdocstrings.github.io).
+from the source: the `api-autonav` plugin makes one page per public module, and
+[mkdocstrings](https://mkdocstrings.github.io) renders the docstrings. Modules
+whose contents are documented by their package are excluded there, so that
+each object is documented once.
 
 ```bash
 uv run --group docs zensical serve   # live preview at http://localhost:8000

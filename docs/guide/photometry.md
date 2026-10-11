@@ -6,7 +6,7 @@ icon: lucide/sigma
 
 This page explains how microsim calculates the number of photons a fluorophore
 emits and how many of them reach the detector. These calculations happen in
-[`filtered_emission_rates()`][microsim.Simulation.filtered_emission_rates],
+[`filtered_emission_rates()`][microsim.schema.simulation.Simulation.filtered_emission_rates],
 before anything spatial is computed.
 
 <div class="ms-chart" data-chart="photon-budget"></div>
@@ -149,7 +149,7 @@ proportional to
 \]
 
 The product \(s = k\tau\) is the saturation parameter
-([`OpticalConfig.saturation_parameter`][microsim.schema.OpticalConfig.saturation_parameter]).
+([`OpticalConfig.saturation_parameter`][microsim.schema.optical_config.OpticalConfig.saturation_parameter]).
 When \(s \ll 1\), emission is proportional to irradiance. At \(s = 1\) it is
 half of what a linear response would give.
 

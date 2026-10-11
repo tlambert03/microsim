@@ -34,7 +34,7 @@ for _ in range(12):
 
 ## Simulate it
 
-[`Simulation.from_ground_truth`][microsim.Simulation.from_ground_truth] takes
+[`Simulation.from_ground_truth`][microsim.schema.simulation.Simulation.from_ground_truth] takes
 the array and its voxel size in µm, plus any other simulation parameters:
 
 ```python

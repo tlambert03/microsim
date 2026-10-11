@@ -112,7 +112,7 @@ bandpass filters. Filters in the same path are multiplied together.
 ### Light sources
 
 `lights` is a list of [`LightSource`][microsim.schema.LightSource] objects,
-each with an emission `spectrum`. [`LightSource.laser(488)`][microsim.schema.LightSource.laser]
+each with an emission `spectrum`. [`LightSource.laser(488)`][microsim.schema.optical_config.LightSource.laser]
 makes a narrow line at 488 nm. With no light source, the channel is
 illuminated by flat white light, so the excitation filters alone set the
 spectrum.
@@ -179,7 +179,7 @@ EGFP. With the 525/50 bandpass emission filter of `FITC`, its share drops below
 ///
 
 To see where the signal in each channel comes from in an image, use
-[`optical_image_per_fluor()`][microsim.Simulation.optical_image_per_fluor],
+[`optical_image_per_fluor()`][microsim.schema.simulation.Simulation.optical_image_per_fluor],
 which keeps the fluorophore dimension:
 
 ```py
@@ -234,7 +234,7 @@ oc.plot_emission(ax=axes[1])  # emission filters, and their combined transmissio
 
 ![Output of plot_excitation and plot_emission](../images/generated/plot-paths.png){ .plot }
 
-For a whole simulation, [`Simulation.plot()`][microsim.Simulation.plot] shows,
+For a whole simulation, [`Simulation.plot()`][microsim.schema.simulation.Simulation.plot] shows,
 for each channel (columns): the absorption cross sections, the excitation
 path, the absorption rates (with the emission spectra, dashed), the emission
 path, and the photons collected from each fluorophore. Here EGFP and mCherry

@@ -49,7 +49,7 @@ at the cost of extra gain noise.
 
 A channel can override it with
 [`OpticalConfig.exposure_ms`](channels.md#per-channel-exposure), and
-[`digital_image(exposure_ms=...)`][microsim.Simulation.digital_image]
+[`digital_image(exposure_ms=...)`][microsim.schema.simulation.Simulation.digital_image]
 overrides both, which is a quick way to compare exposure times on one optical
 image:
 
@@ -169,7 +169,7 @@ gain an EMCCD has the SNR of a noise-free detector with half its QE.
 <div class="ms-chart" data-chart="emccd-enf"></div>
 /// caption
 Excess noise factor of the EM register,
-[`CameraEMCCD.excess_noise_factor`][microsim.schema.CameraEMCCD.excess_noise_factor].
+[`CameraEMCCD.excess_noise_factor`][microsim.schema.detectors.CameraEMCCD.excess_noise_factor].
 ///
 
 ```py
@@ -277,5 +277,5 @@ The source code of
 [`detectors/lib.py`](https://github.com/tlambert03/microsim/blob/main/src/microsim/schema/detectors/lib.py)
 lists where each value comes from.
 
-The detector docstrings in the [API reference](../api/detectors.md) describe
+The detector docstrings in the [API reference][microsim.schema.detectors] describe
 each model in more detail, including what is not modeled.

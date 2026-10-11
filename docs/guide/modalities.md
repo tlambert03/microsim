@@ -141,7 +141,7 @@ image as well as a larger PSF.
     PSFs are computed with a vectorial model of a high-NA objective that
     includes the Gibson–Lanni optical path difference for mismatched
     coverslip, immersion, and specimen refractive indices
-    ([`microsim.psf`](../api/psf.md)).
+    ([`microsim.psf`][microsim.psf]).
 
     The same PSF is used for the whole volume (it is spatially invariant), and
     is computed for a point source at the coverslip surface. Aberrations that

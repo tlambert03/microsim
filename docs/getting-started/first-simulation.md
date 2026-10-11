@@ -40,7 +40,7 @@ ortho_plot(result)
     fluorophore per voxel.
 4.  The **detector** converts photons to gray values and adds noise. This is a
     CMOS camera with default settings.
-5.  [`run()`][microsim.Simulation.run] executes every stage and returns the
+5.  [`run()`][microsim.schema.simulation.Simulation.run] executes every stage and returns the
     digital image.
 
 Everything not given has a default value. In this case:
@@ -76,10 +76,10 @@ named dimensions and physical coordinates (µm):
 
 | Method                                                                         | Dimensions          | Units                       |
 | ------------------------------------------------------------------------------ | ------------------- | --------------------------- |
-| [`ground_truth()`][microsim.Simulation.ground_truth]                           | `(f, z, y, x)`      | fluorophores per voxel      |
-| [`filtered_emission_rates()`][microsim.Simulation.filtered_emission_rates]     | `(c, f, w)`         | photons/s per fluorophore   |
-| [`optical_image()`][microsim.Simulation.optical_image]                         | `(c, z, y, x)`      | photons/s per voxel         |
-| [`digital_image()`][microsim.Simulation.digital_image]                         | `(c, z, y, x)`      | gray values                 |
+| [`ground_truth()`][microsim.schema.simulation.Simulation.ground_truth]                           | `(f, z, y, x)`      | fluorophores per voxel      |
+| [`filtered_emission_rates()`][microsim.schema.simulation.Simulation.filtered_emission_rates]     | `(c, f, w)`         | photons/s per fluorophore   |
+| [`optical_image()`][microsim.schema.simulation.Simulation.optical_image]                         | `(c, z, y, x)`      | photons/s per voxel         |
+| [`digital_image()`][microsim.schema.simulation.Simulation.digital_image]                         | `(c, z, y, x)`      | gray values                 |
 
 Dimension names: `f` fluorophore, `c` channel, `w` wavelength (nm), and `z`,
 `y`, `x` in µm.

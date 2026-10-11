@@ -18,15 +18,26 @@ validated when the object is created and when they are assigned, and every
 field that takes a model also accepts a dictionary with the same keys.
 Unknown fields raise an error.
 
-| Page                                  | Contents                                                        |
-| ------------------------------------- | --------------------------------------------------------------- |
-| [Simulation](simulation.md)           | `Simulation`, the top-level model and its stage methods         |
-| [Spaces](space.md)                    | `ShapeScaleSpace`, `DownscaledSpace`, ...                       |
-| [Samples](sample.md)                  | `Sample`, `FluorophoreDistribution`, `Fluorophore`, distributions |
-| [Optical configs](optical-config.md)  | `OpticalConfig`, filters, `LightSource`, built-in filter sets   |
-| [Modalities](modality.md)             | `Widefield`, `Confocal`, `Identity`, `ObjectiveLens`            |
-| [Detectors](detectors.md)             | cameras, point detectors, built-in detectors                    |
-| [Settings](settings.md)               | `Settings`                                                      |
-| [Spectrum](spectrum.md)               | `Spectrum`                                                      |
-| [PSF](psf.md)                         | `microsim.psf`: PSF functions                                   |
-| [Utilities](util.md)                  | plotting and cache helpers                                      |
+The pages in this section are generated from the source code, one per public
+module, so they always match the installed version. The most useful ones:
+
+| Module                                                       | Contents                                                          |
+| ------------------------------------------------------------ | ----------------------------------------------------------------- |
+| [`schema.simulation`][microsim.schema.simulation]            | `Simulation`, the top-level model and its stage methods           |
+| [`schema.space`][microsim.schema.space]                      | `ShapeScaleSpace`, `DownscaledSpace`, ...                         |
+| [`schema.sample`][microsim.schema.sample]                    | `Sample`, `FluorophoreDistribution`, `Fluorophore`, distributions |
+| [`schema.optical_config`][microsim.schema.optical_config]    | `OpticalConfig`, filters, `LightSource`                           |
+| [`schema.optical_config.lib`][microsim.schema.optical_config.lib] | built-in filter sets                                         |
+| [`schema.modality`][microsim.schema.modality]                | `Widefield`, `Confocal`, `Identity`                               |
+| [`schema.lens`][microsim.schema.lens]                        | `ObjectiveLens`                                                   |
+| [`schema.detectors`][microsim.schema.detectors]              | cameras and point detectors                                       |
+| [`schema.detectors.lib`][microsim.schema.detectors.lib]      | built-in detectors                                                |
+| [`schema.settings`][microsim.schema.settings]                | `Settings`                                                        |
+| [`schema.spectrum`][microsim.schema.spectrum]                | `Spectrum`                                                        |
+| [`psf`][microsim.psf]                                        | PSF functions                                                     |
+| [`util`][microsim.util]                                      | plotting and cache helpers                                        |
+| [`allen`][microsim.allen]                                    | neuron reconstructions from the Allen Institute                   |
+| [`cosem`][microsim.cosem]                                    | access to OpenOrganelle (COSEM) datasets                          |
+
+Each object is documented once, in the module or subpackage that defines it.
+Most of them are also importable from `microsim.schema`, as above.

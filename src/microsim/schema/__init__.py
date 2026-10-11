@@ -1,3 +1,10 @@
+"""The models that describe a simulation.
+
+Everything a simulation needs can be imported from here, usually as
+`from microsim import schema as ms`.  Each model is documented in the submodule
+(or subpackage) that defines it.
+"""
+
 import logging
 from typing import TYPE_CHECKING, Any
 

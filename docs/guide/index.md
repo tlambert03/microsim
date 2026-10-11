@@ -30,7 +30,7 @@ Only `truth_space` and `sample` are required.
 
 ## The stages
 
-[`Simulation.run()`][microsim.Simulation.run] computes four things in order.
+[`Simulation.run()`][microsim.schema.simulation.Simulation.run] computes four things in order.
 Each is also available as a method, so you can stop at any stage, inspect the
 intermediate result, or change a parameter and repeat only the later stages.
 
@@ -98,10 +98,10 @@ mCherry (magenta). The ground truth is from OpenOrganelle; see the
 ///
 
 There are two more methods for analysis.
-[`optical_image_per_fluor()`][microsim.Simulation.optical_image_per_fluor]
+[`optical_image_per_fluor()`][microsim.schema.simulation.Simulation.optical_image_per_fluor]
 returns the optical image before fluorophores are summed, as
 `(c, f, z, y, x)`, which shows how much of each channel comes from each
-fluorophore. [`emission_flux()`][microsim.Simulation.emission_flux] returns the
+fluorophore. [`emission_flux()`][microsim.schema.simulation.Simulation.emission_flux] returns the
 emitted photons per voxel before blurring.
 
 ## Units
