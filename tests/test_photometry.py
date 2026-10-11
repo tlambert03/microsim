@@ -22,7 +22,7 @@ from microsim.schema.modality._optics import (
     WidefieldIllumination,
 )
 from microsim.schema.modality._simple_psf import emission_lines, excitation_lines
-from microsim.schema.optical_config.lib import FITC
+from microsim.schema.optical_config.lib import FITC, spectral_detector
 from tests._util import skipif_no_internet
 
 
@@ -193,8 +193,9 @@ def _confocal_sim(oc: ms.OpticalConfig, **kwargs: Any) -> ms.Simulation:
 
 def _confocal_psf(sim: ms.Simulation) -> tuple[Any, float]:
     modality = cast("ms.Confocal", sim.modality)
-    [channel] = sim.channel_fluorescence()
-    detection = modality._detection(channel, sim.objective_lens)
+    fluorescence = sim.channel_fluorescence()
+    [channel] = fluorescence
+    detection = modality._detection(fluorescence, 0, sim.objective_lens)
     _key, psf, brightness = modality._system_psf(
         channel[0],
         detection,
@@ -280,8 +281,8 @@ def test_confocal_pinhole_matched_to_emission_band() -> None:
             objective_lens=objective,
             modality=ms.Confocal(pinhole_au=2, **kwargs),
         )
-        [channel] = sim.channel_fluorescence()
-        det = cast("ms.Confocal", sim.modality)._detection(channel, objective)
+        fluorescence = sim.channel_fluorescence()
+        det = cast("ms.Confocal", sim.modality)._detection(fluorescence, 0, objective)
         return cast("PinholeDetection", det)
 
     # one pinhole for both fluorophores, 2 AU at the band center
@@ -307,6 +308,38 @@ def test_confocal_pinhole_matched_to_emission_band() -> None:
 
     with pytest.raises(ValidationError):
         ms.Confocal(airy_unit_wavelength_nm=0)
+
+
+def test_confocal_shared_pinhole() -> None:
+    """With `shared_pinhole`, all channels use one pinhole, sized for all bands."""
+    objective = ObjectiveLens(numerical_aperture=1.4)
+    channels = spectral_detector(4, 500, 600, [488])  # 25 nm bins, 500-600 nm
+
+    def _radii(**kwargs: Any) -> list[float]:
+        sim = ms.Simulation(
+            truth_space={"shape": (4, 4, 4), "scale": (1, 1, 1)},
+            sample=[{"distribution": ms.MatsLines(), "fluorophore": FLAT}],
+            channels=channels,
+            objective_lens=objective,
+            modality=ms.Confocal(**kwargs),
+        )
+        modality = cast("ms.Confocal", sim.modality)
+        fluorescence = sim.channel_fluorescence()
+        return [
+            cast(
+                "PinholeDetection", modality._detection(fluorescence, c, objective)
+            ).radius_um
+            for c in range(len(channels))
+        ]
+
+    per_channel = _radii(shared_pinhole=False)
+    assert len(set(per_channel)) == len(channels)  # one pinhole per band
+    shared = _radii()  # shared by default
+    assert len(set(shared)) == 1
+    centers = [oc.emission_band_center() for oc in channels]
+    expected = airy_radius_um(float(np.mean(centers)) / 1000, 1.4)  # type: ignore
+    assert shared[0] == pytest.approx(expected, rel=1e-3)
+    assert shared[0] == pytest.approx(airy_radius_um(0.55, 1.4), rel=0.01)
 
 
 def test_confocal_channel_without_signal() -> None:

@@ -365,9 +365,11 @@ which retains the full `(C, F, Z, Y, X)` dimensions.
       wavelengths (with several lasers or a broadband source, each wavelength is
       weighted by how strongly the fluorophore absorbs it).  Excitation
       saturation is applied locally, so it is strongest at the center of the
-      spot.  The pinhole has one physical size per channel: `pinhole_au` is in
-      Airy units at the center of the channel's emission filter band (or at
-      `airy_unit_wavelength_nm`, if set).
+      spot.  As on most point scanners, all channels are detected through one
+      pinhole: `pinhole_au` is in Airy units at the average of the channels'
+      emission filter band centers (or at `airy_unit_wavelength_nm`, if set).
+      With `shared_pinhole=False`, each channel instead has its own pinhole,
+      matched to its emission band.
 
 The output of this stage is a 4D array with dimensions `(C, Z, Y, X)` where the
 wavelength and fluorophore dimensions have been collapsed into the channel. Note
