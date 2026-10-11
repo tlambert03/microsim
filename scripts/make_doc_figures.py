@@ -27,10 +27,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from microsim import schema as ms
-from microsim._data_array import DataArray
 from microsim.allen import NeuronReconstruction
 from microsim.psf import make_psf
-from microsim.schema.backend import NumpyAPI
 from microsim.schema.detectors import lib as det_lib
 from microsim.schema.optical_config import lib as oc_lib
 
@@ -295,28 +293,9 @@ SNR_CAMERAS = {
 }
 
 
-def _measured_snr(detector: ms.Detector, electrons: float) -> float:
-    """SNR of a flat image recorded by `detector` (unclipped), in a 1 s exposure."""
-    exact = {"bit_depth": 32, "electrons_per_adu": 0.01, "offset": 10**6}
-    det = detector.model_copy(update={**exact, "dark_current": 0, "full_well": 10**9})
-    xp = NumpyAPI()
-    xp.set_random_seed(0)
-    image = DataArray(np.full((1, 1, 2000, 2000), electrons), dims=("c", "z", "y", "x"))
-    gray = np.asarray(det.render(image, exposure_ms=1000, xp=xp), dtype=float)
-    signal = (gray - det.offset) * det.conversion_factor
-    return float(signal.mean() / signal.std())
-
-
 @figure
 def detector_data() -> None:
-    """Detector presets, and simulated SNR, for the interactive detector charts."""
-    levels = np.logspace(-1, 4, 11)
-    simulated = {
-        name: [
-            {"electrons": float(n), "snr": _measured_snr(det, float(n))} for n in levels
-        ]
-        for name, det in SNR_CAMERAS.items()
-    }
+    """Detector presets for the interactive detector charts."""
     cameras = {
         name: {
             "read_noise": det.read_noise,
@@ -340,7 +319,6 @@ def detector_data() -> None:
         "detectors",
         {
             "cameras": cameras,
-            "simulated_snr": simulated,
             "pmts": pmts,
             "hyd_dead_time_ns": det_lib.HYD_SP8.dead_time_ns,
         },

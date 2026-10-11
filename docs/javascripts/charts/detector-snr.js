@@ -1,7 +1,6 @@
 // Detectors page: SNR of a CCD, sCMOS, and EMCCD, relative to an ideal detector,
-// against the signal per pixel.  Lines use physics/detectors.js; dots are
-// microsim's detector simulation at the starting parameters
-// (detector_data in scripts/make_doc_figures.py).
+// against the signal per pixel, from physics/detectors.js snr.  Starting
+// parameters from detector_data in scripts/make_doc_figures.py.
 import * as D from "../physics/detectors.js";
 import {
   C,
@@ -60,7 +59,6 @@ export default async function (el) {
 
   const color = { CCD: C.series[0], sCMOS: C.series[2], EMCCD: C.series[1] };
   for (const name of Object.keys(color)) legendItem(ui.legend, { label: name, color: color[name] });
-  legendItem(ui.legend, { label: "microsim simulation (starting values)", color: C.muted, swatch: "dotmark" });
 
   const setCross = stat(ui.stats, { label: "EMCCD SNR above sCMOS", note: "" });
   const setCCD = stat(ui.stats, { label: "CCD reaches 90% of ideal", note: "" });
@@ -77,18 +75,6 @@ export default async function (el) {
     const rows = LEVELS.flatMap((e) =>
       Object.keys(model).map((name) => ({ name, e, rel: relative(name, e) })),
     );
-    // simulated points, only for cameras still at their starting values
-    const atStart = {
-      CCD: state.ccdRead === start.CCD.read_noise,
-      sCMOS: state.cmosRead === start.sCMOS.read_noise,
-      EMCCD: state.emGain === start.EMCCD.em_gain && state.emRead === start.EMCCD.read_noise,
-    };
-    const dots = Object.entries(data.simulated_snr)
-      .filter(([name]) => atStart[name])
-      .flatMap(([name, pts]) =>
-        pts.map((p) => ({ name, e: p.electrons, rel: p.snr / D.snr({ electrons: p.electrons }) })),
-      );
-
     const higher = LEVELS.filter((e) => relative("EMCCD", e) > relative("sCMOS", e));
     setCross(
       higher.length ? `< ${fmt.sig(higher.at(-1), 2)}<small> e⁻</small>` : "never",
@@ -110,7 +96,6 @@ export default async function (el) {
         Plot.ruleY([1], { stroke: C.faint, strokeDasharray: "3,3" }),
         Plot.text([{}], { x: LEVELS[2], y: 1, text: () => "ideal (shot noise only)", dy: 10, textAnchor: "start", fill: C.muted }),
         Plot.lineY(rows, { x: "e", y: "rel", z: "name", stroke: "name", strokeWidth: 2.25 }),
-        Plot.dot(dots, { x: "e", y: "rel", fill: "name", r: 3.5, stroke: C.surface, strokeWidth: 1.5 }),
       ],
     });
     ui.plot.replaceChildren(svg);

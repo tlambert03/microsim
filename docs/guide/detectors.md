@@ -145,8 +145,7 @@ range.
 SNR of each camera, relative to an ideal detector that adds only shot noise,
 from the formulas above. Read noise matters at low signal; the EMCCD's gain
 removes it, at the cost of the excess noise factor, which caps its relative
-SNR at \(1/\sqrt{F} \approx 71\%\). Dots: microsim's detector simulation
-with the starting values, which the formulas match.
+SNR at \(1/\sqrt{F} \approx 71\%\).
 ///
 
 ## Cameras
