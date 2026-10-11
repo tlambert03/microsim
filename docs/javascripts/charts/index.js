@@ -24,3 +24,13 @@ function mountAll() {
 
 if (window.document$) window.document$.subscribe(mountAll);
 else mountAll();
+
+// Link previews (`.md-tooltip2`) copy page content, charts included, into the
+// page after it loads; mount those too.
+let pending = 0;
+new MutationObserver(() => {
+  cancelAnimationFrame(pending);
+  pending = requestAnimationFrame(() => {
+    if (document.querySelector(".ms-chart[data-chart]:not(:has(*))")) mountAll();
+  });
+}).observe(document.body, { childList: true, subtree: true });
