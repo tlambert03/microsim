@@ -5,7 +5,9 @@ icon: lucide/graduation-cap
 # Tutorials
 
 Longer worked examples. Each one builds a complete simulation and explains the
-choices along the way.
+choices along the way. Each is also a Jupyter notebook: open it in Google
+Colab to run it without installing anything, or download it. The figures on
+these pages are made by running the code shown.
 
 <div class="grid cards" markdown>
 

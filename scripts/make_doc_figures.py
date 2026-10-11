@@ -1,9 +1,9 @@
 """Generate the figures used in the documentation.
 
 Every figure is produced by microsim itself, so the docs show what the code does.
-Images go to `docs/images/generated/`.  Line plots are written twice, with
-`-light` and `-dark` suffixes, for the two color schemes of the docs.  Data for the
-interactive charts (`docs/javascripts/charts/`) goes to `docs/data/generated/`.
+Images go to `docs/images/generated/`, including the figures of the tutorials,
+which are made by running each tutorial page's code.  Data for the interactive
+charts (`docs/javascripts/charts/`) goes to `docs/data/generated/`.
 
 Usage (some figures fetch data from FPbase and OpenOrganelle, so need network):
 
@@ -12,7 +12,6 @@ Usage (some figures fetch data from FPbase and OpenOrganelle, so need network):
 
 from __future__ import annotations
 
-# ruff: noqa: RUF001
 import json
 import os
 import re
@@ -34,7 +33,7 @@ from microsim.schema.detectors import lib as det_lib
 from microsim.schema.optical_config import lib as oc_lib
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable
 
 mpl.use("Agg")
 warnings.filterwarnings("ignore")
@@ -44,23 +43,6 @@ OUT = DOCS / "images" / "generated"
 DATA = DOCS / "data" / "generated"
 FIGURES: dict[str, Callable[[], None]] = {}
 
-# categorical palette (fixed order), and text inks, for light and dark schemes
-THEMES = {
-    "light": {
-        "series": ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4"],
-        "text": "#0b0b0b",
-        "muted": "#52514e",
-        "grid": "#e4e3df",
-        "fill": "#8a8984",
-    },
-    "dark": {
-        "series": ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181"],
-        "text": "#f0efec",
-        "muted": "#c3c2b7",
-        "grid": "#3a3a38",
-        "fill": "#9a998f",
-    },
-}
 # image panels are dark in both schemes, so their labels use a neutral gray
 IMG_LABEL = "#9a998f"
 
@@ -68,33 +50,6 @@ IMG_LABEL = "#9a998f"
 def figure(func: Callable[[], None]) -> Callable[[], None]:
     FIGURES[func.__name__] = func
     return func
-
-
-def themed(name: str) -> Iterator[dict]:
-    """Yield a palette per color scheme, with matching rcParams active."""
-    for scheme, t in THEMES.items():
-        rc = {
-            "font.family": "sans-serif",
-            "font.size": 10,
-            "text.color": t["text"],
-            "axes.labelcolor": t["muted"],
-            "axes.edgecolor": t["grid"],
-            "axes.facecolor": "none",
-            "figure.facecolor": "none",
-            "savefig.facecolor": "none",
-            "xtick.color": t["muted"],
-            "ytick.color": t["muted"],
-            "axes.spines.top": False,
-            "axes.spines.right": False,
-            "axes.grid": True,
-            "grid.color": t["grid"],
-            "grid.linewidth": 0.6,
-            "lines.linewidth": 2,
-            "legend.frameon": False,
-            "legend.labelcolor": t["text"],
-        }
-        with mpl.rc_context(rc):
-            yield {**t, "path": OUT / f"{name}-{scheme}.png"}
 
 
 def save(fig: plt.Figure, path: Path) -> None:
@@ -454,77 +409,6 @@ def detectors() -> None:
 
 
 @figure
-def point_detectors() -> None:
-    """PMT vs HyD on a confocal simulation (as in examples/point_detectors.py)."""
-    sim = ms.Simulation(
-        truth_space={"upscale": 4},
-        output_space=ms.ShapeScaleSpace(shape=(1, 128, 128), scale=(0.16, 0.08, 0.08)),
-        sample=[
-            ms.FluorophoreDistribution(
-                distribution=ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1),
-                fluorophore="EGFP",
-                concentration=1,
-            )
-        ],
-        channels=[oc_lib.FITC.model_copy(update={"power": 2e4})],
-        modality=ms.Confocal(pinhole_au=1),
-        settings=ms.Settings(random_seed=100, max_psf_radius_aus=8),
-        detector=det_lib.HYD_SP8,
-    )
-    optical = sim.optical_image()
-    dets = {
-        "GaAsP PMT, 0.7 V": det_lib.PMT_GAASP.model_copy(update={"hv": 0.7}),
-        "GaAsP PMT, 0.9 V": det_lib.PMT_GAASP.model_copy(update={"hv": 0.9}),
-        "HyD (counting)": det_lib.HYD_SP8,
-        "HyD, 4× averaging": det_lib.HYD_SP8.model_copy(update={"averaging": 4}),
-    }
-    fig, axes = plt.subplots(1, 4, figsize=(13, 3.6), gridspec_kw={"wspace": 0.04})
-    for ax, (name, det) in zip(axes, dets.items(), strict=True):
-        sim.detector = det
-        img = _np(sim.digital_image(optical, exposure_ms=0.001))
-        ax.imshow(img[0, 0], cmap="gray")
-        image_axes(ax, f"{name}\nmax gray value: {int(img.max())}")
-    save(fig, OUT / "point-detectors.png")
-
-
-@figure
-def own_truth() -> None:
-    """A user-provided ground truth array, simulated in widefield and confocal."""
-    shape = (64, 256, 256)
-    z, y, x = np.ogrid[: shape[0], : shape[1], : shape[2]]
-    rng = np.random.default_rng(0)
-    truth = np.zeros(shape, dtype=np.float32)
-    for _ in range(12):
-        cz, cy, cx = rng.integers(16, 48), rng.integers(30, 226), rng.integers(30, 226)
-        r = rng.integers(8, 28)
-        d = np.sqrt(((z - cz) * 2) ** 2 + (y - cy) ** 2 + (x - cx) ** 2)
-        truth += (np.abs(d - r) < 1.5) * 10  # hollow shells, 10 fluors / voxel
-
-    common = {
-        "scale": (0.04, 0.02, 0.02),
-        "output_space": {"downscale": 4},
-        "detector": ms.CameraCMOS(qe=0.8, read_noise=1.5),
-        "settings": ms.Settings(random_seed=0),
-    }
-    wf = ms.Simulation.from_ground_truth(truth, **common).run()
-    cf_img = ms.Simulation.from_ground_truth(
-        truth,
-        modality=ms.Confocal(),
-        channels=[oc_lib.FITC.model_copy(update={"power": 5000})],
-        exposure_ms=0.01,
-        **common,
-    ).run()
-    fig, axes = plt.subplots(1, 3, figsize=(11, 3.9), gridspec_kw={"wspace": 0.04})
-    axes[0].imshow(norm(truth[32]), cmap="gray")
-    image_axes(axes[0], "your array (z = 32)")
-    axes[1].imshow(norm(_np(wf)[0, 8]), cmap="gray")
-    image_axes(axes[1], "widefield")
-    axes[2].imshow(norm(_np(cf_img)[0, 8]), cmap="gray")
-    image_axes(axes[2], "confocal")
-    save(fig, OUT / "own-truth.png")
-
-
-@figure
 def first_simulation() -> None:
     """The example from the home page and the "First simulation" page."""
     sim = ms.Simulation(
@@ -570,28 +454,35 @@ def first_simulation() -> None:
 
 
 @figure
-def tutorial() -> None:
-    """Run the code blocks of the two-color tutorial, and save each figure made."""
-    page = DOCS / "tutorials" / "two-color-cell.md"
-    text = page.read_text()
-    blocks = re.findall(r"```python([^`]*)```", text, re.DOTALL)
-    out = OUT / "tutorial"
-    out.mkdir(exist_ok=True)
-    # the page doesn't set a seed; fix it here so builds are reproducible
+def tutorials() -> None:
+    """Run the code blocks of each tutorial page, and save each figure made.
+
+    The page `tutorials/<name>.md` shows them as
+    `images/generated/tutorials/<name>/01.png`, `02.png`, and so on.
+    """
+    # the pages don't all set a seed; fix it here so builds are reproducible
     os.environ.setdefault("MICROSIM_RANDOM_SEED", "0")
-    namespace: dict = {}
-    n = 0
-    for block in blocks:
-        exec(dedent(block), namespace)
-        for num in plt.get_fignums():
-            n += 1
-            fig = plt.figure(num)
-            fig.savefig(out / f"tut-{n:02d}.png", dpi=100, bbox_inches="tight")
-            plt.close(fig)
-            print("wrote", (out / f"tut-{n:02d}.png").relative_to(DOCS.parent))
-    expected = len(re.findall(r"generated/tutorial/tut-\d+\.png", text))
-    if n != expected:
-        raise RuntimeError(f"tutorial made {n} figures, but the page shows {expected}")
+    for page in sorted((DOCS / "tutorials").glob("*.md")):
+        text = page.read_text()
+        expected = len(re.findall(rf"generated/tutorials/{page.stem}/\d+\.png", text))
+        if not expected:
+            continue
+        out = OUT / "tutorials" / page.stem
+        out.mkdir(parents=True, exist_ok=True)
+        plt.close("all")
+        namespace: dict = {}
+        n = 0
+        for block in re.findall(r"```python([^`]*)```", text, re.DOTALL):
+            exec(dedent(block), namespace)
+            for num in plt.get_fignums():
+                n += 1
+                fig = plt.figure(num)
+                path = out / f"{n:02d}.png"
+                fig.savefig(path, dpi=100, bbox_inches="tight")
+                plt.close(fig)
+                print("wrote", path.relative_to(DOCS.parent))
+        if n != expected:
+            raise RuntimeError(f"{page.name} made {n} figures, but shows {expected}")
 
 
 if __name__ == "__main__":

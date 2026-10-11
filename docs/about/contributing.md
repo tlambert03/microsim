@@ -48,8 +48,17 @@ uv run --group docs python scripts/make_doc_figures.py psf detector_data  # some
 
 Images are written to `docs/images/generated/` and chart data to
 `docs/data/generated/`, both ignored by git. The figures of the
-[two-color tutorial](../tutorials/two-color-cell.md) are made by running the
-code blocks of that page, so the code shown always matches the images.
+[tutorials](../tutorials/index.md) are made by running the code blocks of each
+tutorial page, so the code shown always matches the images.
+
+Each tutorial is also published as a notebook, converted from its page by
+`scripts/make_notebooks.py` (into `docs/notebooks/`, also ignored by git). The
+notebook's first cell installs microsim from the commit the docs were built
+from. Run the script before a strict build, which checks the notebook links:
+
+```bash
+uv run python scripts/make_notebooks.py
+```
 
 ### Interactive charts
 

@@ -4,6 +4,9 @@ icon: lucide/shapes
 
 # Using your own ground truth
 
+[:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/tlambert03/microsim/blob/gh-pages/notebooks/your-own-ground-truth.ipynb){ .md-button .md-button--primary }
+[:lucide-download: Download notebook](../notebooks/your-own-ground-truth.ipynb){ .md-button download="your-own-ground-truth.ipynb" }
+
 If you already have a 3D array that describes your sample (a segmentation, a
 mesh you voxelized, or shapes you generated), you can simulate it directly.
 
@@ -56,11 +59,25 @@ confocal = ms.Simulation.from_ground_truth(
 ).run()
 ```
 
-![The array, and its simulated widefield and confocal images](../images/generated/own-truth.png)
-/// caption
-A plane through the array (left), and the same plane in the widefield (center)
-and confocal (right) digital images. Each panel is scaled to its own range.
-///
+Plot one plane of each. The digital images have dimensions `(c, z, y, x)`, and
+their 16 Z planes cover the 64 planes of the array:
+
+```python
+import matplotlib.pyplot as plt
+
+panels = {
+    "your array (z = 32)": truth[32],
+    "widefield": widefield[0, 8],
+    "confocal": confocal[0, 8],
+}
+fig, axes = plt.subplots(1, 3, figsize=(11, 4))
+for ax, (title, image) in zip(axes, panels.items()):
+    ax.imshow(image, cmap="gray")
+    ax.set_title(title)
+    ax.axis("off")
+```
+
+![The array, and its simulated widefield and confocal images](../images/generated/tutorials/your-own-ground-truth/01.png){ .plot }
 
 The widefield image shows rings from shells centered above and below this
 plane as blurred discs. The confocal image rejects most of that light.

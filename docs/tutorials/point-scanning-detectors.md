@@ -4,6 +4,9 @@ icon: lucide/scan-line
 
 # Point-scanning detectors
 
+[:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/tlambert03/microsim/blob/gh-pages/notebooks/point-scanning-detectors.ipynb){ .md-button .md-button--primary }
+[:lucide-download: Download notebook](../notebooks/point-scanning-detectors.ipynb){ .md-button download="point-scanning-detectors.ipynb" }
+
 This tutorial compares a photomultiplier tube (PMT) and a hybrid detector (HyD)
 on the same confocal image. It shows how the PMT high voltage trades signal
 against clipping, and how photon counting and line averaging affect noise.
@@ -50,6 +53,8 @@ each detector only repeats the last stage. For a point scanner, `exposure_ms`
 is the pixel dwell time; here 1 µs.
 
 ```python
+import matplotlib.pyplot as plt
+
 detectors = {
     "GaAsP PMT, 0.7 V": lib.PMT_GAASP.model_copy(update={"hv": 0.7}),
     "GaAsP PMT, 0.9 V": lib.PMT_GAASP.model_copy(update={"hv": 0.9}),
@@ -57,12 +62,16 @@ detectors = {
     "HyD, 4× averaging": lib.HYD_SP8.model_copy(update={"averaging": 4}),
 }
 
-for name, detector in detectors.items():
+fig, axes = plt.subplots(1, 4, figsize=(13, 3.8))
+for ax, (name, detector) in zip(axes, detectors.items()):
     sim.detector = detector
     img = sim.digital_image(optical_image, exposure_ms=0.001)
+    ax.imshow(img[0, 0], cmap="gray")
+    ax.set_title(f"{name}\nmax gray value: {int(img.max())}")
+    ax.axis("off")
 ```
 
-![PMT and HyD images of the same confocal optical image](../images/generated/point-detectors.png)
+![PMT and HyD images of the same confocal optical image](../images/generated/tutorials/point-scanning-detectors/01.png){ .plot }
 
 What to notice:
 

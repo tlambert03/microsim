@@ -4,6 +4,9 @@ icon: lucide/microscope
 
 # Two-color imaging of a cell
 
+[:simple-googlecolab: Open in Colab](https://colab.research.google.com/github/tlambert03/microsim/blob/gh-pages/notebooks/two-color-cell.ipynb){ .md-button .md-button--primary }
+[:lucide-download: Download notebook](../notebooks/two-color-cell.ipynb){ .md-button download="two-color-cell.ipynb" }
+
 This tutorial simulates a widefield image of a HeLa cell with the endoplasmic
 reticulum (ER) labeled with EGFP and the mitochondria labeled with mCherry.
 Along the way it plots each step of the photon budget, so you can see where
@@ -11,8 +14,7 @@ the signal and the crosstalk in each channel come from.
 
 It needs the `cosem` and `view` extras (both in `microsim[all]`) and network
 access, to download the ground truth from OpenOrganelle and spectra from
-FPbase. The complete notebook is
-[`examples/notebooks/tutorial.ipynb`](https://github.com/tlambert03/microsim/blob/main/examples/notebooks/tutorial.ipynb).
+FPbase.
 
 ## A first sample
 
@@ -31,7 +33,7 @@ sim = ms.Simulation(
 ortho_plot(sim.ground_truth(), mip=True)
 ```
 
-![Maximum projections of random lines](../images/generated/tutorial/tut-01.png){ .plot }
+![Maximum projections of random lines](../images/generated/tutorials/two-color-cell/01.png){ .plot }
 
 [`ortho_plot`][microsim.util.ortho_plot] shows XY, XZ, and YZ views, either
 through the center of the volume or (with `mip=True`) as maximum projections.
@@ -56,7 +58,7 @@ sim = ms.Simulation(
 ortho_plot(sim.ground_truth(), z=18)
 ```
 
-![The ER and mitochondria ground truth, one plane](../images/generated/tutorial/tut-02.png){ .plot }
+![The ER and mitochondria ground truth, one plane](../images/generated/tutorials/two-color-cell/02.png){ .plot }
 
 Or as maximum projections:
 
@@ -64,7 +66,7 @@ Or as maximum projections:
 ortho_plot(sim.ground_truth(), mip=True)
 ```
 
-![The ER and mitochondria ground truth, maximum projection](../images/generated/tutorial/tut-03.png){ .plot }
+![The ER and mitochondria ground truth, maximum projection](../images/generated/tutorials/two-color-cell/03.png){ .plot }
 
 ### The optical image
 
@@ -75,7 +77,7 @@ With no other configuration, the simulation uses a widefield microscope with a
 ortho_plot(sim.optical_image(), z=18)
 ```
 
-![The widefield optical image, with both labels in one channel](../images/generated/tutorial/tut-04.png){ .plot }
+![The widefield optical image, with both labels in one channel](../images/generated/tutorials/two-color-cell/04.png){ .plot }
 
 This looks like a widefield image of a cell, but the ER and mitochondria
 appear together in the one channel. Neither label has a fluorophore, so both
@@ -132,7 +134,7 @@ for lbl in sim.sample.labels:
 plt.legend()
 ```
 
-![Absorption cross sections of EGFP and mCherry](../images/generated/tutorial/tut-05.png){ .plot }
+![Absorption cross sections of EGFP and mCherry](../images/generated/tutorials/two-color-cell/05.png){ .plot }
 
 The excitation spectra from FPbase, scaled by each fluorophore's extinction
 coefficient and converted to an absorption cross section in cm² per molecule.
@@ -145,7 +147,7 @@ for ax, oc in zip(axes, sim.channels):
     oc.plot_excitation(ax=ax)
 ```
 
-![The excitation path of each channel](../images/generated/tutorial/tut-06.png){ .plot }
+![The excitation path of each channel](../images/generated/tutorials/two-color-cell/06.png){ .plot }
 
 The colored lines are the LED spectrum and the excitation-side filters
 (right-hand scale, relative). The black line is the photon flux reaching the
@@ -171,7 +173,7 @@ for ax, oc in zip(axes, sim.channels):
     ax.set_title(oc.name)
 ```
 
-![Absorption rates of each fluorophore in each channel](../images/generated/tutorial/tut-07.png){ .plot }
+![Absorption rates of each fluorophore in each channel](../images/generated/tutorials/two-color-cell/07.png){ .plot }
 
 EGFP is excited mostly by the green channel and mCherry by the red one. The
 green channel also excites mCherry a little (21 vs. 530 photons/s): this is
@@ -197,7 +199,7 @@ for ax, oc in zip(axes, sim.channels):
     ax.set_title(oc.name)
 ```
 
-![Emission rates of each fluorophore in each channel](../images/generated/tutorial/tut-08.png){ .plot }
+![Emission rates of each fluorophore in each channel](../images/generated/tutorials/two-color-cell/08.png){ .plot }
 
 ### Emission path
 
@@ -210,7 +212,7 @@ for ax, oc in zip(axes, sim.channels):
     oc.plot_emission(ax=ax)
 ```
 
-![The emission path of each channel](../images/generated/tutorial/tut-09.png){ .plot }
+![The emission path of each channel](../images/generated/tutorials/two-color-cell/09.png){ .plot }
 
 ### Detected photons
 
@@ -231,7 +233,7 @@ for ax, oc in zip(axes, sim.channels):
     ax.set_title(oc.name)
 ```
 
-![Photons passing the emission filters](../images/generated/tutorial/tut-10.png){ .plot }
+![Photons passing the emission filters](../images/generated/tutorials/two-color-cell/10.png){ .plot }
 
 !!! info "Collection efficiency"
 
@@ -250,7 +252,7 @@ rates above:
 ortho_plot(sim.optical_image(), z=18)
 ```
 
-![Two-channel optical image](../images/generated/tutorial/tut-11.png){ .plot }
+![Two-channel optical image](../images/generated/tutorials/two-color-cell/11.png){ .plot }
 
 ## Detector and pixels
 
@@ -266,7 +268,7 @@ sim.output_space = ms.DownscaledSpace(downscale=2)
 ortho_plot(sim.digital_image(exposure_ms=100), z=9)
 ```
 
-![Digital image, 100 ms exposure](../images/generated/tutorial/tut-12.png){ .plot }
+![Digital image, 100 ms exposure](../images/generated/tutorials/two-color-cell/12.png){ .plot }
 
 With a ten times shorter exposure, there are ten times fewer photons, and the
 shot noise and read noise are more visible:
@@ -275,7 +277,7 @@ shot noise and read noise are more visible:
 ortho_plot(sim.digital_image(exposure_ms=10), z=9)
 ```
 
-![Digital image, 10 ms exposure](../images/generated/tutorial/tut-13.png){ .plot }
+![Digital image, 10 ms exposure](../images/generated/tutorials/two-color-cell/13.png){ .plot }
 
 Raising the illumination to 10 W/cm² brings the signal back:
 
@@ -285,7 +287,7 @@ sim.channels[1].power = 10
 ortho_plot(sim.digital_image(exposure_ms=10), z=9)
 ```
 
-![Digital image, 10 ms exposure, 10 W/cm²](../images/generated/tutorial/tut-14.png){ .plot }
+![Digital image, 10 ms exposure, 10 W/cm²](../images/generated/tutorials/two-color-cell/14.png){ .plot }
 
 ## Confocal
 
@@ -302,7 +304,7 @@ sim.channels[1].power = 5_000
 ortho_plot(sim.digital_image(exposure_ms=0.01), z=9)  # 10 µs pixel dwell
 ```
 
-![Confocal digital image](../images/generated/tutorial/tut-15.png){ .plot }
+![Confocal digital image](../images/generated/tutorials/two-color-cell/15.png){ .plot }
 
 The channels still use the LED spectrum from the widefield configuration;
 only the irradiance and the PSF changed. A CCD camera is also not what a

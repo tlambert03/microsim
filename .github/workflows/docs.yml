@@ -23,8 +23,11 @@ jobs:
           path: ~/.cache/microsim
           key: microsim-docs-${{ hashFiles('scripts/make_doc_figures.py', 'uv.lock') }}
           restore-keys: microsim-docs-
-      - name: Generate figures
+      - name: Generate figures and chart data
         run: uv run --group docs python scripts/make_doc_figures.py
+      # tutorial notebooks, published with the site (Colab opens them from gh-pages)
+      - name: Generate notebooks
+        run: uv run python scripts/make_notebooks.py
       - name: Build
         run: uv run --group docs zensical build --strict
       # zensical has no gh-deploy; push the built site to the gh-pages branch

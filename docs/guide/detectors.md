@@ -203,13 +203,13 @@ to hold charge, no full well, and no `relative_gain`. Set their gain with
 `electrons_per_adu`, or the parameters below. `exposure_ms` is the pixel dwell
 time.
 
-![PMT and HyD on a confocal image](../images/generated/point-detectors.png)
+![PMT and HyD on a confocal image](../images/generated/tutorials/point-scanning-detectors/01.png){ .plot }
 /// caption
 The same confocal optical image, recorded with 1 µs pixel dwell by a GaAsP
 PMT at two control voltages and by a HyD in photon-counting mode, without and
 with 4× averaging. At 0.9 V many PMT pixels clip at the top of the 12-bit
-range. The HyD gives raw photon counts. Source:
-`examples/point_detectors.py`.
+range. The HyD gives raw photon counts. From the
+[point-scanning detectors tutorial](../tutorials/point-scanning-detectors.md).
 ///
 
 ### PMT
