@@ -186,9 +186,12 @@ the EM gain.
 Typical values for a scientific CMOS: QE 0.7–0.95, read noise 1–2 e⁻,
 `electrons_per_adu` around 0.5 at 16 bits.
 
-The model applies the same gain, offset, and read noise to every pixel. Real
-sCMOS sensors vary from pixel to pixel, and some pixels are much noisier than
-average; that is not modeled yet.
+!!! danger "sCMOS pixel-to-pixel variation is not modeled"
+
+    The model applies the same gain, offset, and read noise to every pixel.
+    Real sCMOS sensors vary from pixel to pixel, and some pixels are much
+    noisier than average, so simulated sCMOS images are more uniform than real
+    ones. Per-pixel gain, offset, and read noise maps are on the roadmap.
 
 !!! example "Default camera settings"
 
