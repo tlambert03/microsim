@@ -222,3 +222,73 @@ def test_psf_cache_respects_float_dtype() -> None:
 
     assert _sim("float64").optical_image().dtype == np.float64
     assert _sim("float32").optical_image().dtype == np.float32
+
+
+def test_run_batch(tmp_path: Path) -> None:
+    sim = ms.Simulation(
+        truth_space=ms.ShapeScaleSpace(shape=(8, 16, 16), scale=(0.04, 0.02, 0.02)),
+        output_space={"downscale": 2},
+        sample=ms.Sample(labels=[GREEN_MATSLINES]),
+        settings=ms.Settings(random_seed=1, cache=False),
+        output_path=tmp_path / "out.zarr",
+    )
+    sim.run()  # populates (and must not leak) the template's ground truth
+    samples = [ms.Sample(labels=[GREEN_MATSLINES]) for _ in range(3)]
+    images = list(sim.run_batch(samples))
+
+    assert len(images) == 3
+    # same sample definition, but each gets its own seed -> different images
+    assert not np.allclose(images[0], images[1])
+    assert not np.allclose(images[0], sim.run())
+    # reproducible
+    for a, b in zip(images, sim.run_batch(samples), strict=True):
+        np.testing.assert_array_equal(a, b)
+    assert sorted(p.name for p in tmp_path.iterdir()) == [
+        "out.zarr",
+        "out_0.zarr",
+        "out_1.zarr",
+        "out_2.zarr",
+    ]
+
+
+def test_changing_fields_resets_ground_truth() -> None:
+    """model_copy(update=...) and field assignment don't reuse stale state."""
+
+    def _sim() -> ms.Simulation:
+        sim = ms.Simulation(
+            truth_space=ms.ShapeScaleSpace(shape=(8, 16, 16), scale=(0.04, 0.02, 0.02)),
+            output_space={"downscale": 2},
+            sample=ms.Sample(labels=[GREEN_MATSLINES]),
+            settings=ms.Settings(random_seed=1, cache=False),
+        )
+        sim.ground_truth()  # populate the cache
+        return sim
+
+    sim = _sim()
+    truth = sim.ground_truth()
+    other = {"labels": [{"distribution": {"type": "matslines", "density": 3}}]}
+
+    copied = sim.model_copy(update={"sample": other})
+    assert isinstance(copied.sample, ms.Sample)  # update is validated
+    assert not truth.equals(copied.ground_truth())
+    assert sim.model_copy().ground_truth().equals(truth)  # plain copy can reuse it
+
+    sim.sample = other
+    assert not truth.equals(sim.ground_truth())
+
+    # relative spaces are re-resolved in the copy, without touching the original
+    sim = _sim()
+    big = ms.ShapeScaleSpace(shape=(8, 32, 32), scale=(0.04, 0.02, 0.02))
+    copied = sim.model_copy(update={"truth_space": big})
+    assert copied.output_space.shape == (4, 16, 16)
+    assert sim.output_space.shape == (4, 8, 8)
+    assert "truth_space" in copied.model_fields_set
+    # ... also when assigning to a plain copy
+    copied = sim.model_copy()
+    copied.truth_space = big
+    assert copied.output_space.shape == (4, 16, 16)
+    assert sim.output_space.shape == (4, 8, 8)
+    # ... and when swapping which space is relative
+    out = ms.ShapeScaleSpace(shape=(4, 8, 8), scale=(0.08, 0.04, 0.04))
+    copied = sim.model_copy(update={"truth_space": {"upscale": 2}, "output_space": out})
+    assert copied.truth_space.shape == (8, 16, 16)

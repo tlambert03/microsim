@@ -1,9 +1,10 @@
 import time
 import warnings
 from collections import OrderedDict
+from collections.abc import Iterable, Iterator, Mapping
 from contextlib import suppress
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 import numpy as np
 import pandas as pd
@@ -102,6 +103,39 @@ class Simulation(SimBaseModel):
         elif isinstance(self.output_space, _RelativeSpace):
             self.output_space.reference = self.truth_space
         return self
+
+    def __setattr__(self, name: str, value: Any) -> None:
+        super().__setattr__(name, value)
+        if name in type(self).model_fields:
+            # any field may affect the ground truth (sample, spaces, settings...)
+            vars(self).pop("_ground_truth", None)
+
+    if not TYPE_CHECKING:
+
+        def model_copy(
+            self, *, update: Mapping[str, Any] | None = None, deep: bool = False
+        ) -> "Self":
+            """Copy the simulation, applying (and validating) any `update` fields.
+
+            Unlike pydantic's default, the updated simulation is validated as a
+            whole (so relative spaces are re-resolved), and the cached ground truth
+            is dropped.
+            """
+            copied = super().model_copy(deep=deep)
+            # `_resolve_spaces` sets the `reference` of a relative space, which a
+            # shallow copy shares with `self`: give the copy its own.
+            for name in ("truth_space", "output_space"):
+                if isinstance(space := getattr(copied, name), _RelativeSpace):
+                    vars(copied)[name] = space.model_copy()
+            if not update:
+                return copied
+
+            # validate all fields at once (not one at a time), since intermediate
+            # states may be invalid (e.g. swapping which space is relative)
+            fields = {name: getattr(copied, name) for name in type(self).model_fields}
+            new = type(self).model_validate({**fields, **update})
+            new.__pydantic_fields_set__ = copied.model_fields_set | set(update)
+            return new
 
     @property
     def _xp(self) -> "NumpyAPI":
@@ -362,6 +396,34 @@ class Simulation(SimBaseModel):
         """
         self._write(image := self.digital_image())
         return image
+
+    def run_batch(self, samples: Iterable[Sample]) -> Iterator[xr.DataArray]:
+        """Run this simulation once per sample, yielding each result.
+
+        Everything but the sample is shared, so PSFs and emission rates are computed
+        once and reused (see `Settings.cache.in_mem_size`).  Each sample gets its own
+        random seed (derived from `settings.random_seed`, so batches are
+        reproducible), and if `output_path` is set, result `i` is written to
+        `<stem>_<i>.<suffix>`.
+
+        Examples
+        --------
+        >>> images = list(sim.run_batch(samples))
+        >>> stacked = xr.concat(images, dim="s")  # if all samples share a shape
+        """
+        seeds = np.random.SeedSequence(self.settings.random_seed)
+        for i, sample in enumerate(samples):
+            seed = None
+            if self.settings.random_seed is not None:
+                seed = int(seeds.spawn(1)[0].generate_state(1)[0])
+            update: dict[str, Any] = {
+                "sample": sample,
+                "settings": self.settings.model_copy(update={"random_seed": seed}),
+            }
+            if self.output_path is not None:
+                stem = f"{self.output_path.stem}_{i}"
+                update["output_path"] = self.output_path.with_stem(stem)
+            yield self.model_copy(update=update).run()
 
     def _truth_cache_path(
         self,
