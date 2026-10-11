@@ -25,7 +25,7 @@ from textwrap import dedent
 
 DOCS = Path(__file__).parents[1] / "docs"
 OUT = DOCS / "notebooks"
-SITE = "https://www.talleylambert.com/microsim/"
+SITE = "https://talleylambert.com/microsim/"
 REPO = "https://github.com/tlambert03/microsim"
 
 INSTALL = """\

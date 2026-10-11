@@ -1,6 +1,6 @@
 [project]
 site_name = "microsim"
-site_url = "https://www.talleylambert.com/microsim/"
+site_url = "https://talleylambert.com/microsim/"
 site_description = "Physically grounded simulation of fluorescence microscopy images, in Python"
 site_author = "Talley Lambert"
 copyright = "Copyright &copy; 2024 - 2026 Talley Lambert"
@@ -176,6 +176,9 @@ paths = ["src"]
 
 [project.plugins.mkdocstrings.handlers.python.options]
 docstring_style = "numpy"
+# pydantic models document their fields as `Parameters`, but have no explicit
+# `__init__` for griffe to compare them with
+docstring_options = { warn_unknown_params = false }
 extensions = [
   { griffe_fieldz = { include_inherited = true, remove_fields_from_members = true, strip_annotated = true } },
 ]
@@ -212,6 +215,7 @@ exclude = [
   "microsim.schema.sample.fluorophore",
   # internals: not part of the user-facing API
   "microsim.fft",
+  "microsim.illum",
   "microsim.xarray_jax",
   "microsim.cosem.manage",
   "microsim.schema.backend",
