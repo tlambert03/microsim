@@ -99,20 +99,21 @@ export function slider(parent, { label, min, max, step, value, log, format, onIn
   input.step = log ? (toSlider(max) - toSlider(min)) / 200 : step ?? "any";
   input.value = toSlider(value);
   const fmt = format ?? ((x) => `${x}`);
-  const update = () => {
-    const v = fromSlider(+input.value);
+  // `exact` shows a value set in code, rather than the slider's rounded position
+  const update = (exact) => {
+    const v = exact ?? fromSlider(+input.value);
     out.textContent = fmt(v);
     const frac = (input.value - input.min) / (input.max - input.min);
     input.style.setProperty("--fill", `${frac * 100}%`);
     return v;
   };
   input.addEventListener("input", () => onInput(update()));
-  update();
+  update(value);
   return {
     input,
     set(v) {
       input.value = toSlider(v);
-      update();
+      update(v);
     },
   };
 }
@@ -292,6 +293,10 @@ export function baseOptions(width) {
     },
   };
 }
+
+// Powers of ten from `lo` to `hi`, for log axis ticks.
+export const decades = (lo, hi) =>
+  Array.from({ length: Math.round(Math.log10(hi / lo)) + 1 }, (_, i) => lo * 10 ** i);
 
 export const fmt = {
   si: d3.format(".3~s"),

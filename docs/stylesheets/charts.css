@@ -62,6 +62,8 @@
 /* the chart's caption, when it directly follows */
 .md-typeset figure:has(> .ms-chart) {
   display: block;
+  width: 100%;
+  max-width: none;
 }
 
 .md-typeset figure > .ms-chart {
@@ -455,9 +457,16 @@
 /* a row of sliders that share the width evenly */
 .ms-chart__controls--grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
 }
 
 .ms-chart__controls--grid .ms-control--slider {
   max-width: none;
+}
+
+/* side-by-side plots in one chart */
+.ms-chart__panels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 24px;
 }

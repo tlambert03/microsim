@@ -15,6 +15,8 @@ import numpy as np
 import pytest
 
 from microsim import schema as ms
+from microsim._data_array import DataArray
+from microsim.schema.backend import NumpyAPI
 from microsim.schema.optical_config import lib
 
 JS_TESTS = Path(__file__).parent / "js"
@@ -151,3 +153,70 @@ def test_photometry() -> None:
         assert js["saturation"] == pytest.approx(
             oc.saturation_parameter(fluor), rel=1e-9
         )
+
+
+def _measured_snr(detector: ms.Detector, electrons: float) -> float:
+    """SNR of a flat image recorded by `detector`, in a 1 s exposure."""
+    xp = NumpyAPI()
+    xp.set_random_seed(0)
+    image = DataArray(np.full((1, 1, 400, 400), electrons), dims=("c", "z", "y", "x"))
+    gray = np.asarray(detector.render(image, exposure_ms=1000, xp=xp), dtype=float)
+    signal = (gray - detector.offset) * detector.conversion_factor
+    return float(signal.mean() / signal.std())
+
+
+# no clipping or quantization, and an offset well above the read noise
+_EXACT = {
+    "bit_depth": 32,
+    "electrons_per_adu": 0.01,
+    "offset": 10**6,
+    "dark_current": 0,
+}
+SNR_CASES = [
+    (ms.CameraCCD(read_noise=6, **_EXACT), {"readNoise": 6}),
+    (
+        ms.CameraCMOS(read_noise=1.5, averaging=4, **_EXACT),
+        {"readNoise": 1.5, "averaging": 4},
+    ),
+    (
+        ms.CameraEMCCD(em_gain=300, read_noise=50, full_well=10**9, **_EXACT),
+        {
+            "readNoise": 50,
+            "gain": 300,
+            "enf": ms.CameraEMCCD(em_gain=300).excess_noise_factor,
+        },
+    ),
+]
+
+
+def test_detectors() -> None:
+    emccd = [(g, n) for g in (1, 1.5, 10, 300, 1000) for n in (604, 100, 1)]
+    pmt = [
+        {"hv": hv, "ref_hv": 0.8, "ref_gain": 5e5, "hv_exponent": e, "dynode_stages": d}
+        for hv in (0.5, 0.8, 0.9)
+        for e in (6.7, 6.9)
+        for d in (9, 12)
+    ]
+    pmt += [{"hv_gain": 1e4, "dynode_stages": 9}]
+    hyd = [(rate, tau) for rate in (1e3, 4e7, 1e9) for tau in (1.5, 0.5)]
+    snr = [
+        {"electrons": n, **params} for _, params in SNR_CASES for n in (0.5, 5, 50, 500)
+    ]
+    js = _run("detectors.mjs", {"emccd": emccd, "pmt": pmt, "hyd": hyd, "snr": snr})
+
+    for (g, n), f in zip(emccd, js["emccd"], strict=True):
+        expected = ms.CameraEMCCD(em_gain=g, em_stages=n).excess_noise_factor
+        assert f == pytest.approx(expected, rel=1e-12)
+    for p, (gain, f) in zip(pmt, js["pmt"], strict=True):
+        tube = ms.PMT(**p, hv_range=None)
+        assert gain == pytest.approx(tube.multiplication_gain, rel=1e-12)
+        assert f == pytest.approx(tube.excess_noise_factor, rel=1e-12)
+    for (rate, tau), eff in zip(hyd, js["hyd"], strict=True):
+        expected = ms.HyD(dead_time_ns=tau)._counting_efficiency(np.array(rate), 1.0)
+        assert eff == pytest.approx(float(expected), rel=1e-12)
+
+    # the analytic SNR used in the docs, against microsim's detector simulation
+    measured = [
+        _measured_snr(det, n) for det, _ in SNR_CASES for n in (0.5, 5, 50, 500)
+    ]
+    np.testing.assert_allclose(js["snr"], measured, rtol=0.03)

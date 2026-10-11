@@ -137,6 +137,17 @@ range.
     integrated for N times the exposure, read noise is added N times, and the
     result is divided by N. Brightness is unchanged, and noise is reduced.
 
+### Which camera when
+
+<div class="ms-chart" data-chart="detector-snr"></div>
+/// caption
+SNR of each camera, relative to an ideal detector that adds only shot noise,
+from the formulas above. Read noise matters at low signal; the EMCCD's gain
+removes it, at the cost of the excess noise factor, which caps its relative
+SNR at \(1/\sqrt{F} \approx 71\%\). Dots: microsim's detector simulation
+with the starting values, which the formulas match.
+///
+
 ## Cameras
 
 ### CCD
@@ -153,6 +164,12 @@ multiplies the charge by a small random amount, for a mean gain `em_gain`
 (typically 100–1000). The signal is lifted far above the read noise, so single
 photons become detectable, but the excess noise factor rises toward 2: at high
 gain an EMCCD has the SNR of a noise-free detector with half its QE.
+
+<div class="ms-chart" data-chart="emccd-enf"></div>
+/// caption
+Excess noise factor of the EM register,
+[`CameraEMCCD.excess_noise_factor`][microsim.schema.CameraEMCCD.excess_noise_factor].
+///
 
 ```py
 ms.CameraEMCCD(qe=0.95, em_gain=300, read_noise=50, electrons_per_adu=20)
@@ -219,13 +236,10 @@ dynodes, and the resulting current is integrated over the dwell time.
   pixel leaks into the next few pixels along X, producing a streak at short
   dwell times.
 
-![EMCCD and PMT excess noise, and PMT gain](../images/generated/detector-curves-light.png#only-light)
-![EMCCD and PMT excess noise, and PMT gain](../images/generated/detector-curves-dark.png#only-dark)
+<div class="ms-chart" data-chart="pmt-gain"></div>
 /// caption
-Left: excess noise factor of an EMCCD with 604 stages, from the model in
-[`CameraEMCCD.excess_noise_factor`][microsim.schema.CameraEMCCD.excess_noise_factor].
-Center and right: gain and excess noise factor of the `lib.PMT_GAASP` preset
-against control voltage.
+Gain and excess noise factor of the PMT presets in
+[`detectors.lib`](#detector-library) across their control voltage range.
 ///
 
 ### HyD
@@ -239,6 +253,11 @@ After each pulse the detector is blind for `dead_time_ns` (1.5 ns by
 default), so at high count rates some photons are missed: a true rate \(n\) is
 recorded as \(n / (1 + n\tau)\), about 6% low at 40 million counts per second.
 Dead time also makes the counts more regular than Poisson.
+
+<div class="ms-chart" data-chart="hyd-dead-time"></div>
+/// caption
+Fraction of photons counted by a photon counter with a non-paralyzable dead time, against the true photon rate.
+///
 
 ## Detector library
 

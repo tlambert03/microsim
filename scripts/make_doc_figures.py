@@ -27,7 +27,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from microsim import schema as ms
+from microsim._data_array import DataArray
 from microsim.psf import make_psf
+from microsim.schema.backend import NumpyAPI
 from microsim.schema.detectors import lib as det_lib
 from microsim.schema.optical_config import lib as oc_lib
 
@@ -301,6 +303,66 @@ def photometry_data() -> None:
     )
 
 
+# cameras in the interactive SNR chart, with the parameters it starts from
+SNR_CAMERAS = {
+    "CCD": ms.CameraCCD(read_noise=6),
+    "sCMOS": ms.CameraCMOS(read_noise=1.5),
+    "EMCCD": ms.CameraEMCCD(em_gain=300, read_noise=50),
+}
+
+
+def _measured_snr(detector: ms.Detector, electrons: float) -> float:
+    """SNR of a flat image recorded by `detector` (unclipped), in a 1 s exposure."""
+    exact = {"bit_depth": 32, "electrons_per_adu": 0.01, "offset": 10**6}
+    det = detector.model_copy(update={**exact, "dark_current": 0, "full_well": 10**9})
+    xp = NumpyAPI()
+    xp.set_random_seed(0)
+    image = DataArray(np.full((1, 1, 2000, 2000), electrons), dims=("c", "z", "y", "x"))
+    gray = np.asarray(det.render(image, exposure_ms=1000, xp=xp), dtype=float)
+    signal = (gray - det.offset) * det.conversion_factor
+    return float(signal.mean() / signal.std())
+
+
+@figure
+def detector_data() -> None:
+    """Detector presets, and simulated SNR, for the interactive detector charts."""
+    levels = np.logspace(-1, 4, 11)
+    simulated = {
+        name: [
+            {"electrons": float(n), "snr": _measured_snr(det, float(n))} for n in levels
+        ]
+        for name, det in SNR_CAMERAS.items()
+    }
+    cameras = {
+        name: {
+            "read_noise": det.read_noise,
+            "em_gain": getattr(det, "em_gain", 1),
+            "em_stages": getattr(det, "em_stages", None),
+        }
+        for name, det in SNR_CAMERAS.items()
+    }
+    pmts = [
+        {
+            "name": pmt.name,
+            "ref_hv": pmt.ref_hv,
+            "ref_gain": pmt.ref_gain,
+            "hv_exponent": pmt.hv_exponent,
+            "dynode_stages": pmt.dynode_stages,
+            "hv_range": pmt.hv_range,
+        }
+        for pmt in (det_lib.PMT_GAASP, det_lib.PMT_MULTIALKALI)
+    ]
+    write_json(
+        "detectors",
+        {
+            "cameras": cameras,
+            "simulated_snr": simulated,
+            "pmts": pmts,
+            "hyd_dead_time_ns": det_lib.HYD_SP8.dead_time_ns,
+        },
+    )
+
+
 @figure
 def psf() -> None:
     """Widefield vs confocal PSFs (XZ and XY sections)."""
@@ -389,37 +451,6 @@ def detectors() -> None:
         ax.imshow(norm(img[0, img.shape[1] // 2], 0.5, 99.8), cmap="gray")
         image_axes(ax, name)
     save(fig, OUT / "detectors.png")
-
-
-@figure
-def detector_curves() -> None:
-    """EMCCD excess noise factor vs gain, and PMT gain vs HV."""
-    gains = np.logspace(0, 3, 200)
-    enf = [ms.CameraEMCCD(em_gain=g).excess_noise_factor for g in gains]
-    hv = np.linspace(0.5, 0.9, 100)
-    pmt = det_lib.PMT_GAASP
-    pmt_gain = [pmt.model_copy(update={"hv": v}).multiplication_gain for v in hv]
-    pmt_enf = [pmt.model_copy(update={"hv": v}).excess_noise_factor for v in hv]
-    for t in themed("detector-curves"):
-        s = t["series"]
-        fig, (a1, a2, a3) = plt.subplots(
-            1, 3, figsize=(11, 3.2), gridspec_kw={"wspace": 0.35}
-        )
-        a1.semilogx(gains, enf, color=s[0])
-        a1.set_xlabel("EM gain")
-        a1.set_ylabel("excess noise factor F")
-        a1.set_title("EMCCD", loc="left", color=t["text"])
-        a1.set_ylim(0.9, 2.1)
-        a2.semilogy(hv, pmt_gain, color=s[1])
-        a2.set_xlabel("control voltage (V)")
-        a2.set_ylabel("mean gain")
-        a2.set_title("GaAsP PMT: gain", loc="left", color=t["text"])
-        a3.plot(hv, pmt_enf, color=s[1])
-        a3.set_xlabel("control voltage (V)")
-        a3.set_ylabel("excess noise factor F")
-        a3.set_title("GaAsP PMT: noise", loc="left", color=t["text"])
-        a3.set_ylim(0.9, 2.1)
-        save(fig, t["path"])
 
 
 @figure
