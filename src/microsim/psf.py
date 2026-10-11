@@ -314,7 +314,7 @@ def make_confocal_psf(
         sf=sf,
         normalize=False,
     )
-    em_psf = _norm_to_collected_light(em_psf, xp)
+    em_psf = _norm_to_collected_light(em_psf, em_wvl_um, dxy, objective, sf, xp)
 
     # The effective emission PSF is the regular emission PSF convolved with the
     # pinhole mask. The pinhole mask is a disk with diameter equal to the pinhole
@@ -342,17 +342,52 @@ def make_confocal_psf(
     return out
 
 
-def _norm_to_collected_light(psf: np.ndarray, xp: NumpyAPI) -> np.ndarray:
+# lateral radius (in Airy units) of the in-focus plane used to normalize emission
+# PSFs (see `_norm_to_collected_light`).  Light beyond it is ~0.17 / 64 = ~0.3%.
+_NORM_RADIUS_AU = 64
+
+
+def _norm_to_collected_light(
+    psf: np.ndarray,
+    wvl_um: float,
+    dxy: float,
+    objective: ObjectiveLens,
+    sf: int,
+    xp: NumpyAPI,
+) -> np.ndarray:
     """Scale an emission PSF to the fraction of collected light on each pixel.
 
     Each z-plane is the image of a point source at that defocus.  The vectorial model
-    conserves energy across planes, so every plane holds the same total (apart from
-    light falling outside the window).  Dividing by the largest plane sum makes each
-    plane sum to ~1: a camera focused at any depth receives all the light collected
-    from the point source.  (Collection efficiency itself is applied to the emission
-    rates, in `Simulation.filtered_emission_rates`.)
+    conserves energy across planes, so every plane holds the same total, and dividing
+    by it makes each plane sum to ~1: a camera focused at any depth receives all the
+    light collected from the point source.  (Collection efficiency itself is applied
+    to the emission rates, in `Simulation.filtered_emission_rates`.)
+
+    The total is the sum of the in-focus plane over at least `_NORM_RADIUS_AU`, rather
+    than over `psf` itself: if `psf` is laterally truncated, its own planes miss some
+    light, and normalizing by them would brighten the PSF to compensate.
     """
-    return psf / xp.max(xp.sum(psf, axis=(-2, -1)))  # type: ignore[no-any-return]
+    airy_px = 0.61 * wvl_um / objective.numerical_aperture / dxy
+    nx = max(psf.shape[-1], int(2 * _NORM_RADIUS_AU * airy_px) | 1)
+    return psf / _in_focus_sum(nx, dxy, wvl_um, objective, sf, xp)
+
+
+@cache
+def _in_focus_sum(
+    nx: int, dxy: float, wvl_um: float, objective: ObjectiveLens, sf: int, xp: NumpyAPI
+) -> float:
+    """Sum of the (unnormalized) in-focus plane of an emission PSF of width `nx`."""
+    plane = vectorial_psf_centered(
+        nz=1,
+        nx=nx,
+        dxy=dxy,
+        wvl=wvl_um,
+        objective=objective,
+        sf=sf,
+        normalize=False,
+        xp=xp,
+    )
+    return float(xp.sum(plane))
 
 
 def _norm_psf(
@@ -447,9 +482,10 @@ def cached_psf(
         n_pix_per_airy_radius = airy_radius / dx
         max_nx = int(n_pix_per_airy_radius * max_au_relative * 2)
         nx = min(nx, max_nx)
-        # if even make odd
-        if nx % 2 == 0:
-            nx += 1
+
+    # odd sizes, so that the PSF is centered on a pixel (an even-sized PSF shifts
+    # the image by a fraction of a pixel when convolved in `mode="same"`)
+    nz, nx = nz | 1, nx | 1
 
     use_cache = os.getenv("MICROSIM_CACHE", "").lower() not in {"0", "false", "no", "n"}
     if use_cache:
@@ -470,15 +506,15 @@ def cached_psf(
     if pinhole_au is None:
         psf = vectorial_psf_centered(
             wvl=em_wvl_um,
-            nz=nz + 1,
-            nx=nx + 1,
+            nz=nz,
+            nx=nx,
             dz=dz,
             dxy=dx,
             objective=objective,
             xp=xp,
             normalize=False,
         )
-        psf = _norm_to_collected_light(psf, xp)
+        psf = _norm_to_collected_light(psf, em_wvl_um, dx, objective, 3, xp)
     else:
         psf = make_confocal_psf(
             nz=nz,
@@ -513,7 +549,9 @@ def _psf_cache_path(
 ) -> Path:
     """Return the cache location for these PSF parameters."""
     # "v2": PSFs are scaled to collected light, no longer sum-normalized
-    cache_key: list[float | str] = [nz, nx, dz, dx, em_wvl_um, "v2"]
+    # "v3": PSF shape is (nz, nx, nx), rounded up to odd (widefield was nz + 1, ...),
+    # and normalization no longer depends on the lateral size (truncation)
+    cache_key: list[float | str] = [nz, nx, dz, dx, em_wvl_um, "v3"]
     if pinhole_au is not None:
         cache_key.extend([ex_wvl_um, pinhole_au])
         if saturation:

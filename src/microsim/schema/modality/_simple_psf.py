@@ -137,13 +137,13 @@ class _PSFModality(SimBaseModel):
         # maximum wavelength in the emission spectrum and `settings.max_psf_radius_aus`
         nz, _ny, _nx = space.shape
         dz, _dy, dx = space.scale
-        max_wave = binned.coords[Axis.W].max().item()
+        max_wave_um = binned.coords[Axis.W].max().item() / 1000
+        radius_aus = settings.max_psf_radius_aus
+        if radius_aus == "auto":
+            radius_aus = self._auto_psf_radius_aus(nz * dz, max_wave_um, objective_lens)
+            logger.info(f"Auto PSF radius: {radius_aus:.1f} AU")
         nx = _pick_nx(
-            _nx,
-            dx,
-            settings.max_psf_radius_aus,
-            max_wave,
-            objective_lens.numerical_aperture,
+            _nx, dx, radius_aus, max_wave_um, objective_lens.numerical_aperture
         )
 
         saturation = self._saturation_parameter(em_spectrum)
@@ -181,6 +181,19 @@ class _PSFModality(SimBaseModel):
         """Saturation parameter to apply in the PSF (0 if not applied spatially)."""
         return 0.0
 
+    def _auto_psf_radius_aus(
+        self, depth_um: float, wvl_um: float, objective_lens: ObjectiveLens
+    ) -> float:
+        """Lateral PSF radius (in Airy units) for `max_psf_radius_aus="auto"`.
+
+        Calibrated (for widefield) to ~1% RMSE vs. an untruncated PSF: ~14 AU covers
+        the tails of the in-focus Airy pattern, plus half the radius of the cone of
+        out-of-focus light at the axial edge of the PSF (half the volume depth).
+        """
+        airy_um = 0.61 * wvl_um / objective_lens.numerical_aperture
+        cone_aus = depth_um / 2 * np.tan(objective_lens.half_angle) / airy_um
+        return float(14 + cone_aus / 2)
+
 
 class Confocal(_PSFModality):
     """Point-scanning confocal.
@@ -212,6 +225,13 @@ class Confocal(_PSFModality):
         # ignore negligible saturation (reuses the unsaturated PSF), and round to
         # keep PSF cache keys stable
         return float(f"{s:.4g}") if s > 1e-4 else 0.0
+
+    def _auto_psf_radius_aus(
+        self, depth_um: float, wvl_um: float, objective_lens: ObjectiveLens
+    ) -> float:
+        # the pinhole rejects out-of-focus light, so a fixed radius suffices
+        # (<0.3% RMSE vs. an untruncated PSF, for volumes up to ~5 um deep)
+        return 8
 
     def psf(
         self,
@@ -361,7 +381,4 @@ def _pick_nx(
         n_pix_per_airy_radius = airy_radius / dx
         max_nx = int(n_pix_per_airy_radius * max_au_relative * 2)
         nx = min(nx, max_nx)
-        # if even make odd
-        if nx % 2 == 0:
-            nx += 1
-    return nx
+    return nx | 1  # odd, so that the PSF is centered on a pixel
