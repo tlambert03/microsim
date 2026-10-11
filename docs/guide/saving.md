@@ -56,9 +56,9 @@ sim = ms.Simulation.model_validate_json(Path("sim.json").read_text())
 
 The JSON is complete: fluorophores loaded from FPbase are saved with their
 spectra, so loading does not need network access (except for a `CosemLabel`
-sample, which queries OpenOrganelle when it is loaded). It also includes the random
-seed, so loading and running the simulation in the same environment reproduces
-the result.
+sample, which queries OpenOrganelle when it is loaded). It also includes the
+random seed, so loading and running the simulation in the same environment
+reproduces the result.
 
 You can also write simulations as JSON (or YAML, or anything that loads into
 a dictionary) by hand. Only the fields you want to change from the defaults are

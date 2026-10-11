@@ -101,7 +101,7 @@ The docs are plain and scientific. Check these with a search, then by reading:
 
 ```bash
 grep -rn '—' docs --include='*.md' | grep -v 'docs/\(data\|notebooks\)'   # em dashes
-grep -rniE '\b(recommend|best for|ideal for|natural choice|should use|which .* when|beats|outperform)' \
+grep -rniE '\b(recommend|best for|ideal for|natural choice|should use|which [a-z]+ (when|to use)|beats|outperform)' \
   docs --include='*.md' docs/javascripts/charts | grep -v 'docs/\(data\|notebooks\)'
 ```
 
