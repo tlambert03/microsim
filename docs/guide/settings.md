@@ -16,7 +16,7 @@ sim = ms.Simulation(..., settings=ms.Settings(random_seed=42, np_backend="jax"))
 | `random_seed`                        | random    | seed for the ground truth and noise                            |
 | `np_backend`                         | `"auto"`  | array library used for computation                             |
 | `float_dtype`                        | `float32` | floating-point precision                                       |
-| `max_psf_radius_aus`                 | 6         | lateral size limit of each PSF, in Airy radii                  |
+| `max_psf_radius_aus`                 | `"auto"`  | lateral size limit of each PSF, in Airy radii                  |
 | `spectral_bins_per_emission_channel` | 1         | number of PSFs used per fluorophore and channel                |
 | `spectral_bin_threshold_percentage`  | 1         | part of the emission spectrum that is ignored when binning     |
 | `cache`                              | on        | read and write the on-disk ground-truth cache                  |
@@ -64,8 +64,19 @@ GPU. Use `.values` or `numpy.asarray()` to get a NumPy array.
 **`max_psf_radius_aus`** limits the lateral size of each PSF to this many Airy
 radii from the center. A smaller value makes convolution much faster but
 drops the faint outer parts of the PSF, which in widefield carry a noticeable
-fraction of the out-of-focus light. Set it to `None` to use PSFs as large as
-the truth space.
+fraction of the out-of-focus light. With `"auto"` (the default), the radius is
+chosen to keep the error from truncation at or below about 1% (RMSE,
+relative to an untruncated PSF):
+
+- **Widefield:** 14 Airy radii, plus half the radius of the cone of
+  out-of-focus light at half the depth of the truth space. At 1.4 NA and
+  525 nm, this is about 17 Airy radii for a 1 µm deep volume and 27 for
+  5 µm.
+- **Confocal:** 8 Airy radii, because the pinhole rejects most out-of-focus
+  light.
+
+A number sets the radius directly. `None` uses PSFs as large as the truth
+space. The PSF is never larger than the truth space.
 
 **`spectral_bins_per_emission_channel`** sets how many wavelengths are used to
 represent each fluorophore's detected emission. With 1 (the default), one PSF

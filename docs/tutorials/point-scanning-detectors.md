@@ -33,7 +33,7 @@ sim = ms.Simulation(
     ],
     channels=[FITC.model_copy(update={"power": 2e4})],  # (1)!
     modality=ms.Confocal(pinhole_au=1),
-    settings=ms.Settings(random_seed=100, max_psf_radius_aus=8),
+    settings=ms.Settings(random_seed=100),
     detector=lib.HYD_SP8,  # (2)!
 )
 optical_image = sim.optical_image()
