@@ -348,7 +348,7 @@ def bin_spectrum(
         bins = np.linspace(w_min, w_max, num_bins + 1)
 
     # Use groupby_bins to bin the data within the filtered region
-    binned = masked.groupby_bins(Axis.W, bins=bins)
+    binned = masked.groupby_bins(Axis.W, bins=bins, include_lowest=True)
 
     # Create a new DataArray with the summed intensities and centroid wavelengths
     binned_spectrum = binned.sum(Axis.W)

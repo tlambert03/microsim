@@ -13,6 +13,7 @@ from ._base_model import SimBaseModel
 
 if TYPE_CHECKING:
     from fpbase.models import Spectrum as FPbaseSpectrum
+    from numpy.typing import ArrayLike
     from xarray.plot.accessor import DataArrayPlotAccessor
 
 
@@ -122,7 +123,42 @@ class Spectrum(SimBaseModel):
             return self._intensity_op(other, np.true_divide)
         return self.model_copy(update={"intensity": self.intensity / other})
 
+    def at(self, wavelength: "ArrayLike") -> np.ndarray:
+        """Return the intensity at `wavelength` (nm).
+
+        Values between samples are linearly interpolated; outside the range of this
+        spectrum, the intensity is 0.
+        """
+        order = np.argsort(self.wavelength)
+        return np.interp(  # type: ignore [no-any-return]
+            np.asarray(wavelength, dtype=float),
+            self.wavelength[order],
+            self.intensity[order],
+            left=0,
+            right=0,
+        )
+
+    def transmitted(self, transmission: "Spectrum") -> "Spectrum":
+        """Return this (light) spectrum after passing through `transmission`.
+
+        Unlike `self * transmission`, the result keeps this spectrum's wavelengths
+        (e.g. a laser line stays a laser line), and `transmission` is interpolated.
+        """
+        return self.model_copy(
+            update={"intensity": self.intensity * transmission.at(self.wavelength)}
+        )
+
     def _intensity_op(self, other: "Spectrum", op: np.ufunc) -> "Spectrum":
+        if op is np.multiply:
+            # e.g. combining filters, or a filter and detector QE: evaluate both
+            # at every wavelength either one is sampled at.
+            wavelength = np.union1d(self.wavelength, other.wavelength)
+            return self.model_copy(
+                update={
+                    "intensity": self.at(wavelength) * other.at(wavelength),
+                    "wavelength": wavelength,
+                }
+            )
         selfx, otherx = xr.align(self.as_xarray(), other.as_xarray(), join="outer")
         selfx = selfx.fillna(0)
         otherx = otherx.fillna(0)
