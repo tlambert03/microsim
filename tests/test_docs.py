@@ -13,8 +13,10 @@ DOCS_MDS += [Path(__file__).parent.parent / "README.md"]
 CODE_BLOCK = re.compile(r"```python([^`]*)```", re.DOTALL)
 JSON_BLOCK = re.compile(r"```json([^`]*)```", re.DOTALL)
 
+# these docs fetch fluorophores or filters from FPbase
+NEEDS_INTERNET = {"stages.md", "index.md", "README.md"}
 if not HAVE_INTERNET:
-    DOCS_MDS = [p for p in DOCS_MDS if p.name not in {"stages.md"}]
+    DOCS_MDS = [p for p in DOCS_MDS if p.name not in NEEDS_INTERNET]
 
 
 @pytest.mark.parametrize("doc", DOCS_MDS, ids=lambda p: p.name)

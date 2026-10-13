@@ -379,15 +379,17 @@ bin in the detector.
 !!! example
 
     This example sets up a simulation with a confocal microscope with a 1.4 NA
-    objective lens and a 1.2 AU pinhole. The simulation is set up to use the "491"
-    optical configuration from the [Example Yokogawa
-    Setup](https://www.fpbase.org/microscope/4yL4ggAo/?c=491) (spinning disc confocal)
-    microscope on FPbase.
+    objective lens, a 1.2 AU pinhole, and a 488 nm laser (`LASER_488`: the laser,
+    a dichroic, and a 525/50 emission filter).  For point-scanning modalities, the
+    laser `power` is the peak irradiance at the focus.
 
     ```python
+    from microsim.schema.optical_config.lib import LASER_488
+
     sim = Simulation(
         # ...,
-        channels=["4yL4ggAo::491"],
+        channels=[LASER_488.model_copy(update={"power": 1e5})],  # W/cm² at the focus
+        exposure_ms=0.002,  # 2 µs pixel dwell time
         objective_lens={
             "numerical_aperture": 1.4,
             "immersion_medium_ri": 1.515,
