@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+import xarray as xr
 from pydantic import ValidationError
 
 from microsim import schema as ms
 from microsim.psf import make_confocal_psf
+from microsim.schema.dimensions import Axis
 from microsim.schema.lens import ObjectiveLens
+from microsim.schema.modality._simple_psf import bin_spectrum
 from microsim.schema.optical_config.lib import FITC
 from tests._util import skipif_no_internet
 
@@ -150,6 +153,35 @@ def test_confocal_saturation_in_psf_not_rates() -> None:
     em_spectrum = cf_rates.isel(c=0, f=0)
     assert cf.modality._saturation_parameter(em_spectrum) == pytest.approx(s, rel=1e-3)
     assert wf.modality._saturation_parameter(em_spectrum) == 0
+
+
+def test_off_grid_laser_wavelength() -> None:
+    """Lasers between the sampled wavelengths of filters/spectra still excite."""
+    fluor = _green_fluor()
+    rates = [
+        ms.OpticalConfig(lights=[ms.LightSource.laser(w)], filters=FITC.filters)
+        .absorption_rate(fluor)
+        .sum()
+        .item()
+        for w in (488, 488.5)
+    ]
+    assert rates[0] > 0
+    assert rates[1] == pytest.approx(rates[0], rel=1e-3)
+
+
+def test_detector_qe_without_emission_filter() -> None:
+    oc = ms.OpticalConfig(lights=[ms.LightSource.laser(488)])
+    full = oc.filtered_emission_rate(_green_fluor()).sum().item()
+    half = oc.filtered_emission_rate(_green_fluor(), detector_qe=0.5).sum().item()
+    assert half == pytest.approx(full / 2)
+
+
+def test_bin_spectrum_keeps_all_samples() -> None:
+    spectrum = xr.DataArray(
+        [1.0, 2, 3, 4], dims=[Axis.W], coords={Axis.W: [500, 501, 502, 503]}
+    )
+    for bins in (1, 2, 3):
+        assert float(bin_spectrum(spectrum, bins=bins).sum()) == 10
 
 
 # flat spectra across the visible, so the fluorophore is excited and detected in FITC
