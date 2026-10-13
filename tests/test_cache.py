@@ -6,7 +6,8 @@ import xarray.testing as xrt
 
 import microsim.schema as ms
 from microsim import _data_array
-from microsim.psf import PSFGrid, detection_psf, make_psf
+from microsim._psf import PSFGrid, detection_psf
+from microsim.psf import make_psf
 
 
 def test_cache(sim1: ms.Simulation) -> None:

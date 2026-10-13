@@ -11,9 +11,9 @@ sim = ms.Simulation(
             )
         ]
     ),
-    modality=ms.Confocal(pinhole_au=0.5),
+    modality=ms.Widefield(),
     channels=[ms.OpticalConfig.from_fpbase("i6WL2W", "Widefield Dual Green")],
-    settings=ms.Settings(random_seed=100, max_psf_radius_aus=8),
+    settings=ms.Settings(random_seed=100),
     detector=ms.CameraCCD(qe=0.82, read_noise=2, bit_depth=12),
     # output_path="au1.tif",
 )

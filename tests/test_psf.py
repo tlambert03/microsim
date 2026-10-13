@@ -4,7 +4,8 @@ import numpy as np
 import pytest
 
 from microsim import schema as ms
-from microsim.psf import _pinhole_mask, make_psf
+from microsim._psf import _pinhole_mask
+from microsim.psf import make_psf
 from microsim.schema.modality._optics import CameraDetection, PinholeDetection
 from microsim.schema.optical_config.lib import FITC
 
@@ -76,7 +77,7 @@ def test_max_psf_radius_aus() -> None:
     assert pinhole.psf_radius_aus(5, 0.52, NA1_4) == 8
 
 
-@pytest.mark.parametrize("radius_px", [0.4, 1.9, 7.6])
+@pytest.mark.parametrize("radius_px", [0, 1e-4, 0.4, 0.5, 1.9, 7.6])
 def test_pinhole_mask_area(radius_px: float) -> None:
     """The open area of the pinhole mask matches the pinhole, even when tiny."""
     for nxy in (31, 30):

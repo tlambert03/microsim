@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, cast
 import numpy as np
 import xarray as xr
 from pydantic import Field, model_validator
+from pydantic_core import PydanticSerializationError
 from scipy.constants import c, h
 
 from microsim.schema._base_model import SimBaseModel
@@ -221,6 +222,27 @@ class OpticalConfig(SimBaseModel):
             return None
         center = np.trapezoid(wvl * trans, wvl) / np.trapezoid(trans, wvl)
         return float(center)
+
+    def _light_keys(self) -> tuple[str, ...]:
+        """Identifies each light source, by its spectrum."""
+        return tuple(light.spectrum.model_dump_json() for light in self.lights)
+
+    def _excitation_key(self) -> tuple:
+        """Identifies the excitation side: lights, power and excitation-path filters.
+
+        Channels with equal keys illuminate the sample identically (e.g. two
+        detectors behind the same laser).
+        """
+        ex_side = {Placement.EX_PATH, Placement.BS, Placement.BS_INV, Placement.ALL}
+        ex_filters = [f for f in self.filters if f.placement in ex_side]
+        try:
+            return (
+                tuple(light.model_dump_json(exclude={"name"}) for light in self.lights),
+                self.power,
+                tuple(f.model_dump_json() for f in ex_filters),
+            )
+        except PydanticSerializationError:  # pragma: no cover
+            return (id(self),)
 
     @property
     def excitation(self) -> Filter | None:

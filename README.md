@@ -72,15 +72,28 @@ object.
 
 ```python
 from microsim import schema as ms
+from microsim.schema.detectors.lib import HYD_SP8
+from microsim.schema.optical_config.lib import LASER_488
 from microsim.util import ortho_plot
 
 # define the parameters of the simulation
 sim = ms.Simulation(
     truth_space=ms.ShapeScaleSpace(shape=(128, 512, 512), scale=(0.02, 0.01, 0.01)),
     output_space={"downscale": 8},
-    sample=ms.Sample(labels=[ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1)]),
-    modality=ms.Confocal(pinhole_au=0.2),
-    output_path="au02.tiff",
+    sample=ms.Sample(
+        labels=[
+            ms.FluorophoreDistribution(
+                distribution=ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1),
+                fluorophore="EGFP",
+            )
+        ]
+    ),
+    # 488 nm laser; power is the peak irradiance at the focus (W/cm^2)
+    channels=[LASER_488.model_copy(update={"power": 1e5})],
+    modality=ms.Confocal(pinhole_au=0.6),
+    detector=HYD_SP8,
+    exposure_ms=0.002,  # 2 µs pixel dwell time
+    output_path="au06.tiff",
 )
 
 # run it

@@ -9,8 +9,8 @@ from pydantic import Field
 
 from microsim._data_array import DataArray, xrDataArray
 from microsim._logger import logger, logging_indented
+from microsim._psf import PSFGrid, airy_radius_um, apply_saturation
 from microsim.fft.convolve import fftconvolve_same_pairs
-from microsim.psf import PSFGrid, airy_radius_um, apply_saturation
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.dimensions import Axis
 
@@ -142,7 +142,7 @@ class _PSFModality(SimBaseModel):
             threshold_percentage=settings.spectral_bin_threshold_percentage,
         )
         excitation = excitation_lines(
-            fl.absorption_spectrum,
+            fl.absorption_rate,
             threshold_percentage=settings.spectral_bin_threshold_percentage,
             bin_nm=settings.excitation_bin_width_nm,
         )
@@ -151,11 +151,13 @@ class _PSFModality(SimBaseModel):
         saturation = float(f"{fl.saturation:.4g}") if fl.saturation > 1e-4 else 0.0
 
         logger.info(f"Need PSF {grid} @ emission {emission} nm")
-        detected: Any = 0
+        detected: Any = None
         for wvl_nm, weight in emission:
-            detected = (
-                detected + detection.psf(wvl_nm, grid, objective_lens, xp) * weight
-            )
+            psf = detection.psf(wvl_nm, grid, objective_lens, xp) * weight
+            if detected is None:
+                detected = psf  # a new array (cached PSFs are read-only)
+            else:
+                detected += psf
 
         key: tuple = (detection, grid, emission, objective_lens.cache_key(), type(xp))
         spot = self._illumination().spot(excitation, grid, objective_lens, xp)
@@ -166,11 +168,13 @@ class _PSFModality(SimBaseModel):
             )
             return key, detected, brightness
         key = (*key, excitation, saturation)
-        return (
-            key,
-            apply_saturation(spot, saturation) * detected,
-            fl.detected_rate(saturate=False),
-        )
+        # apply_saturation(spot, saturation) * detected, without temporary copies
+        detected *= spot
+        if saturation:
+            denominator: Any = spot * saturation
+            denominator += 1
+            detected /= denominator
+        return key, detected, fl.detected_rate(saturate=False)
 
     def _psf_grid(
         self,
@@ -212,14 +216,16 @@ class Confocal(_PSFModality):
         default=None,
         gt=0,
         description="Wavelength (nm) at which `pinhole_au` is defined.  By default, "
-        "1 AU is matched to the average of all channels' emission filter band "
-        "centers (or, if not `shared_pinhole`, to each channel's band center).",
+        "1 AU is matched to the average emission filter band center of the channels "
+        "sharing the pinhole (or, if not `shared_pinhole`, to each channel's band "
+        "center).",
     )
     shared_pinhole: bool = Field(
         default=True,
-        description="If True (the default), all channels are detected through the "
-        "same pinhole, as on most point scanners.  If False, each channel has its "
-        "own pinhole, matched to its emission band.",
+        description="If True (the default), channels acquired together (in the same "
+        "track, see `Simulation.tracks`) are detected through the same pinhole, as "
+        "on most point scanners; the pinhole is set anew for each track.  If False, "
+        "each channel has its own pinhole, matched to its emission band.",
     )
 
     detection_type = PinholeDetection
@@ -233,8 +239,13 @@ class Confocal(_PSFModality):
         c_idx: int,
         objective: ObjectiveLens,
     ) -> Detection:
-        # the channels sharing this channel's pinhole
-        group = fluorescence if self.shared_pinhole else [fluorescence[c_idx]]
+        # the channels sharing this channel's pinhole: those in the same track
+        track = fluorescence[c_idx][0].track
+        group = (
+            [row for row in fluorescence if row[0].track == track]
+            if self.shared_pinhole
+            else [fluorescence[c_idx]]
+        )
         wvl_nm = self.airy_unit_wavelength_nm
         if wvl_nm is None:
             centers = [row[0].channel.emission_band_center() for row in group]

@@ -22,11 +22,11 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 
-from microsim.psf import detection_psf, excitation_spot
+from microsim._psf import detection_psf, excitation_spot
 
 if TYPE_CHECKING:
     from microsim._data_array import ArrayProtocol
-    from microsim.psf import PSFGrid
+    from microsim._psf import PSFGrid
     from microsim.schema.backend import NumpyAPI
     from microsim.schema.lens import ObjectiveLens
 
@@ -66,12 +66,16 @@ class FocusedIllumination:
         each wavelength's spot is weighted by how much of the fluorophore's total
         absorption it accounts for (the `excitation` weights).
         """
+        if len(excitation) == 1:
+            return excitation_spot(grid, excitation[0][0], objective, xp)
         total = sum(weight for _, weight in excitation)
-        spot: Any = 0
+        spot: Any = None
         for wvl_nm, weight in excitation:
-            spot = spot + excitation_spot(grid, wvl_nm, objective, xp) * (
-                weight / total
-            )
+            line = excitation_spot(grid, wvl_nm, objective, xp) * (weight / total)
+            if spot is None:
+                spot = line
+            else:
+                spot += line
         return spot  # type: ignore [no-any-return]
 
 

@@ -219,6 +219,41 @@ of the focused spot in a confocal.  By default they include excitation saturatio
 at that intensity; use `filtered_emission_rates(saturate=False)` for the rates
 without it.
 
+!!! info "Sequential vs. simultaneous acquisition (tracks)"
+
+    By default, channels are acquired one after another, so each channel is
+    excited only by its own light sources.  `Simulation.tracks` groups channels
+    that are acquired at the same time (a *track*): all lasers of all channels in
+    a track are on together, and each channel's detector records at once, so
+    every fluorophore can bleed into every channel of its track.  A laser listed
+    in several channels of a track is one laser, counted once, so those channels
+    must agree on its `power` and excitation filters.  On a point scanner, the
+    channels of a track also share one pixel dwell time (`exposure_ms`).
+
+    Each channel still uses its own filters (including its dichroic) to detect
+    light.  On a real scanner, the channels of a track share one (multiband)
+    dichroic, so give them matching dichroics if that matters for your
+    simulation.
+
+    ```python
+    from microsim.schema.optical_config.lib import (
+        LASER_405,
+        LASER_488,
+        LASER_561,
+        LASER_640,
+    )
+
+    sim = Simulation(
+        # ...,
+        channels=[LASER_405, LASER_488, LASER_561, LASER_640],
+        tracks=[[0, 2], [1, 3]],  # or by name: [["405", "561"], ["488", "640"]]
+        # tracks="simultaneous",  # all channels at once
+    )
+    ```
+
+    Each list is shorthand for a [`Track`][microsim.schema.Track], e.g.
+    `Track(channels=[0, 2])`.
+
 The output of this stage (given by
 [`Simulation.filtered_emission_rates`][microsim.Simulation.filtered_emission_rates])
 is a 3D array with dimensions `(C, F, W)`, but lacking spatial information:
@@ -365,11 +400,11 @@ which retains the full `(C, F, Z, Y, X)` dimensions.
       wavelengths (with several lasers or a broadband source, each wavelength is
       weighted by how strongly the fluorophore absorbs it).  Excitation
       saturation is applied locally, so it is strongest at the center of the
-      spot.  As on most point scanners, all channels are detected through one
-      pinhole: `pinhole_au` is in Airy units at the average of the channels'
-      emission filter band centers (or at `airy_unit_wavelength_nm`, if set).
-      With `shared_pinhole=False`, each channel instead has its own pinhole,
-      matched to its emission band.
+      spot.  As on most point scanners, channels acquired together (in the same
+      track, see below) are detected through one pinhole: `pinhole_au` is in Airy
+      units at the average of their emission filter band centers (or at
+      `airy_unit_wavelength_nm`, if set).  With `shared_pinhole=False`, each
+      channel instead has its own pinhole, matched to its emission band.
 
 The output of this stage is a 4D array with dimensions `(C, Z, Y, X)` where the
 wavelength and fluorophore dimensions have been collapsed into the channel. Note
@@ -382,15 +417,16 @@ bin in the detector.
 !!! example
 
     This example sets up a simulation with a confocal microscope with a 1.4 NA
-    objective lens and a 1.2 AU pinhole. The simulation is set up to use the "491"
-    optical configuration from the [Example Yokogawa
-    Setup](https://www.fpbase.org/microscope/4yL4ggAo/?c=491) (spinning disc confocal)
-    microscope on FPbase.
+    objective lens, a 1.2 AU pinhole, and a 488 nm laser (`LASER_488`: the laser,
+    a dichroic, and a 525/50 emission filter).  For point-scanning modalities, the
+    laser `power` is the peak irradiance at the focus.
 
     ```python
+    from microsim.schema.optical_config.lib import LASER_488
+
     sim = Simulation(
         # ...,
-        channels=["4yL4ggAo::491"],
+        channels=[LASER_488.model_copy(update={"power": 1e5})],  # W/cm² at the focus
         objective_lens={
             "numerical_aperture": 1.4,
             "immersion_medium_ri": 1.515,

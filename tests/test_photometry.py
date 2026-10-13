@@ -7,14 +7,14 @@ import pytest
 from pydantic import ValidationError
 
 from microsim import schema as ms
-from microsim.psf import (
+from microsim._psf import (
     PSFGrid,
     airy_radius_um,
     apply_saturation,
     detection_psf,
     excitation_spot,
-    make_confocal_psf,
 )
+from microsim.psf import make_confocal_psf
 from microsim.schema.lens import ObjectiveLens
 from microsim.schema.modality._optics import (
     FocusedIllumination,
@@ -22,7 +22,12 @@ from microsim.schema.modality._optics import (
     WidefieldIllumination,
 )
 from microsim.schema.modality._simple_psf import emission_lines, excitation_lines
-from microsim.schema.optical_config.lib import FITC, spectral_detector
+from microsim.schema.optical_config.lib import (
+    FITC,
+    LASER_488,
+    LASER_561,
+    spectral_detector,
+)
 from tests._util import skipif_no_internet
 
 
@@ -160,7 +165,7 @@ def test_emission_rates_saturation() -> None:
     np.testing.assert_allclose(wf.filtered_emission_rates(), rates)
     unsaturated = cf.filtered_emission_rates(saturate=False)
     np.testing.assert_allclose(rates, unsaturated / (1 + s), atol=1e-300)
-    [[fl]] = cf.channel_fluorescence()
+    [[fl]] = cf._channel_fluorescence()
     assert fl.saturation == pytest.approx(s)
     assert fl.detected_rate(saturate=False) == pytest.approx(float(unsaturated.sum()))
     assert fl.detected_rate() == pytest.approx(float(rates.sum()))
@@ -193,7 +198,7 @@ def _confocal_sim(oc: ms.OpticalConfig, **kwargs: Any) -> ms.Simulation:
 
 def _confocal_psf(sim: ms.Simulation) -> tuple[Any, float]:
     modality = cast("ms.Confocal", sim.modality)
-    fluorescence = sim.channel_fluorescence()
+    fluorescence = sim._channel_fluorescence()
     [channel] = fluorescence
     detection = modality._detection(fluorescence, 0, sim.objective_lens)
     _key, psf, brightness = modality._system_psf(
@@ -214,7 +219,7 @@ def test_confocal_psf_uses_excitation_wavelength(power: float) -> None:
     )
     sim = _confocal_sim(oc, airy_unit_wavelength_nm=520)
     psf, brightness = _confocal_psf(sim)
-    [[fl]] = sim.channel_fluorescence()
+    [[fl]] = sim._channel_fluorescence()
     assert brightness == pytest.approx(fl.detected_rate(saturate=False))
 
     # the excitation spot is computed at the laser wavelength, not the emission
@@ -281,7 +286,7 @@ def test_confocal_pinhole_matched_to_emission_band() -> None:
             objective_lens=objective,
             modality=ms.Confocal(pinhole_au=2, **kwargs),
         )
-        fluorescence = sim.channel_fluorescence()
+        fluorescence = sim._channel_fluorescence()
         det = cast("ms.Confocal", sim.modality)._detection(fluorescence, 0, objective)
         return cast("PinholeDetection", det)
 
@@ -311,20 +316,21 @@ def test_confocal_pinhole_matched_to_emission_band() -> None:
 
 
 def test_confocal_shared_pinhole() -> None:
-    """With `shared_pinhole`, all channels use one pinhole, sized for all bands."""
+    """Channels in the same track share one pinhole, sized for all their bands."""
     objective = ObjectiveLens(numerical_aperture=1.4)
     channels = spectral_detector(4, 500, 600, [488])  # 25 nm bins, 500-600 nm
 
-    def _radii(**kwargs: Any) -> list[float]:
+    def _radii(tracks: Any = "simultaneous", **kwargs: Any) -> list[float]:
         sim = ms.Simulation(
             truth_space={"shape": (4, 4, 4), "scale": (1, 1, 1)},
             sample=[{"distribution": ms.MatsLines(), "fluorophore": FLAT}],
             channels=channels,
             objective_lens=objective,
             modality=ms.Confocal(**kwargs),
+            tracks=tracks,
         )
         modality = cast("ms.Confocal", sim.modality)
-        fluorescence = sim.channel_fluorescence()
+        fluorescence = sim._channel_fluorescence()
         return [
             cast(
                 "PinholeDetection", modality._detection(fluorescence, c, objective)
@@ -334,12 +340,17 @@ def test_confocal_shared_pinhole() -> None:
 
     per_channel = _radii(shared_pinhole=False)
     assert len(set(per_channel)) == len(channels)  # one pinhole per band
-    shared = _radii()  # shared by default
+    assert _radii("sequential") == per_channel  # each channel is its own track
+    shared = _radii()  # shared within the track by default
     assert len(set(shared)) == 1
     centers = [oc.emission_band_center() for oc in channels]
     expected = airy_radius_um(float(np.mean(centers)) / 1000, 1.4)  # type: ignore
     assert shared[0] == pytest.approx(expected, rel=1e-3)
     assert shared[0] == pytest.approx(airy_radius_um(0.55, 1.4), rel=0.01)
+
+    # one pinhole per track
+    two_tracks = _radii([[0, 1], [2, 3]])
+    assert two_tracks[0] == two_tracks[1] < two_tracks[2] == two_tracks[3]
 
 
 def test_confocal_channel_without_signal() -> None:
@@ -419,3 +430,91 @@ def test_widefield_plane_brightness_independent_of_stack_depth(nz_out: int) -> N
     rate = float(sim.filtered_emission_rates().sum())
     assert rate > 0
     assert per_fluor == pytest.approx(rate, rel=0.15)
+
+
+def _track_sim(
+    channels: list[ms.OpticalConfig], tracks: Any, **kwargs: Any
+) -> ms.Simulation:
+    return ms.Simulation(
+        truth_space={"shape": (4, 4, 4), "scale": (1, 1, 1)},
+        sample=[{"distribution": ms.MatsLines(), "fluorophore": FLAT}],
+        channels=channels,
+        tracks=tracks,
+        **kwargs,
+    )
+
+
+def test_tracks_by_index_or_name() -> None:
+    channels = [LASER_488, LASER_561]
+    assert _track_sim(channels, "sequential")._track_indices() == [[0], [1]]
+    assert _track_sim(channels, "simultaneous")._track_indices() == [[0, 1]]
+    assert _track_sim(channels, [["561"], [0]])._track_indices() == [[1], [0]]
+    sim = _track_sim(channels, [[0, "561"]])
+    assert sim.tracks == [ms.Track(channels=[0, "561"])]  # bare lists are cast
+    assert ms.Simulation.model_validate_json(sim.model_dump_json()).tracks == sim.tracks
+
+    bad = [
+        ([[0]], "exactly one track"),  # channel 1 missing
+        ([[0, 0], [1]], "exactly one track"),  # channel 0 twice
+        ([["640"], [0, 1]], "matches no"),
+        ([[2], [0, 1]], "out of range"),
+    ]
+    for tracks, match in bad:
+        with pytest.raises(ValidationError, match=match):
+            _track_sim(channels, tracks)
+    with pytest.raises(ValidationError, match="matches several"):
+        _track_sim([LASER_488, LASER_488], [["488"], [1]])
+
+
+def test_simultaneous_track_excites_with_all_lasers() -> None:
+    channels = [LASER_488, LASER_561]
+    seq = _track_sim(channels, "sequential")._channel_fluorescence()
+    sim = _track_sim(channels, "simultaneous")._channel_fluorescence()
+    both = seq[0][0].total_absorption_rate + seq[1][0].total_absorption_rate
+    for c in range(2):
+        assert sim[c][0].total_absorption_rate == pytest.approx(both)
+        # detection is still each channel's own
+        assert sim[c][0].detected_fraction.equals(seq[c][0].detected_fraction)
+    assert [row[0].track for row in seq] == [0, 1]
+    assert [row[0].track for row in sim] == [0, 0]
+
+
+def test_track_counts_a_shared_laser_once() -> None:
+    # two detectors (emission windows) behind the same 488 nm laser
+    em2 = ms.Bandpass(bandcenter=600, bandwidth=50, placement="EM")
+    other_window = LASER_488.model_copy(
+        update={"filters": [*LASER_488.filters[:-1], em2]}
+    )
+    channels = [LASER_488, other_window]
+    seq = _track_sim(channels, "sequential")._channel_fluorescence()
+    sim = _track_sim(channels, "simultaneous")._channel_fluorescence()
+    for c in range(2):
+        assert sim[c][0].total_absorption_rate == pytest.approx(
+            seq[c][0].total_absorption_rate
+        )
+    # ... so the channels must agree on how the laser is set up
+    brighter = other_window.model_copy(update={"power": 5})
+    with pytest.raises(ValidationError, match="same power and excitation filters"):
+        _track_sim([LASER_488, brighter], "simultaneous")
+    _track_sim([LASER_488, brighter], "sequential")  # fine, if acquired separately
+    two_lasers = LASER_488.model_copy(
+        update={"lights": [*LASER_488.lights, *LASER_561.lights]}
+    )
+    with pytest.raises(ValidationError, match="some, but not all"):
+        _track_sim([LASER_488, two_lasers], "simultaneous")
+
+
+def test_track_shares_pixel_dwell() -> None:
+    slow = LASER_561.model_copy(update={"exposure_ms": 0.01})
+    with pytest.raises(ValidationError, match="same pixel dwell time"):
+        _track_sim([LASER_488, slow], "simultaneous", modality=ms.Confocal())
+    _track_sim([LASER_488, slow], "sequential", modality=ms.Confocal())
+    # cameras can have different exposures
+    _track_sim([LASER_488, slow], "simultaneous", modality=ms.Widefield())
+
+
+def test_rejected_assignment_is_undone() -> None:
+    sim = _track_sim([LASER_488, LASER_561], [[0], [1]])
+    with pytest.raises(ValidationError, match="out of range"):
+        sim.channels = [LASER_488]
+    assert sim.channels == [LASER_488, LASER_561]

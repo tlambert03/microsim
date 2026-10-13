@@ -1,4 +1,6 @@
 from microsim import schema as ms
+from microsim.schema.detectors.lib import HYD_SP8
+from microsim.schema.optical_config.lib import LASER_488
 from microsim.util import ortho_plot
 
 sim = ms.Simulation(
@@ -11,10 +13,12 @@ sim = ms.Simulation(
             concentration=5,
         )
     ],
-    exposure_ms=200,
+    # 488 nm laser; power is the peak irradiance at the focus (~50 µW at NA 1.4)
+    channels=[LASER_488.model_copy(update={"power": 1e5})],  # W/cm^2
     modality=ms.Confocal(pinhole_au=0.5),
-    settings=ms.Settings(random_seed=100, max_psf_radius_aus=8),
-    detector=ms.CameraCCD(qe=0.82, read_noise=2, bit_depth=12),
+    detector=HYD_SP8,
+    exposure_ms=0.002,  # 2 µs pixel dwell time
+    settings=ms.Settings(random_seed=100),
 )
 
 result = sim.run()

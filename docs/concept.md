@@ -86,10 +86,9 @@ can be used to make the simulation reproducible, and other general parameters.
 
 There is no top-level point spread function object in the simulation: each
 modality builds a *system PSF* for every fluorophore in every channel (the
-excitation spot times the detection PSF), based on the objective lens and the
-`ChannelFluorescence` objects passed into its `render()` method.  The
-`microsim.psf` module contains the building blocks (`excitation_spot()` and
-`detection_psf()`), with `make_psf()` being the most common entrypoint.
+excitation spot times the detection PSF), based on the objective lens and on how bright each fluorophore is in each
+channel (and at which wavelengths).  The `microsim.psf` module contains
+`make_psf()` and `make_confocal_psf()`, for making PSFs directly.
 
 ### FPbase
 
