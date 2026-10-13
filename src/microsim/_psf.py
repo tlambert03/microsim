@@ -1,3 +1,5 @@
+"""Point spread functions: implementation (see `microsim.psf` for the public API)."""
+
 from __future__ import annotations
 
 import os
