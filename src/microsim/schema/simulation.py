@@ -5,12 +5,18 @@ from collections.abc import Iterable, Iterator, Mapping
 from contextlib import suppress
 from dataclasses import replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 import numpy as np
 import pandas as pd
 import xarray as xr
-from pydantic import AfterValidator, Field, model_validator
+from pydantic import (
+    AfterValidator,
+    Field,
+    StrictInt,
+    ValidationError,
+    model_validator,
+)
 from pydantic_core import PydanticSerializationError
 
 from microsim._data_array import ArrayProtocol, from_cache, to_cache
@@ -23,7 +29,11 @@ from .dimensions import Axis
 from .lens import ObjectiveLens
 from .modality import Modality, Widefield
 from .optical_config import OpticalConfig, Placement
-from .optical_config._fluorescence import ChannelFluorescence
+from .optical_config._fluorescence import (
+    ChannelFluorescence,
+    track_absorption_rate,
+    track_light_sources,
+)
 from .optical_config.lib import FITC
 from .sample import Fluorophore, FluorophoreDistribution, Sample
 from .settings import Settings
@@ -42,6 +52,7 @@ if TYPE_CHECKING:
         detector: Detector | None
         modality: Modality
         settings: Settings
+        tracks: "Tracks"
         output_path: "OutPath" | None
 
 
@@ -52,6 +63,33 @@ def _check_extensions(path: Path) -> Path:
 
 
 OutPath = Annotated[Path, AfterValidator(_check_extensions)]
+
+
+class Track(SimBaseModel):
+    """Channels acquired at the same time, as on a point scanner.
+
+    All light sources of all channels in a track are on, and each channel's detector
+    records at once.  May also be given as a bare list of channels, e.g. `[0, 2]`.
+    """
+
+    channels: list[StrictInt | str] = Field(
+        min_length=1,
+        description="Channels in this track: by index in `Simulation.channels`, or "
+        "by channel name.",
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_list(cls, value: Any) -> Any:
+        if isinstance(value, list | tuple):
+            return {"channels": value}
+        return value
+
+
+Tracks = Literal["sequential", "simultaneous"] | list[Track]
+_TRACKS_HINT = (
+    "  (To change both `channels` and `tracks`, first set `tracks='sequential'`.)"
+)
 xr.set_options(keep_attrs=True)  # type: ignore [no-untyped-call]
 
 # LRU cache of `Simulation._channel_fluorescence` results (small C x F x W arrays)
@@ -73,6 +111,16 @@ class Simulation(SimBaseModel):
     # Per-pixel integration time: camera exposure, or pixel dwell time for
     # point-scanning modalities (e.g. Confocal). May be renamed `integration_time`.
     exposure_ms: float = 100
+    tracks: Tracks = Field(
+        default="sequential",
+        description="Which channels are acquired at the same time (a *track*, as on "
+        "a point scanner): all light sources of all channels in a track are on, and "
+        "each channel's detector records at once.  `'sequential'` (the default): "
+        "each channel is its own track, excited only by its own light sources.  "
+        "`'simultaneous'`: one track with all channels.  Or a list of tracks, each a "
+        "`Track` or a list of channels given by index in `channels` or by name, "
+        "e.g. `[[0, 2], [1, 3]]`.  Every channel must be in exactly one track.",
+    )
     settings: Settings = Field(default_factory=Settings)
     output_path: OutPath | None = None
 
@@ -106,8 +154,67 @@ class Simulation(SimBaseModel):
             self.output_space.reference = self.truth_space
         return self
 
+    @model_validator(mode="after")
+    def _validate_tracks(self) -> "Self":
+        point_scanning = not self.modality.detection_type.sums_over_pixel_area
+        for track in self._track_indices():
+            channels = [self.channels[c] for c in track]
+            track_light_sources(channels)  # checks shared light sources
+            dwells = {oc.exposure_ms or self.exposure_ms for oc in channels}
+            if point_scanning and len(dwells) > 1:
+                raise ValueError(
+                    f"Channels {[oc.name for oc in channels]} are acquired together "
+                    "(in the same track), so they must have the same pixel dwell time "
+                    f"(`exposure_ms`); got {sorted(dwells)}."
+                )
+        return self
+
+    def _track_indices(self) -> list[list[int]]:
+        """Return `tracks` as lists of channel indices."""
+        n = len(self.channels)
+        if self.tracks == "sequential":
+            return [[i] for i in range(n)]
+        if self.tracks == "simultaneous":
+            return [list(range(n))]
+        names = [oc.name for oc in self.channels]
+        tracks: list[list[int]] = []
+        for track in self.tracks:
+            indices = []
+            for ch in track.channels:
+                if isinstance(ch, str):
+                    if names.count(ch) != 1:
+                        found = "matches several" if ch in names else "matches no"
+                        raise ValueError(
+                            f"Track channel {ch!r} {found} channel names "
+                            f"({names}). Use channel indices instead."
+                        )
+                    ch = names.index(ch)
+                elif not 0 <= ch < n:
+                    raise ValueError(
+                        f"Track channel index {ch} is out of range.{_TRACKS_HINT}"
+                    )
+                indices.append(ch)
+            tracks.append(indices)
+        listed = sorted(i for track in tracks for i in track)
+        if listed != list(range(n)):
+            raise ValueError(
+                "Every channel must be in exactly one track; got tracks "
+                f"{tracks} for {n} channels.{_TRACKS_HINT}"
+            )
+        return tracks
+
     def __setattr__(self, name: str, value: Any) -> None:
-        super().__setattr__(name, value)
+        old = vars(self).get(name)
+        was_set = name in self.model_fields_set
+        try:
+            super().__setattr__(name, value)
+        except ValidationError:
+            # model validators run after the new value is set: restore the old one
+            if name in type(self).model_fields:
+                vars(self)[name] = old
+                if not was_set:
+                    self.model_fields_set.discard(name)
+            raise
         if name in type(self).model_fields:
             # any field may affect the ground truth (sample, spaces, settings...)
             vars(self).pop("_ground_truth", None)
@@ -204,7 +311,8 @@ class Simulation(SimBaseModel):
         Each item describes one fluorophore in one channel, without spatial
         information: how many photons it absorbs (and at which wavelengths) at the
         reference illumination intensity, and what fraction of them are detected (and
-        at which wavelengths).  Fluorophores are the unique fluorophores in
+        at which wavelengths).  It is excited by the light sources of all channels in
+        the same track (see `tracks`).  Fluorophores are the unique fluorophores in
         `sample.labels`.
         """
         fluors = list({lbl.fluorophore: None for lbl in self.sample.labels})
@@ -220,15 +328,22 @@ class Simulation(SimBaseModel):
                 for row, oc in zip(cached, self.channels, strict=True)
             ]
 
-        fluorescence = [
-            [
-                ChannelFluorescence.create(
-                    oc, fluor, self.objective_lens, self.detector
-                )
-                for fluor in fluors
-            ]
-            for oc in self.channels
-        ]
+        fluorescence: list[list[ChannelFluorescence]] = [[] for _ in self.channels]
+        for t_idx, track in enumerate(self._track_indices()):
+            channels = [self.channels[c] for c in track]
+            for fluor in fluors:
+                # all light sources of the track excite the fluorophore
+                absorption = track_absorption_rate(channels, fluor)
+                for c_idx in track:
+                    fl = ChannelFluorescence.create(
+                        self.channels[c_idx],
+                        fluor,
+                        self.objective_lens,
+                        self.detector,
+                        absorption_rate=absorption,
+                        track=t_idx,
+                    )
+                    fluorescence[c_idx].append(fl)
         if key is not None:
             _FLUORESCENCE_CACHE[key] = fluorescence
             if len(_FLUORESCENCE_CACHE) > _FLUORESCENCE_CACHE_SIZE:
@@ -279,6 +394,7 @@ class Simulation(SimBaseModel):
         try:
             return (
                 tuple(oc.model_dump_json() for oc in self.channels),
+                str(self._track_indices()),
                 tuple(f.model_dump_json() for f in fluors),
                 self.detector.model_dump_json(include={"qe"}) if self.detector else "",
                 self.objective_lens.collection_efficiency,
