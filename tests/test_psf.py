@@ -4,7 +4,9 @@ import numpy as np
 import pytest
 
 from microsim import schema as ms
+from microsim._psf import _pinhole_mask
 from microsim.psf import make_psf
+from microsim.schema.modality._optics import CameraDetection, PinholeDetection
 from microsim.schema.optical_config.lib import FITC
 
 NA1_4 = ms.ObjectiveLens(numerical_aperture=1.4)
@@ -70,8 +72,18 @@ def test_max_psf_radius_aus() -> None:
     assert not np.allclose(_image(2), full, rtol=0.01)  # 2 AU = ~9 px << 48 px
     np.testing.assert_allclose(_image(100), full)  # never larger than the volume
 
-    wf, conf = ms.Widefield(), ms.Confocal()
-    assert wf._auto_psf_radius_aus(5, 0.52, NA1_4) > wf._auto_psf_radius_aus(
-        1, 0.52, NA1_4
-    )
-    assert conf._auto_psf_radius_aus(5, 0.52, NA1_4) == 8
+    camera, pinhole = CameraDetection(), PinholeDetection(radius_um=0.2)
+    assert camera.psf_radius_aus(5, 0.52, NA1_4) > camera.psf_radius_aus(1, 0.52, NA1_4)
+    assert pinhole.psf_radius_aus(5, 0.52, NA1_4) == 8
+
+
+@pytest.mark.parametrize("radius_px", [0, 1e-4, 0.4, 0.5, 1.9, 7.6])
+def test_pinhole_mask_area(radius_px: float) -> None:
+    """The open area of the pinhole mask matches the pinhole, even when tiny."""
+    for nxy in (31, 30):
+        mask = _pinhole_mask(nxy, radius_um=radius_px * 0.03, dxy=0.03)
+        assert mask.shape == (nxy, nxy)
+        assert mask.sum() == pytest.approx(np.pi * radius_px**2, rel=0.01)
+        assert mask[nxy // 2, nxy // 2] == mask.max()  # centered
+        if nxy % 2:  # symmetric around the center pixel
+            np.testing.assert_allclose(mask, mask[::-1, ::-1])
