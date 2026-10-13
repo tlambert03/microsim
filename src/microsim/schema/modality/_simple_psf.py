@@ -7,8 +7,8 @@ from annotated_types import Ge
 
 from microsim._data_array import ArrayProtocol, DataArray, xrDataArray
 from microsim._logger import logger, logging_indented
+from microsim._psf import make_psf
 from microsim.fft.convolve import fftconvolve_same_pairs
-from microsim.psf import make_psf
 from microsim.schema._base_model import SimBaseModel
 from microsim.schema.backend import NumpyAPI
 from microsim.schema.dimensions import Axis
