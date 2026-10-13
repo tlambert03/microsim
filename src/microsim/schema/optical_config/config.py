@@ -2,8 +2,10 @@ import inspect
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, cast
 
+import numpy as np
 import xarray as xr
 from pydantic import Field, model_validator
+from pydantic_core import PydanticSerializationError
 from scipy.constants import c, h
 
 from microsim.schema._base_model import SimBaseModel
@@ -17,6 +19,11 @@ from .filter import Filter, Placement, SpectrumFilter
 if TYPE_CHECKING:
     from fpbase.models import SpectrumOwner
     from matplotlib.axes import Axes
+
+
+# emission bandpass filters are rarely wider than this; a wider band that runs off
+# the end of the filter's spectrum is treated as open-ended (e.g. a longpass)
+_MAX_EMISSION_BAND_NM = 150
 
 
 class LightSource(SimBaseModel):
@@ -192,6 +199,50 @@ class OpticalConfig(SimBaseModel):
         final.attrs["long_name"] = "Filtered Emission rate"
         final.attrs["units"] = "photons/s"
         return final
+
+    def emission_band_center(self) -> float | None:
+        """Center (transmission-weighted mean wavelength) of the emission filter band.
+
+        This combines all filters in the emission path.  Returns None if there are no
+        emission filters, or if the band is open-ended: e.g. a longpass filter, which
+        is still transmitting at the end of its spectrum.  (A spectrum that only
+        covers a narrow passband is fine: beyond its data, transmission is 0.)
+        """
+        if (emission := self.emission) is None:
+            return None
+        spectrum = emission.spectrum
+        order = np.argsort(spectrum.wavelength)
+        wvl, trans = spectrum.wavelength[order], spectrum.intensity[order]
+        peak = trans.max()
+        if peak <= 0:
+            return None
+        passing = wvl[trans > peak / 2]
+        open_end = trans[0] > peak / 2 or trans[-1] > peak / 2
+        if open_end and passing.max() - passing.min() > _MAX_EMISSION_BAND_NM:
+            return None
+        center = np.trapezoid(wvl * trans, wvl) / np.trapezoid(trans, wvl)
+        return float(center)
+
+    def _light_keys(self) -> tuple[str, ...]:
+        """Identifies each light source, by its spectrum."""
+        return tuple(light.spectrum.model_dump_json() for light in self.lights)
+
+    def _excitation_key(self) -> tuple:
+        """Identifies the excitation side: lights, power and excitation-path filters.
+
+        Channels with equal keys illuminate the sample identically (e.g. two
+        detectors behind the same laser).
+        """
+        ex_side = {Placement.EX_PATH, Placement.BS, Placement.BS_INV, Placement.ALL}
+        ex_filters = [f for f in self.filters if f.placement in ex_side]
+        try:
+            return (
+                tuple(light.model_dump_json(exclude={"name"}) for light in self.lights),
+                self.power,
+                tuple(f.model_dump_json() for f in ex_filters),
+            )
+        except PydanticSerializationError:  # pragma: no cover
+            return (id(self),)
 
     @property
     def excitation(self) -> Filter | None:

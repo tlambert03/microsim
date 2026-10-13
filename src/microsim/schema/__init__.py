@@ -15,7 +15,7 @@ from .optical_config import (
 )
 from .sample import Fluorophore, FluorophoreDistribution, MatsLines, Sample
 from .settings import Settings
-from .simulation import Simulation
+from .simulation import Simulation, Track
 from .space import DownscaledSpace, ExtentScaleSpace, ShapeExtentSpace, ShapeScaleSpace
 from .spectrum import Spectrum
 
@@ -54,6 +54,7 @@ __all__ = [
     "Simulation",
     "Spectrum",
     "SpectrumFilter",
+    "Track",
     "Widefield",
 ]
 
