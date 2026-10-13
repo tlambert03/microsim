@@ -169,6 +169,18 @@ def test_off_grid_laser_wavelength() -> None:
     assert rates[1] == pytest.approx(rates[0], rel=1e-3)
 
 
+def test_spectrum_product_on_different_grids() -> None:
+    """Samples present in only one spectrum are interpolated, not zeroed."""
+    wvl = np.arange(500, 600)
+    fine = ms.Spectrum(wavelength=wvl, intensity=np.ones(wvl.size))
+    for other in (wvl[::2], wvl + 0.5):  # coarser, or offset by half a sample
+        half = ms.Spectrum(wavelength=other, intensity=np.full(other.size, 0.5))
+        product = fine * half
+        assert isinstance(product.intensity, np.ndarray)
+        inside = np.arange(501, 598)
+        np.testing.assert_allclose(product.at(inside), 0.5)
+
+
 def test_detector_qe_without_emission_filter() -> None:
     oc = ms.OpticalConfig(lights=[ms.LightSource.laser(488)])
     full = oc.filtered_emission_rate(_green_fluor()).sum().item()
