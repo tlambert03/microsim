@@ -4,6 +4,7 @@ from typing import Any, cast
 
 import numpy as np
 import pytest
+import xarray as xr
 from pydantic import ValidationError
 
 from microsim import schema as ms
@@ -15,13 +16,18 @@ from microsim._psf import (
     excitation_spot,
 )
 from microsim.psf import make_confocal_psf
+from microsim.schema.dimensions import Axis
 from microsim.schema.lens import ObjectiveLens
 from microsim.schema.modality._optics import (
     FocusedIllumination,
     PinholeDetection,
     WidefieldIllumination,
 )
-from microsim.schema.modality._simple_psf import emission_lines, excitation_lines
+from microsim.schema.modality._simple_psf import (
+    bin_spectrum,
+    emission_lines,
+    excitation_lines,
+)
 from microsim.schema.optical_config.lib import (
     FITC,
     LASER_488,
@@ -183,6 +189,33 @@ def test_off_grid_laser_wavelength() -> None:
     ]
     assert rates[0] > 0
     assert rates[1] == pytest.approx(rates[0], rel=1e-3)
+
+
+def test_spectrum_product_on_different_grids() -> None:
+    """Samples present in only one spectrum are interpolated, not zeroed."""
+    wvl = np.arange(500, 600)
+    fine = ms.Spectrum(wavelength=wvl, intensity=np.ones(wvl.size))
+    for other in (wvl[::2], wvl + 0.5):  # coarser, or offset by half a sample
+        half = ms.Spectrum(wavelength=other, intensity=np.full(other.size, 0.5))
+        product = fine * half
+        assert isinstance(product.intensity, np.ndarray)
+        inside = np.arange(501, 598)
+        np.testing.assert_allclose(product.at(inside), 0.5)
+
+
+def test_detector_qe_without_emission_filter() -> None:
+    oc = ms.OpticalConfig(lights=[ms.LightSource.laser(488)])
+    full = oc.filtered_emission_rate(_green_fluor()).sum().item()
+    half = oc.filtered_emission_rate(_green_fluor(), detector_qe=0.5).sum().item()
+    assert half == pytest.approx(full / 2)
+
+
+def test_bin_spectrum_keeps_all_samples() -> None:
+    spectrum = xr.DataArray(
+        [1.0, 2, 3, 4], dims=[Axis.W], coords={Axis.W: [500, 501, 502, 503]}
+    )
+    for bins in (1, 2, 3):
+        assert float(bin_spectrum(spectrum, bins=bins).sum()) == 10
 
 
 def _confocal_sim(oc: ms.OpticalConfig, **kwargs: Any) -> ms.Simulation:
