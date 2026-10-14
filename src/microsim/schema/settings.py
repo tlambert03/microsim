@@ -35,6 +35,20 @@ class InMemoryCacheSizes(SimBaseModel):
 
 
 class CacheSettings(SimBaseModel):
+    """On-disk cache settings for ground truth.
+
+    A boolean may be passed instead, to set both `read` and `write`.
+
+    Parameters
+    ----------
+    read : bool
+        Read cached ground truth, if available.
+    write : bool
+        Write generated ground truth to the cache.
+    in_mem_size : InMemoryCacheSizes
+        Sizes of the in-memory caches.
+    """
+
     read: bool = True
     write: bool = True
     in_mem_size: InMemoryCacheSizes = Field(default_factory=InMemoryCacheSizes)
@@ -50,6 +64,25 @@ class CacheSettings(SimBaseModel):
 
 
 class Settings(SimBaseModel, BaseSettings):
+    """Settings that affect how a simulation is computed.
+
+    Every setting can also be set with an environment variable `MICROSIM_<NAME>`
+    (nested settings separated by `__`, e.g. `MICROSIM_CACHE__WRITE=0`).
+
+    Parameters
+    ----------
+    np_backend : str
+        Array library: `"numpy"`, `"cupy"`, `"jax"`, `"torch"`, or `"auto"` (CuPy
+        if it can be imported, otherwise NumPy).
+    device : str
+        Not used yet.
+    random_seed : int, optional
+        Seed for random ground truth and noise.  A random seed is chosen if not
+        given.
+    cache : CacheSettings | bool
+        Whether to read and write the on-disk ground truth cache.
+    """
+
     np_backend: BackendName = "auto"
     device: DeviceName = "auto"
     float_dtype: FloatDtype = Field(

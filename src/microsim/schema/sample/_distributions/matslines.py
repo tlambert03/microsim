@@ -14,6 +14,24 @@ if TYPE_CHECKING:
 
 
 class MatsLines(BaseDistribution):
+    """Randomly oriented, one-voxel-wide line segments.
+
+    Each voxel on a line holds one fluorophore.
+
+    Parameters
+    ----------
+    density : float
+        Number of lines, as a fraction of the size of the space along X (in voxels).
+    length : int
+        Scales the random length of the lines, relative to the field of view.
+    azimuth : int
+        Limits the tilt of the lines out of the XY plane: larger values give
+        flatter lines.
+    max_r : float
+        Lines are only drawn within an ellipsoid of this radius, relative to the
+        size of the space (1 touches the edges).
+    """
+
     type: Literal["matslines"] = "matslines"
     density: float = 1
     length: int = 10

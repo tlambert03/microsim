@@ -20,6 +20,35 @@ class ObjectiveKwargs(TypedDict, total=False):
 
 
 class ObjectiveLens(SimBaseModel):
+    """Objective lens and immersion conditions.
+
+    The `*_spec` values are those the objective is designed for; differences
+    between them and the actual values cause spherical aberration in the PSF.
+
+    Parameters
+    ----------
+    numerical_aperture : float
+        Numerical aperture.  Cannot exceed the immersion medium refractive index.
+    coverslip_ri : float
+        Refractive index of the coverslip.
+    coverslip_ri_spec : float
+        Design refractive index of the coverslip.
+    immersion_medium_ri : float
+        Refractive index of the immersion medium.
+    immersion_medium_ri_spec : float
+        Design refractive index of the immersion medium.
+    specimen_ri : float
+        Refractive index of the specimen.
+    working_distance_um : float
+        Design working distance, in µm.
+    coverslip_thickness_um : float
+        Coverslip thickness, in µm.
+    coverslip_thickness_spec_um : float
+        Design coverslip thickness, in µm.
+    magnification : float
+        Magnification.  Not used yet.
+    """
+
     _renamed_fields: ClassVar[dict[str, str]] = {"na": "numerical_aperture"}
 
     numerical_aperture: float = 1.4

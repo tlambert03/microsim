@@ -40,6 +40,21 @@ MOCK_FLUOR = Fluorophore(
 
 
 class FluorophoreDistribution(SimBaseModel):
+    """A label: a spatial distribution of one fluorophore.
+
+    Parameters
+    ----------
+    distribution : MatsLines | CosemLabel | FixedArrayTruth | Renderable
+        Generator of fluorophore counts per voxel.  Any object with a
+        `render(space, xp)` method can be used.
+    fluorophore : Fluorophore | str
+        The fluorophore.  A string is looked up on FPbase.  Defaults to a
+        placeholder with flat spectra.
+    concentration : float | Callable, optional
+        A number to multiply the distribution by, or a function that takes the
+        rendered distribution and returns a modified one.
+    """
+
     distribution: AnyDistribution = Field(union_mode="left_to_right")
     fluorophore: Fluorophore = MOCK_FLUOR
     # either a scalar that will be multiplied by the distribution
@@ -85,6 +100,16 @@ class FluorophoreDistribution(SimBaseModel):
 
 
 class Sample(SimBaseModel):
+    """The sample: a list of labels.
+
+    A plain list may be passed wherever a `Sample` is expected.
+
+    Parameters
+    ----------
+    labels : list[FluorophoreDistribution]
+        The labels.  Each becomes one layer along the `f` axis of the ground truth.
+    """
+
     labels: list[FluorophoreDistribution]
 
     @model_validator(mode="before")

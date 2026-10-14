@@ -1,0 +1,227 @@
+[project]
+site_name = "microsim"
+site_url = "https://talleylambert.com/microsim/"
+site_description = "Physically grounded simulation of fluorescence microscopy images, in Python"
+site_author = "Talley Lambert"
+copyright = "Copyright &copy; 2024 - 2026 Talley Lambert"
+repo_name = "tlambert03/microsim"
+repo_url = "https://github.com/tlambert03/microsim"
+edit_uri = "edit/main/docs/"
+docs_dir = "docs"
+
+extra_css = ["stylesheets/extra.css", "stylesheets/charts.css"]
+extra_javascript = [
+  { path = "javascripts/charts/index.js", type = "module" },
+  "javascripts/mathjax.js",
+  "https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js",
+]
+
+nav = [
+  { "Home" = "index.md" },
+  { "Getting started" = [
+    "getting-started/installation.md",
+    "getting-started/first-simulation.md",
+  ] },
+  { "User guide" = [
+    "guide/index.md",
+    "guide/spaces.md",
+    "guide/samples.md",
+    "guide/channels.md",
+    "guide/photometry.md",
+    "guide/modalities.md",
+    "guide/detectors.md",
+    "guide/settings.md",
+    "guide/saving.md",
+  ] },
+  { "Tutorials" = [
+    "tutorials/index.md",
+    "tutorials/two-color-cell.md",
+    "tutorials/your-own-ground-truth.md",
+    "tutorials/point-scanning-detectors.md",
+  ] },
+  { "API reference" = ["api/index.md"] },
+  { "About" = [
+    "about/contributing.md",
+    "about/citing.md",
+  ] },
+]
+
+[project.extra]
+generator = false
+
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/tlambert03/microsim"
+
+[[project.extra.social]]
+icon = "fontawesome/brands/python"
+link = "https://pypi.org/project/microsim/"
+
+# ----------------------------------------------------------------------------
+# Theme
+
+[project.theme]
+variant = "modern"
+language = "en"
+logo = "images/logo.svg"
+favicon = "images/favicon.svg"
+features = [
+  "content.action.edit",
+  "content.code.annotate",
+  "content.code.copy",
+  "content.code.select",
+  "content.footnote.tooltips",
+  "content.tabs.link",
+  "content.tooltips",
+  "navigation.footer",
+  "navigation.indexes",
+  "navigation.instant",
+  "navigation.instant.prefetch",
+  "navigation.instant.progress",
+  "navigation.path",
+  "navigation.sections",
+  "navigation.tabs",
+  "navigation.top",
+  "navigation.tracking",
+  "search.highlight",
+  "toc.follow",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme)"
+toggle.icon = "lucide/sun-moon"
+toggle.name = "Switch to light mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/sun"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "custom"
+accent = "custom"
+toggle.icon = "lucide/moon"
+toggle.name = "Switch to system preference"
+
+[project.theme.icon]
+repo = "fontawesome/brands/github"
+edit = "lucide/pencil"
+
+# ----------------------------------------------------------------------------
+# Markdown
+
+[project.markdown_extensions]
+abbr = {}
+admonition = {}
+attr_list = {}
+def_list = {}
+footnotes = {}
+md_in_html = {}
+tables = {}
+toc.permalink = true
+toc.toc_depth = 3
+pymdownx.arithmatex.generic = true
+pymdownx.betterem = {}
+pymdownx.blocks.caption = {}
+pymdownx.caret = {}
+pymdownx.details = {}
+pymdownx.emoji.emoji_generator = "zensical.extensions.emoji.to_svg"
+pymdownx.emoji.emoji_index = "zensical.extensions.emoji.twemoji"
+pymdownx.highlight.anchor_linenums = true
+pymdownx.highlight.line_spans = "__span"
+pymdownx.highlight.pygments_lang_class = true
+pymdownx.inlinehilite = {}
+pymdownx.keys = {}
+pymdownx.magiclink = { repo_url_shorthand = true, user = "tlambert03", repo = "microsim" }
+pymdownx.mark = {}
+pymdownx.smartsymbols = {}
+pymdownx.snippets = { auto_append = ["includes/abbreviations.md"], check_paths = true }
+pymdownx.superfences.custom_fences = [
+  { name = "mermaid", class = "mermaid", format = "pymdownx.superfences.fence_code_format" },
+]
+pymdownx.tabbed.alternate_style = true
+pymdownx.tabbed.combine_header_slug = true
+pymdownx.tasklist.custom_checkbox = true
+pymdownx.tilde = {}
+
+[project.markdown_extensions."zensical.extensions.glightbox"]
+auto_caption = false
+
+[[project.markdown_extensions."zensical.extensions.preview".configurations]]
+targets.include = ["guide/*", "api/*"]
+
+# ----------------------------------------------------------------------------
+# Plugins
+
+[project.plugins.search]
+
+[project.plugins.redirects.redirect_maps]
+"concept.md" = "guide/index.md"
+"stages.md" = "guide/index.md"
+"tutorial.md" = "tutorials/two-color-cell.md"
+
+[project.plugins.mkdocstrings.handlers.python]
+inventories = [
+  "https://docs.python.org/3/objects.inv",
+  "https://numpy.org/doc/stable/objects.inv",
+  "https://docs.xarray.dev/en/stable/objects.inv",
+  "https://docs.pydantic.dev/latest/objects.inv",
+]
+paths = ["src"]
+
+[project.plugins.mkdocstrings.handlers.python.options]
+docstring_style = "numpy"
+# pydantic models document their fields as `Parameters`, but have no explicit
+# `__init__` for griffe to compare them with
+docstring_options = { warn_unknown_params = false }
+extensions = [
+  { griffe_fieldz = { include_inherited = true, remove_fields_from_members = true, strip_annotated = true } },
+]
+heading_level = 2
+show_root_heading = true
+show_root_full_path = false
+show_bases = false
+show_source = false
+show_symbol_type_heading = true
+show_symbol_type_toc = true
+show_signature_annotations = true
+separate_signature = true
+signature_crossrefs = true
+merge_init_into_class = true
+members_order = "source"
+filters = ["!^_", "!^apply_(pre|post)_quantization_binning$", "!^model_", "!^cache_key$"]
+summary = true
+docstring_section_style = "table"
+show_if_no_docstring = true
+
+[project.plugins.markdown-exec]
+
+# one page per public module, from the source; see docs/api/index.md
+[project.plugins.api-autonav]
+modules = ["src/microsim"]
+api_root_uri = "api"
+nav_section_title = "API reference"
+# document each object once: these modules' contents are re-exported, and
+# documented, by their package (e.g. microsim.schema.optical_config)
+exclude = [
+  "microsim.schema.optical_config.config",
+  "microsim.schema.optical_config.filter",
+  "microsim.schema.sample.sample",
+  "microsim.schema.sample.fluorophore",
+  # internals: not part of the user-facing API
+  "microsim.fft",
+  "microsim.illum",
+  "microsim.xarray_jax",
+  "microsim.cosem.manage",
+  "microsim.schema.backend",
+  "microsim.schema.dimensions",
+]
+
+# the top-level packages re-export everything: list their members, don't repeat them
+[project.plugins.api-autonav.module_options."^microsim(\\.schema)?$"]
+members = false

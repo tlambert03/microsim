@@ -108,3 +108,10 @@ microsim/_version.py
 microsim/**/*.c
 jrc_*
 dask-worker-space*
+
+# documentation figures, made by scripts/make_doc_figures.py
+docs/images/generated/
+docs/data/generated/
+
+# tutorial notebooks, made by scripts/make_notebooks.py
+docs/notebooks/

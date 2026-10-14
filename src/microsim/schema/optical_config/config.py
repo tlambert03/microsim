@@ -20,6 +20,19 @@ if TYPE_CHECKING:
 
 
 class LightSource(SimBaseModel):
+    """A light source.
+
+    Parameters
+    ----------
+    name : str
+        Name of the light source.
+    spectrum : Spectrum
+        Emission spectrum of the light source.
+    power : float, optional
+        Relative power, used to weight light sources in the same `OpticalConfig`.
+        The total irradiance is set by `OpticalConfig.power`.
+    """
+
     name: str = ""
     spectrum: Spectrum
     power: float | None = None  # W/cm^2
@@ -51,6 +64,30 @@ class LightSource(SimBaseModel):
 
 
 class OpticalConfig(SimBaseModel):
+    """An optical configuration (channel): light sources and filters.
+
+    A string `"<fpbase microscope id>::<config name>"` may be passed wherever an
+    `OpticalConfig` is expected; the configuration is then loaded from FPbase.
+
+    Parameters
+    ----------
+    name : str
+        Name of the channel.
+    filters : list[Filter]
+        Filters in the excitation and/or emission path (see `placement`).
+    lights : list[LightSource]
+        Light sources.  If empty, flat white light through the excitation filters.
+    detector : Detector, optional
+        Used only for its QE, and only if the simulation has no detector.
+    exposure_ms : float, optional
+        Integration time per pixel for this channel, overriding
+        `Simulation.exposure_ms`.
+    power : float, optional
+        Irradiance at the sample, in W/cm^2, summed over wavelength after the
+        excitation filters.  1 W/cm^2 if not set.  For point-scanning modalities,
+        the peak irradiance at the focus.
+    """
+
     name: str = ""
     filters: list[Filter] = Field(default_factory=list)
     lights: list[LightSource] = Field(default_factory=list)
@@ -460,4 +497,5 @@ class OpticalConfig(SimBaseModel):
             em_spectrum.plot.line(ax=ax, color="k", linewidth=2, label="combined")
         ax.legend()
         ax.set_xlim(400, 800)
-        ax.set_xlabel("transmission [%]")
+        ax.set_xlabel("wavelength [nm]")
+        ax.set_ylabel("transmission")

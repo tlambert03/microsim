@@ -13,11 +13,21 @@ DOCS_MDS += [Path(__file__).parent.parent / "README.md"]
 CODE_BLOCK = re.compile(r"```python([^`]*)```", re.DOTALL)
 JSON_BLOCK = re.compile(r"```json([^`]*)```", re.DOTALL)
 
+# Only ```python blocks are executed; ```py blocks are illustrative fragments.
+# pages that download large datasets (OpenOrganelle) are not run
+SKIP = {"two-color-cell.md"}
+# pages that fetch fluorophores or optical configs from FPbase
+NEEDS_INTERNET = {
+    "point-scanning-detectors.md",
+    "samples.md",
+    "your-own-ground-truth.md",
+}
+DOCS_MDS = [p for p in DOCS_MDS if p.name not in SKIP]
 if not HAVE_INTERNET:
-    DOCS_MDS = [p for p in DOCS_MDS if p.name not in {"stages.md"}]
+    DOCS_MDS = [p for p in DOCS_MDS if p.name not in NEEDS_INTERNET]
 
 
-@pytest.mark.parametrize("doc", DOCS_MDS, ids=lambda p: p.name)
+@pytest.mark.parametrize("doc", DOCS_MDS, ids=lambda p: str(p.relative_to(DOCS.parent)))
 def test_docs(doc: Path, tmp_path: Path) -> None:
     pytest.importorskip("matplotlib")
     os.chdir(tmp_path)
@@ -39,8 +49,6 @@ def test_docs(doc: Path, tmp_path: Path) -> None:
     namespace: dict[str, object] = {}
     for n, block in enumerate(blocks):
         lines = [x for x in block.splitlines() if not x.lstrip().startswith("#")]
-        if doc.name == "stages.md":
-            lines = _fill_in_stages(lines)
         block = "\n".join(lines)
         try:
             exec(block, namespace)
@@ -51,14 +59,3 @@ def test_docs(doc: Path, tmp_path: Path) -> None:
                 f"{block}\n"
                 f"\n--------------------------\n{e}"
             ) from e
-
-
-def _fill_in_stages(lines: list[str]) -> list[str]:
-    # complete Simulation definition in stages.md
-    # this is just to allow the Simulation object to be instantiated...
-    # as a smoke test to make sure our examples still work
-    if not any(x.lstrip().startswith("sample") for x in lines):
-        lines.insert(-1, "    sample={'labels': []},")
-    if not any(x.lstrip().startswith("truth_space") for x in lines):
-        lines.insert(-1, "    truth_space={'shape': (1,1,1), 'scale': (1,1,1)},")
-    return lines

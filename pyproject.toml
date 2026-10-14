@@ -106,14 +106,11 @@ dev = [
     "boto3-stubs[s3]>=1.43.34",
 ]
 docs = [
-    "mkdocs >=1.5.3",
-    "mkdocs-material==9.5.17",
-    "mkdocs-autorefs==1.1.0",
-    "mkdocstrings ==0.24.3",
-    "mkdocstrings-python ==1.9.2",
-    "mkdocs-jupyter==0.24.8",
-    "griffe==0.45.3",
-    "griffe-fieldz==0.1.2",  # 0.5.0 needs a newer griffe than the pin above
+    "zensical>=0.0.69",
+    "mkdocstrings-python>=2.0.9",
+    "griffe-fieldz>=0.5.0",
+    "markdown-exec[ansi]>=1.12.4",
+    "matplotlib>=3.10.7",
 ]
 
 [tool.uv]

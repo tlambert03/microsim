@@ -27,6 +27,20 @@ class _AryRepr:
 
 
 class Spectrum(SimBaseModel):
+    """Intensity as a function of wavelength.
+
+    A sequence of `(wavelength, intensity)` pairs may be passed instead.
+
+    Parameters
+    ----------
+    wavelength : array
+        Wavelengths, in nm.
+    intensity : array
+        Intensity at each wavelength.  Negative values are clipped to 0.
+    scalar : float
+        Not used in calculations.
+    """
+
     wavelength: NumpyNdarray  # nanometers
     intensity: NumpyNdarray  # normalized to 1
     scalar: float = 1  # scalar to multiply intensity by, such as EC or QY

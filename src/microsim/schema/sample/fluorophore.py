@@ -10,6 +10,31 @@ from microsim.schema.spectrum import Spectrum
 
 
 class Fluorophore(SimBaseModel):
+    """A fluorophore: spectra and photophysical properties.
+
+    A string (e.g. `"EGFP"`) may be passed wherever a `Fluorophore` is expected;
+    its properties are then loaded from FPbase.
+
+    Parameters
+    ----------
+    name : str
+        Name of the fluorophore.
+    excitation_spectrum : Spectrum
+        Excitation (absorption) spectrum.  Normalized to 1 at its peak when used.
+    emission_spectrum : Spectrum
+        Emission spectrum.  Normalized to unit area when used.
+    bleaching_half_life_s : float, optional
+        Not used yet.
+    extinction_coefficient : float, optional
+        Molar extinction coefficient at the excitation peak, in M^-1 cm^-1.
+        Required to compute absorption.
+    quantum_yield : float, optional
+        Fraction of absorbed photons that are emitted.  Treated as 1 if not set.
+    lifetime_ns : float, optional
+        Fluorescence lifetime in ns, used for excitation saturation.  No
+        saturation is applied if not set.
+    """
+
     name: str
     excitation_spectrum: Spectrum
     emission_spectrum: Spectrum

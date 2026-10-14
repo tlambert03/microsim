@@ -205,6 +205,11 @@ class Confocal(_PSFModality):
     (dwell) time (it is not divided by the number of pixels).  Excitation saturation
     is applied locally (per position in the excitation PSF), rather than to the
     emission rates.
+
+    Parameters
+    ----------
+    pinhole_au : float
+        Pinhole diameter in Airy units (1 AU = 1.22 * emission wavelength / NA).
     """
 
     type: Literal["confocal"] = "confocal"
@@ -256,14 +261,20 @@ class Confocal(_PSFModality):
 
 
 class Widefield(_PSFModality):
+    """Widefield: uniform illumination, imaged onto a camera.
+
+    The optical image is the emission of each fluorophore convolved with the
+    emission PSF.
+    """
+
     type: Literal["widefield"] = "widefield"
 
 
 class Identity(_PSFModality):
     """Optical modality in which PSF is not applied.
 
-    The idea is to use this modality when the ground truth flurophore distribution is
-    generated from a light micorscope image, i.e., the PSF convolution is already
+    The idea is to use this modality when the ground truth fluorophore distribution
+    is generated from a light microscope image, i.e., the PSF convolution is already
     applied on the image.  This is useful primarily when you are more interested in the
     spectral properties (fluorophores, filters, bleedthrough, etc.) than the spatial
     properties (PSF, modality, etc.) in the simulation.

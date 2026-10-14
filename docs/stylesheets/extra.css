@@ -1,69 +1,188 @@
-.md-typeset .admonition,
-.md-typeset details {
-  border-width: 0;
-  border-left-width: 4px;
+/* ---------------------------------------------------------------------------
+   Colors: a fluorescein-ish green on neutral surfaces
+--------------------------------------------------------------------------- */
+
+:root,
+[data-md-color-scheme="default"] {
+  --md-primary-fg-color: #12805a;
+  --md-primary-fg-color--light: #1baf7a;
+  --md-primary-fg-color--dark: #0b5c40;
+  --md-accent-fg-color: #0f9a69;
+  --md-accent-fg-color--transparent: #0f9a691a;
+  --ms-figure-border: #e4e3df;
+  --ms-muted: #6b6a65;
 }
 
-.md-typeset h1, .md-typeset h2 {
-  font-weight: 400;
+[data-md-color-scheme="slate"] {
+  --md-primary-fg-color: #3ccf95;
+  --md-primary-fg-color--light: #6fe0b2;
+  --md-primary-fg-color--dark: #1baf7a;
+  --md-accent-fg-color: #6fe0b2;
+  --md-accent-fg-color--transparent: #6fe0b21a;
+  --md-typeset-a-color: #4fd8a0;
+  --ms-figure-border: #2e2e2c;
+  --ms-muted: #a3a29a;
 }
 
-.md-typeset .doc-children {
-  font-size: 0.7rem;
+/* ---------------------------------------------------------------------------
+   Typography
+--------------------------------------------------------------------------- */
+
+.md-typeset h1,
+.md-typeset h2 {
+  font-weight: 500;
 }
 
-/* Wrap long functions */
-.md-typeset {
-  overflow-x: auto;
-  column-width: 1800px;
+.md-typeset .lead {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--md-default-fg-color--light);
 }
 
-/* name of a method */
-code.highlight span.n:first-child {
-  color: red;
-}
-code.highlight span.n:not(:first-child) {
-  color: #666;
+/* ---------------------------------------------------------------------------
+   Figures
+--------------------------------------------------------------------------- */
+
+.md-typeset figure {
+  margin: 1.5em auto;
 }
 
-/* Indentation. */
-div.doc-contents:not(.first) {
-  padding-left: 25px;
+.md-typeset figure img {
+  border-radius: 6px;
+}
+
+.md-typeset figure figcaption {
+  max-width: 44rem;
+  margin: 0.6em auto 0;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: var(--ms-muted);
+  text-align: left;
+}
+
+/* code in the first column of a prose table (parameter names) doesn't wrap */
+.md-typeset table:not([class]) td:first-child > code {
+  white-space: nowrap;
+}
+
+/* API overview: the same column widths in every table */
+.md-typeset .ms-api-index .md-typeset__table,
+.md-typeset .ms-api-index table:not([class]) {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.md-typeset .ms-api-index th:first-child {
+  width: 45%;
+}
+
+.md-typeset .ms-api-index table:not([class]) td:first-child > code {
+  white-space: normal;
+}
+
+/* matplotlib output with a white background (tutorial pages) */
+.md-typeset img.plot {
+  background: #fff;
+  border: 1px solid var(--ms-figure-border);
+  border-radius: 6px;
+  padding: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+   Home page hero
+--------------------------------------------------------------------------- */
+
+.ms-hero {
+  margin: 0 0 1.5rem;
+}
+
+.ms-hero img {
+  width: 100%;
+  border-radius: 8px;
+  display: block;
+}
+
+.ms-hero p.caption {
+  font-size: 0.66rem;
+  color: var(--ms-muted);
+  margin-top: 0.4em;
+}
+
+/* stage labels in the pipeline overview */
+.md-typeset .ms-stage {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 0.45em;
+  margin-right: 0.3em;
+  border-radius: 1em;
+  font-size: 0.75em;
+  font-weight: 600;
+  text-align: center;
+  color: var(--md-primary-bg-color);
+  background: var(--md-primary-fg-color);
+}
+
+/* ---------------------------------------------------------------------------
+   API reference (mkdocstrings)
+--------------------------------------------------------------------------- */
+
+.md-typeset .doc-heading code {
+  font-weight: 600;
+}
+
+.md-typeset .doc-contents:not(.first) {
+  padding-left: 1rem;
   border-left: 0.05rem solid var(--md-typeset-table-color);
 }
 
-/* Mark external links as such. */
-a.autorefs-external::after {
-  /* https://primer.style/octicons/arrow-up-right-24 */
-  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="rgb(0, 0, 0)" d="M18.25 15.5a.75.75 0 00.75-.75v-9a.75.75 0 00-.75-.75h-9a.75.75 0 000 1.5h7.19L6.22 16.72a.75.75 0 101.06 1.06L17.5 7.56v7.19c0 .414.336.75.75.75z"></path></svg>');
-  content: " ";
-
-  display: inline-block;
-  position: relative;
-  top: 0.1em;
-  margin-left: 0.2em;
-  margin-right: 0.1em;
-
-  height: 1em;
-  width: 1em;
-  border-radius: 100%;
-  background-color: var(--md-typeset-a-color);
-}
-a.autorefs-external:hover::after {
-  background-color: var(--md-accent-fg-color);
+.md-typeset .doc-section-title {
+  font-weight: 600;
 }
 
-
-/* Remove In [] from jupyter notebook */
-.jupyter-wrapper .jp-CodeCell .jp-Cell-inputWrapper .jp-InputPrompt,
-.jupyter-wrapper .jp-CodeCell .jp-Cell-outputWrapper .jp-OutputPrompt {
-  display: none !important;
+/* parameter tables: fit the content width.  Types wrap between the `|` of a
+   union, not inside names; long defaults (reprs of default factories) wrap
+   anywhere and are clamped to three lines. */
+.md-typeset .doc-contents .md-typeset__scrollwrap {
+  margin-left: 0;
+  margin-right: 0;
 }
 
-.jupyter-wrapper .jp-CodeCell .jp-Cell-outputWrapper .jp-RenderedText[data-mime-type="application/vnd.jupyter.stderr"] {
-  display: none !important;
+.md-typeset .doc-contents .md-typeset__table {
+  display: block;
+  width: 100%;
+  padding: 0;
 }
 
-.jupyter-wrapper .jp-Cell-inputWrapper {
-  padding-bottom: 1rem !important;
+.md-typeset .doc-contents .md-typeset__table table {
+  display: table;
+  width: 100%;
+  max-width: 100%;
+}
+
+.md-typeset .doc-contents td code {
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.md-typeset .doc-contents table:not([class]) td:first-child > code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.md-typeset .doc-contents td:nth-child(4):last-child code {
+  display: -webkit-box;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+/* external links get a small arrow */
+.md-typeset a.autorefs-external::after {
+  content: "↗";
+  font-size: 0.75em;
+  margin-left: 0.1em;
+  opacity: 0.6;
 }
