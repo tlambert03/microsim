@@ -3,6 +3,7 @@ import warnings
 from collections import OrderedDict
 from collections.abc import Iterable, Iterator, Mapping
 from contextlib import suppress
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any
 
@@ -22,6 +23,7 @@ from .dimensions import Axis
 from .lens import ObjectiveLens
 from .modality import Modality, Widefield
 from .optical_config import OpticalConfig, Placement
+from .optical_config._fluorescence import ChannelFluorescence
 from .optical_config.lib import FITC
 from .sample import Fluorophore, FluorophoreDistribution, Sample
 from .settings import Settings
@@ -52,9 +54,9 @@ def _check_extensions(path: Path) -> Path:
 OutPath = Annotated[Path, AfterValidator(_check_extensions)]
 xr.set_options(keep_attrs=True)  # type: ignore [no-untyped-call]
 
-# LRU cache of `Simulation.filtered_emission_rates` results (small C x F x W arrays)
-_RATES_CACHE: OrderedDict[tuple, xr.DataArray] = OrderedDict()
-_RATES_CACHE_SIZE = 32
+# LRU cache of `Simulation._channel_fluorescence` results (small C x F x W arrays)
+_FLUORESCENCE_CACHE: OrderedDict[tuple, list[list[ChannelFluorescence]]] = OrderedDict()
+_FLUORESCENCE_CACHE_SIZE = 32
 
 
 class Simulation(SimBaseModel):
@@ -196,16 +198,56 @@ class Simulation(SimBaseModel):
         )
         return self._ground_truth
 
-    def filtered_emission_rates(self) -> xr.DataArray:
+    def _channel_fluorescence(self) -> list[list[ChannelFluorescence]]:
+        """Return how each fluorophore appears in each channel (`[channel][fluor]`).
+
+        Each item describes one fluorophore in one channel, without spatial
+        information: how many photons it absorbs (and at which wavelengths) at the
+        reference illumination intensity, and what fraction of them are detected (and
+        at which wavelengths).  Fluorophores are the unique fluorophores in
+        `sample.labels`.
+        """
+        fluors = list({lbl.fluorophore: None for lbl in self.sample.labels})
+        key = self._fluorescence_cache_key(fluors)
+        if key is not None and (cached := _FLUORESCENCE_CACHE.get(key)) is not None:
+            _FLUORESCENCE_CACHE.move_to_end(key)
+            # use this simulation's own (equal) channel and fluorophore objects
+            return [
+                [
+                    replace(fl, channel=oc, fluorophore=fluor)
+                    for fl, fluor in zip(row, fluors, strict=True)
+                ]
+                for row, oc in zip(cached, self.channels, strict=True)
+            ]
+
+        fluorescence = [
+            [
+                ChannelFluorescence.create(
+                    oc, fluor, self.objective_lens, self.detector
+                )
+                for fluor in fluors
+            ]
+            for oc in self.channels
+        ]
+        if key is not None:
+            _FLUORESCENCE_CACHE[key] = fluorescence
+            if len(_FLUORESCENCE_CACHE) > _FLUORESCENCE_CACHE_SIZE:
+                _FLUORESCENCE_CACHE.popitem(last=False)
+        return fluorescence
+
+    def filtered_emission_rates(self, *, saturate: bool = True) -> xr.DataArray:
         """Return the emission rates for each fluorophore in each channel.
 
-        Returns a (C, F, W) array of emission rates for each fluorophore in each
-        channel, as a function of wavelength.  The units are photons/s.  The range
+        Returns a (C, F, W) array of detected emission rates for each fluorophore in
+        each channel, as a function of wavelength.  The units are photons/s.  The range
         of wavelengths will encompass the union of all the fluorophores' emission
         spectra, and the rates will be zero where the fluorophore does not emit.
 
-        For point-scanning modalities (e.g. `Confocal`), these rates are *not*
-        saturated: excitation saturation is applied locally in the PSF instead.
+        These are the rates for a fluorophore at the reference illumination intensity
+        (`OpticalConfig.power`): anywhere in a widefield field of view, or at the
+        center of the excitation spot for point-scanning modalities (e.g. `Confocal`).
+        If `saturate` is True (the default), excitation saturation at that intensity
+        is applied.
 
         Examples
         --------
@@ -214,24 +256,10 @@ class Simulation(SimBaseModel):
         >>> rates.isel(c=0).plot.line(x='w') # plot emission of all fluors in channel 0
         >>> plt.show()
         """
-        fluors = list({lbl.fluorophore: None for lbl in self.sample.labels})
-        key = self._rates_cache_key(fluors)
-        if key is not None and (cached := _RATES_CACHE.get(key)) is not None:
-            _RATES_CACHE.move_to_end(key)
-            # use this simulation's own (equal) channel and fluorophore objects
-            return cached.copy().assign_coords({Axis.C: self.channels, Axis.F: fluors})
-
-        # point-scanning modalities apply saturation spatially, in the PSF
-        sat = not self.modality.point_scanning
-        # fraction of isotropic emission entering the objective. PSFs are normalized
-        # to collected light, so this is not double-counted (see `make_confocal_psf`)
-        collection = self.objective_lens.collection_efficiency
-        qe = self.detector.qe if self.detector else None
-        nested_rates: list[list[xr.DataArray]] = [
-            [oc.filtered_emission_rate(f, detector_qe=qe, saturate=sat) for f in fluors]
-            for oc in self.channels
+        nested_rates = [
+            [fl.detected_spectrum(saturate=saturate) for fl in row]
+            for row in self._channel_fluorescence()
         ]
-
         # combine xarray objects along the C and F axes, with outer join on W
         rates: xr.DataArray = xr.combine_nested(  # type: ignore [assignment]
             nested_rates,
@@ -240,31 +268,25 @@ class Simulation(SimBaseModel):
             join="outer",
             fill_value=0,
         ).transpose(Axis.C, Axis.F, Axis.W)
-        rates = rates * collection
-        if key is not None:
-            _RATES_CACHE[key] = rates.copy()
-            if len(_RATES_CACHE) > _RATES_CACHE_SIZE:
-                _RATES_CACHE.popitem(last=False)
         return rates
 
-    def _rates_cache_key(self, fluors: list[Fluorophore]) -> tuple | None:
-        """Key identifying `filtered_emission_rates` output, or None if unhashable.
+    def _fluorescence_cache_key(self, fluors: list[Fluorophore]) -> tuple | None:
+        """Key identifying `_channel_fluorescence` output, or None if unhashable.
 
-        The rates depend only on the optics and fluorophores (not on where the
-        fluorophores are), so they can be reused across simulations.
+        This depends only on the optics and fluorophores (not on where the
+        fluorophores are), so it can be reused across simulations.
         """
         try:
             return (
                 tuple(oc.model_dump_json() for oc in self.channels),
                 tuple(f.model_dump_json() for f in fluors),
                 self.detector.model_dump_json(include={"qe"}) if self.detector else "",
-                self.modality.point_scanning,
                 self.objective_lens.collection_efficiency,
             )
         except PydanticSerializationError:
             return None
 
-    def emission_flux(self) -> xr.DataArray:
+    def emission_flux(self, *, saturate: bool = True) -> xr.DataArray:
         """Return the spatial emission in photons per second (after emission filters).
 
         This is the ground truth data multiplied by the filtered emission rates, *prior*
@@ -291,7 +313,7 @@ class Simulation(SimBaseModel):
             return truth
 
         # total photons/s emitted by each fluorophore in each channel
-        em_rates = self.filtered_emission_rates().sum(Axis.W)
+        em_rates = self.filtered_emission_rates(saturate=saturate).sum(Axis.W)
         em_rates = em_rates.copy(data=self._xp.asarray(em_rates.data))
         total_flux = em_rates * truth
         total_flux.attrs.update(units="photon/sec", long_name="Emission Flux")
@@ -310,7 +332,7 @@ class Simulation(SimBaseModel):
         # (C, F, Z, Y, X)
         return self.modality.render(
             self.ground_truth(),  # (F, Z, Y, X)
-            self.filtered_emission_rates(),  # (C, F, W)
+            self._channel_fluorescence(),  # [C][F]
             objective_lens=self.objective_lens,
             settings=self.settings,
             xp=self._xp,
@@ -358,9 +380,9 @@ class Simulation(SimBaseModel):
             # Each Z plane is a separate exposure at one focal position (it does not
             # collect light from neighboring focal planes), so always average over Z.
             mean_axes = (
-                [str(d) for d in image.dims]
-                if self.modality.point_scanning
-                else [Axis.Z]
+                [Axis.Z]
+                if self.modality.detection_type.sums_over_pixel_area
+                else [str(d) for d in image.dims]
             )
             image = self.output_space.rescale(image, mean_axes=mean_axes)
 

@@ -213,6 +213,12 @@ where:
 - $T_{\text{em}}(\lambda)$ is the transmission of the emission filters at each wavelength.
 - $\text{QE}(\lambda)$ is the quantum efficiency of the detector at each wavelength.
 
+These rates are for a fluorophore at the *reference* illumination intensity (the
+light source `power`): anywhere in a widefield field of view, or at the center
+of the focused spot in a confocal.  By default they include excitation saturation
+at that intensity; use `filtered_emission_rates(saturate=False)` for the rates
+without it.
+
 The output of this stage (given by
 [`Simulation.filtered_emission_rates`][microsim.Simulation.filtered_emission_rates])
 is a 3D array with dimensions `(C, F, W)`, but lacking spatial information:
@@ -344,6 +350,23 @@ which retains the full `(C, F, Z, Y, X)` dimensions.
 
     In microsim, the PSF largely be determined by the [`ObjectiveLens`][microsim.schema.ObjectiveLens] and the
     [`Modality`](api.md#modality) of the simulation
+
+!!! info "Widefield vs. confocal"
+
+    For every modality, the signal from a fluorophore at some position (relative
+    to the focus) is *how strongly it is excited there* times *the fraction of its
+    emission that reaches the detector*: the excitation spot times the detection
+    PSF, or the **system PSF**.
+
+    - **Widefield**: the whole field is evenly illuminated, so only the detection
+      PSF (the image of a point source on the camera) shapes the image.
+    - **Confocal**: the system PSF is the excitation spot times the detection PSF
+      through the pinhole.  The excitation spot is computed at the excitation
+      wavelengths (with several lasers or a broadband source, each wavelength is
+      weighted by how strongly the fluorophore absorbs it).  Excitation
+      saturation is applied locally, so it is strongest at the center of the
+      spot.  `pinhole_au` is in Airy units at the center of the channel's
+      emission filter band (or at `airy_unit_wavelength_nm`, if set).
 
 The output of this stage is a 4D array with dimensions `(C, Z, Y, X)` where the
 wavelength and fluorophore dimensions have been collapsed into the channel. Note

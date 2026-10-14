@@ -88,14 +88,23 @@ class Settings(SimBaseModel, BaseSettings):
         "realistic, by superposing multiple different PSFs, but will also increase "
         "memory usage and time.",
     )
+    excitation_bin_width_nm: float = Field(
+        10,
+        gt=0,
+        description="Maximum width (nm) of the wavelength bins used to represent the "
+        "excitation light absorbed by each fluorophore, for modalities that focus the "
+        "excitation (e.g. confocal).  Each bin uses a separate excitation spot, so "
+        "laser lines further apart than this are always simulated separately.",
+    )
     spectral_bin_threshold_percentage: float = Field(
         1,
-        description="Percentage of the total intensity to use as a threshold when "
-        "binning the emission spectrum. This is used to determine the range of "
-        "wavelengths to consider when simulating the optical image.  First, the "
-        "spectrum is trimmed to include only relevant wavelengths (those with "
+        description="Percentage of the peak intensity to use as a threshold when "
+        "binning the emission (and excitation) spectra. This is used to determine the "
+        "range of wavelengths to consider when simulating the optical image.  First, "
+        "the spectrum is trimmed to include only relevant wavelengths (those with "
         "intensity above this threshold). Then, the spectrum is discretized into "
-        "spectral_bins_per_emission_channel bins.",
+        "spectral_bins_per_emission_channel bins (or, for excitation, bins of at most "
+        "excitation_bin_width_nm).",
     )
 
     model_config: ClassVar[SettingsConfigDict] = SettingsConfigDict(
