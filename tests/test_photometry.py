@@ -340,6 +340,9 @@ def test_confocal_pinhole_matched_to_emission_band() -> None:
 
     with pytest.raises(ValidationError):
         ms.Confocal(airy_unit_wavelength_nm=0)
+    for closed in (0, 0.01):
+        with pytest.raises(ValidationError):
+            ms.Confocal(pinhole_au=closed)
 
 
 def test_confocal_channel_without_signal() -> None:

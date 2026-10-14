@@ -208,7 +208,9 @@ class Confocal(_PSFModality):
     """
 
     type: Literal["confocal"] = "confocal"
-    pinhole_au: Annotated[float, Ge(0)] = 1
+    # a (nearly) closed pinhole passes (almost) no light.  Real scanners rarely go
+    # below ~0.2 AU.
+    pinhole_au: Annotated[float, Ge(0.05)] = 1
     airy_unit_wavelength_nm: float | None = Field(
         default=None,
         gt=0,
