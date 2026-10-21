@@ -239,6 +239,63 @@ def _confocal_psf(sim: ms.Simulation) -> tuple[Any, float]:
     return psf, brightness
 
 
+@pytest.mark.parametrize("power", [1e5, 1e7], ids=["linear", "saturated"])
+def test_confocal_point_source_photometry(power: float) -> None:
+    """An in-focus point source peaks at its detected rate x pinhole throughput."""
+    wvl = np.arange(400, 650)
+    narrow = ms.Fluorophore(  # emits at ~525 nm only, so one PSF wavelength is exact
+        name="narrow",
+        excitation_spectrum={
+            "wavelength": wvl,
+            "intensity": np.exp(-(((wvl - 490) / 20) ** 2)),
+        },
+        emission_spectrum={
+            "wavelength": wvl,
+            "intensity": np.exp(-(((wvl - 525) / 1.5) ** 2)),
+        },
+        extinction_coefficient=55_000,
+        quantum_yield=0.6,
+        lifetime_ns=2.6,
+    )
+    nz, nxy, dz, dx, n_fluors = 9, 65, 0.1, 0.03, 100
+    truth = np.zeros((nz, nxy, nxy))
+    truth[nz // 2, nxy // 2, nxy // 2] = n_fluors
+    label = ms.FluorophoreDistribution.from_array(truth)
+    sim = ms.Simulation(
+        truth_space=ms.ShapeScaleSpace(shape=truth.shape, scale=(dz, dx, dx)),
+        sample=ms.Sample(labels=[label.model_copy(update={"fluorophore": narrow})]),
+        channels=[
+            ms.OpticalConfig(
+                lights=[ms.LightSource.laser(488)],
+                filters=[ms.Bandpass(bandcenter=525, bandwidth=50, placement="EM")],
+                power=power,
+            )
+        ],
+        objective_lens=ObjectiveLens(numerical_aperture=1.4),
+        modality=ms.Confocal(pinhole_au=1),
+        settings=ms.Settings(
+            spectral_bins_per_emission_channel=1, float_dtype="float64", cache=False
+        ),
+    )
+    img = np.asarray(sim.optical_image().data)
+    # detected photons/s per fluorophore at the focus, including saturation there
+    rate = float(sim.filtered_emission_rates().sum())
+    psf = make_confocal_psf(
+        nz=nz,
+        nx=nxy,
+        dz=dz,
+        dxy=dx,
+        ex_wvl_um=0.488,
+        em_wvl_um=0.525,
+        pinhole_au=1,
+        objective=sim.objective_lens,
+        normalize=False,
+    )
+    through_pinhole = float(psf.max())  # in focus, at the center of the spot
+    assert 0.5 < through_pinhole < 1
+    assert img.max() == pytest.approx(n_fluors * rate * through_pinhole, rel=1e-3)
+
+
 @pytest.mark.parametrize("power", [1, 1e7], ids=["linear", "saturated"])
 def test_confocal_psf_uses_excitation_wavelength(power: float) -> None:
     oc = ms.OpticalConfig(
@@ -293,6 +350,28 @@ def test_confocal_polychromatic_excitation() -> None:
     np.testing.assert_allclose(mixed, 0.25 * blue + 0.75 * green, rtol=1e-6)
     assert mixed.max() == pytest.approx(1)
     assert WidefieldIllumination().spot(((405, 1),), grid, objective, xp) == 1
+
+
+def test_emission_band_center_ignores_infrared_leaks() -> None:
+    """Measured filter spectra often transmit again in the near-infrared."""
+    wvl = np.arange(300, 1200)
+    band = ((wvl >= 500) & (wvl <= 550)) * 0.95
+    leak = ((wvl >= 930) & (wvl <= 1199)) * 0.9  # broad, and runs off the end
+    spike = (wvl == 380) * 0.6
+    em = ms.SpectrumFilter(
+        transmission={"wavelength": wvl, "intensity": band + leak + spike},
+        placement="EM",
+    )
+    oc = ms.OpticalConfig(filters=[em])
+    assert oc.emission_band_center() == pytest.approx(525, abs=1)
+
+
+@skipif_no_internet
+def test_emission_band_center_fpbase() -> None:
+    em = ms.SpectrumFilter.from_fpbase("Chroma ET525/50m", placement="EM")
+    assert ms.OpticalConfig(filters=[em]).emission_band_center() == pytest.approx(
+        525, abs=2
+    )
 
 
 def test_confocal_pinhole_matched_to_emission_band() -> None:

@@ -214,8 +214,8 @@ where:
 - $\text{QE}(\lambda)$ is the quantum efficiency of the detector at each wavelength.
 
 These rates are for a fluorophore at the *reference* illumination intensity (the
-light source `power`): anywhere in a widefield field of view, or at the center
-of the focused spot in a confocal.  By default they include excitation saturation
+channel's `power`, i.e. `OpticalConfig.power`, in W/cm²): anywhere in a widefield
+field of view, or at the center of the focused spot in a confocal.  By default they include excitation saturation
 at that intensity; use `filtered_emission_rates(saturate=False)` for the rates
 without it.
 

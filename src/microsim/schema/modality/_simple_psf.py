@@ -200,9 +200,10 @@ class Confocal(_PSFModality):
 
     The PSF is the probability that a photon emitted by a fluorophore at a given
     position (relative to the scan spot) passes the pinhole, times the relative
-    excitation intensity there.  Light source `power` is therefore interpreted as
-    the peak irradiance at the focus, and `exposure_ms` as the per-pixel integration
-    (dwell) time (it is not divided by the number of pixels).  The excitation spot is
+    excitation intensity there.  The channel's `power` (`OpticalConfig.power`, in
+    W/cm^2) is therefore interpreted as the peak irradiance at the focus, and
+    `exposure_ms` as the per-pixel integration (dwell) time (it is not divided by
+    the number of pixels).  The excitation spot is
     computed at the excitation wavelengths, and excitation saturation is applied
     locally (it is strongest at the center of the spot).
     """
