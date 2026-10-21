@@ -42,26 +42,13 @@ Construct and run a [`microsim.Simulation`][] object.
 
     ```python
     from microsim import schema as ms
-    from microsim.schema.detectors.lib import HYD_SP8
-    from microsim.schema.optical_config.lib import LASER_488
     from microsim.util import ortho_plot
 
     sim = ms.Simulation(
         truth_space=ms.ShapeScaleSpace(shape=(128, 512, 512), scale=(0.02, 0.01, 0.01)),
         output_space={"downscale": 8},
-        sample=ms.Sample(
-            labels=[
-                ms.FluorophoreDistribution(
-                    distribution=ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1),
-                    fluorophore="EGFP",
-                )
-            ]
-        ),
-        # 488 nm laser; power is the peak irradiance at the focus (W/cm^2)
-        channels=[LASER_488.model_copy(update={"power": 1e5})],
-        modality=ms.Confocal(pinhole_au=0.6),
-        detector=HYD_SP8,
-        exposure_ms=0.002,  # 2 µs pixel dwell time
+        sample=ms.Sample(labels=[ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1)]),
+        modality=ms.Confocal(pinhole_au=1),
     )
     result = sim.run()
     ortho_plot(result)
@@ -83,44 +70,21 @@ Construct and run a [`microsim.Simulation`][] object.
         sample=dict(
             labels=[
                 {
-                    "distribution": {
-                        "type": "matslines",
-                        "density": 0.5,
-                        "length": 30,
-                        "azimuth": 5,
-                        "max_r": 1,
-                    },
-                    "fluorophore": "EGFP",
+                    "type": "matslines",
+                    "density": 0.5,
+                    "length": 30,
+                    "azimuth": 5,
+                    "max_r": 1,
                 }
             ]
         ),
-        channels=[
-            {
-                "name": "488",
-                "lights": [
-                    {"spectrum": {"wavelength": [487, 488, 489], "intensity": [0, 1, 0]}}
-                ],
-                "filters": [
-                    {"type": "longpass", "cuton": 495, "placement": "BS"},
-                    {
-                        "type": "bandpass",
-                        "bandcenter": 525,
-                        "bandwidth": 50,
-                        "placement": "EM",
-                    },
-                ],
-                "power": 1e5,
-            }
-        ],
-        modality={"type": "confocal", "pinhole_au": 0.6},
-        detector={"camera_type": "HyD", "qe": 0.45, "dark_current": 560},
-        exposure_ms=0.002,
+        modality={"type": "confocal", "pinhole_au": 1},
     )
     result = sim.run()
     ortho_plot(result)
     ```
 
-![Image](./images/au06.png)
+![Image](./images/au1.png)
 
 Note that you can also construct a simulation from a JSON object.
 This is particularly useful with the `output` parameter, to dump
@@ -138,37 +102,19 @@ the result of the simulation to a file.
     "sample": {
         "labels": [
         {
-            "distribution": {
-                "type": "matslines",
-                "density": 0.5,
-                "length": 30,
-                "azimuth": 5,
-                "max_r": 1
-            },
-            "fluorophore": "EGFP"
+            "type": "matslines",
+            "density": 0.5,
+            "length": 30,
+            "azimuth": 5,
+            "max_r": 1
         }
         ]
     },
-    "channels": [
-        {
-            "name": "488",
-            "lights": [
-                {"spectrum": {"wavelength": [487, 488, 489], "intensity": [0, 1, 0]}}
-            ],
-            "filters": [
-                {"type": "longpass", "cuton": 495, "placement": "BS"},
-                {"type": "bandpass", "bandcenter": 525, "bandwidth": 50, "placement": "EM"}
-            ],
-            "power": 100000
-        }
-    ],
     "modality": {
         "type": "confocal",
-        "pinhole_au": 0.6
+        "pinhole_au": 1
     },
-    "detector": {"camera_type": "HyD", "qe": 0.45, "dark_current": 560},
-    "exposure_ms": 0.002,
-    "output_path": "au06.tiff"
+    "output_path": "au1.tiff"
 }
 ```
 
@@ -182,6 +128,45 @@ spec = Path("confocal.json").read_text()
 sim = Simulation.model_validate_json(spec)
 sim.run()
 ```
+
+### A more realistic confocal
+
+The example above uses the defaults: a generic fluorophore, a widefield FITC filter
+cube, and no detector (so the result is noise-free photon counts).  To simulate what
+you'd actually see on a point-scanning confocal, pick a real fluorophore, a laser line,
+a point detector, and a pixel dwell time:
+
+```python
+from microsim import schema as ms
+from microsim.schema.detectors.lib import HYD_SP8
+from microsim.schema.optical_config.lib import LASER_488
+from microsim.util import ortho_plot
+
+sim = ms.Simulation(
+    truth_space=ms.ShapeScaleSpace(shape=(128, 512, 512), scale=(0.02, 0.01, 0.01)),
+    output_space={"downscale": 8},
+    sample=ms.Sample(
+        labels=[
+            ms.FluorophoreDistribution(
+                distribution=ms.MatsLines(density=0.5, length=30, azimuth=5, max_r=1),
+                fluorophore="EGFP",
+            )
+        ]
+    ),
+    channels=[LASER_488],  # 488 nm laser, with a 525/50 emission filter
+    modality=ms.Confocal(pinhole_au=1),
+    detector=HYD_SP8,
+    exposure_ms=0.002,  # 2 µs pixel dwell time
+)
+result = sim.run()
+ortho_plot(result)
+```
+
+![Image](./images/laser_hyd.png)
+
+The laser `power` is the peak irradiance at the focus, in W/cm².  It defaults to 1e5
+(about 50 µW at the sample with a 1.4 NA objective); to change it, use e.g.
+`LASER_488.model_copy(update={"power": 1e4})`.
 
 For more details, see the [tutorial](./tutorial.ipynb), [conceptual
 overview](./concept.md) and the [API docs](./api)

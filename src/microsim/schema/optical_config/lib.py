@@ -96,11 +96,12 @@ CY7 = OpticalConfig(
 
 # Laser lines for point-scanning confocals: a laser, a dichroic (main beam splitter)
 # and an emission bandpass.  Filter values are generic (not a specific product).
-# Set `power` to the peak irradiance at the focus (W/cm^2), e.g.
-# `LASER_488.model_copy(update={"power": 1e5})` (~50 uW at NA 1.4)
+# `power` is the peak irradiance at the focus (W/cm^2): 1e5 is ~50 uW at NA 1.4.
+# To change it: `LASER_488.model_copy(update={"power": 1e4})`
 LASER_405 = OpticalConfig(
     name="405",
     lights=[LightSource.laser(405)],
+    power=1e5,
     filters=[
         Longpass(cuton=420, placement="BS"),
         Bandpass(bandcenter=450, bandwidth=50, placement="EM"),
@@ -109,6 +110,7 @@ LASER_405 = OpticalConfig(
 LASER_445 = OpticalConfig(
     name="445",
     lights=[LightSource.laser(445)],
+    power=1e5,
     filters=[
         Longpass(cuton=455, placement="BS"),
         Bandpass(bandcenter=480, bandwidth=40, placement="EM"),
@@ -117,6 +119,7 @@ LASER_445 = OpticalConfig(
 LASER_488 = OpticalConfig(
     name="488",
     lights=[LightSource.laser(488)],
+    power=1e5,
     filters=[
         Longpass(cuton=495, placement="BS"),
         Bandpass(bandcenter=525, bandwidth=50, placement="EM"),
@@ -125,6 +128,7 @@ LASER_488 = OpticalConfig(
 LASER_515 = OpticalConfig(
     name="515",
     lights=[LightSource.laser(515)],
+    power=1e5,
     filters=[
         Longpass(cuton=520, placement="BS"),
         Bandpass(bandcenter=550, bandwidth=40, placement="EM"),
@@ -133,6 +137,7 @@ LASER_515 = OpticalConfig(
 LASER_561 = OpticalConfig(
     name="561",
     lights=[LightSource.laser(561)],
+    power=1e5,
     filters=[
         Longpass(cuton=570, placement="BS"),
         Bandpass(bandcenter=600, bandwidth=50, placement="EM"),
@@ -141,6 +146,7 @@ LASER_561 = OpticalConfig(
 LASER_640 = OpticalConfig(
     name="640",
     lights=[LightSource.laser(640)],
+    power=1e5,
     filters=[
         Longpass(cuton=650, placement="BS"),
         Bandpass(bandcenter=690, bandwidth=50, placement="EM"),

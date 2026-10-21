@@ -14,7 +14,7 @@ CODE_BLOCK = re.compile(r"```python([^`]*)```", re.DOTALL)
 JSON_BLOCK = re.compile(r"```json([^`]*)```", re.DOTALL)
 
 # these docs fetch fluorophores or filters from FPbase
-NEEDS_INTERNET = {"stages.md", "index.md", "README.md"}
+NEEDS_INTERNET = {"stages.md", "index.md"}
 if not HAVE_INTERNET:
     DOCS_MDS = [p for p in DOCS_MDS if p.name not in NEEDS_INTERNET]
 

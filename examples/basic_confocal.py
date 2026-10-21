@@ -13,8 +13,8 @@ sim = ms.Simulation(
             concentration=5,
         )
     ],
-    # 488 nm laser; power is the peak irradiance at the focus (~50 µW at NA 1.4)
-    channels=[LASER_488.model_copy(update={"power": 1e5})],  # W/cm^2
+    # 488 nm laser, 1e5 W/cm^2 peak irradiance at the focus (~50 µW at NA 1.4)
+    channels=[LASER_488],
     modality=ms.Confocal(pinhole_au=0.5),
     detector=HYD_SP8,
     exposure_ms=0.002,  # 2 µs pixel dwell time

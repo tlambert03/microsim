@@ -388,7 +388,7 @@ bin in the detector.
 
     sim = Simulation(
         # ...,
-        channels=[LASER_488.model_copy(update={"power": 1e5})],  # W/cm² at the focus
+        channels=[LASER_488],  # 1e5 W/cm² at the focus
         exposure_ms=0.002,  # 2 µs pixel dwell time
         objective_lens={
             "numerical_aperture": 1.4,

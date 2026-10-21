@@ -29,11 +29,7 @@ sim = ms.Simulation(
     settings=ms.Settings(random_seed=100),
     detector=HYD_SP8,
     exposure_ms=0.002,  # 2 µs pixel dwell time
-    # power is the peak irradiance at the focus (W/cm^2)
-    channels=[
-        LASER_488.model_copy(update={"power": 1e5}),
-        LASER_515.model_copy(update={"power": 1e5}),
-    ],
+    channels=[LASER_488, LASER_515],
     # output_path="au1.tif",
 )
 
