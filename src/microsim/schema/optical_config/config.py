@@ -221,6 +221,35 @@ class OpticalConfig(SimBaseModel):
             return None  # runs off the end of the data: open-ended
         return float(lo + hi) / 2
 
+    def _light_keys(self) -> tuple[tuple[bytes, bytes], ...]:
+        """Identifies each light source, by its spectrum."""
+        return tuple(_spectrum_key(light.spectrum) for light in self.lights)
+
+    def _excitation_filter_key(self) -> tuple:
+        """Identifies the excitation-path filters (in any order)."""
+        ex_side = {Placement.EX_PATH, Placement.BS, Placement.BS_INV, Placement.ALL}
+        return tuple(
+            sorted(
+                (f.placement.value, _spectrum_key(f.spectrum))
+                for f in self.filters
+                if f.placement in ex_side
+            )
+        )
+
+    def _excitation_key(self) -> tuple:
+        """Identifies the excitation side: lights, power and excitation-path filters.
+
+        Channels with equal keys illuminate the sample identically (e.g. two
+        detectors behind the same laser).
+        """
+        lights = sorted(
+            zip(
+                self._light_keys(), (light.power for light in self.lights), strict=True
+            ),
+            key=lambda item: item[0],
+        )
+        return (tuple(lights), self.power, self._excitation_filter_key())
+
     @property
     def excitation(self) -> Filter | None:
         """Combine all excitation filters into a single spectrum."""
@@ -489,3 +518,11 @@ class OpticalConfig(SimBaseModel):
         ax.legend()
         ax.set_xlim(400, 800)
         ax.set_xlabel("transmission [%]")
+
+
+def _spectrum_key(spectrum: Spectrum) -> tuple[bytes, bytes]:
+    """Identifies a spectrum by its values (so that e.g. `488` and `488.0` match)."""
+    return (
+        np.asarray(spectrum.wavelength, dtype=float).tobytes(),
+        np.asarray(spectrum.intensity, dtype=float).tobytes(),
+    )

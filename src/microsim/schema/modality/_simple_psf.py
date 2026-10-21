@@ -43,9 +43,12 @@ class _PSFModality(SimBaseModel):
         return WidefieldIllumination()
 
     def _detection(
-        self, channel: Sequence[ChannelFluorescence], objective: ObjectiveLens
+        self,
+        fluorescence: Sequence[Sequence[ChannelFluorescence]],
+        c_idx: int,
+        objective: ObjectiveLens,
     ) -> Detection:
-        """Detection for one channel (`channel` has one item per fluorophore)."""
+        """Detection for channel `c_idx` (`fluorescence` is `[channel][fluor]`)."""
         return CameraDetection()
 
     def render(
@@ -75,7 +78,7 @@ class _PSFModality(SimBaseModel):
                     if fl.detected_rate(saturate=False) <= 1e-12:
                         continue  # this fluorophore is not seen in this channel
                     if detection is None:  # (only needed if something is seen)
-                        detection = self._detection(channel, objective_lens)
+                        detection = self._detection(fluorescence, c_idx, objective_lens)
                     logger.info(f"Fluor: {fluor}")
                     with logging_indented():
                         key, psf, bright = self._system_psf(
@@ -216,7 +219,16 @@ class Confocal(_PSFModality):
         default=None,
         gt=0,
         description="Wavelength (nm) at which `pinhole_au` is defined.  By default, "
-        "1 AU is matched to the center of each channel's emission filter band.",
+        "1 AU is matched to the average emission filter band center of the channels "
+        "sharing the pinhole (or, if not `shared_pinhole`, to each channel's band "
+        "center).",
+    )
+    shared_pinhole: bool = Field(
+        default=True,
+        description="If True (the default), channels acquired together (in the same "
+        "track, see `Simulation.tracks`) are detected through the same pinhole, as "
+        "on many point scanners; the pinhole is set anew for each track.  If False, "
+        "each channel has its own pinhole, matched to its emission band.",
     )
 
     detection_type = PinholeDetection
@@ -225,20 +237,33 @@ class Confocal(_PSFModality):
         return FocusedIllumination()
 
     def _detection(
-        self, channel: Sequence[ChannelFluorescence], objective: ObjectiveLens
+        self,
+        fluorescence: Sequence[Sequence[ChannelFluorescence]],
+        c_idx: int,
+        objective: ObjectiveLens,
     ) -> Detection:
-        if (wvl_nm := self.airy_unit_wavelength_nm) is None:
-            wvl_nm = channel[0].channel.emission_band_center()
+        # the channels sharing this channel's pinhole: those in the same track
+        track = fluorescence[c_idx][0].track
+        if self.shared_pinhole and track is not None:
+            group = [row for row in fluorescence if row[0].track == track]
+        else:
+            group = [fluorescence[c_idx]]
+        wvl_nm = self.airy_unit_wavelength_nm
+        if wvl_nm is None:
+            centers = [row[0].channel.emission_band_center() for row in group]
+            if None not in centers:
+                wvl_nm = float(np.mean(centers))  # type: ignore [arg-type]
         if wvl_nm is None:
             # no band-limited emission filter (e.g. a longpass): use the center of
-            # the light detected in this channel instead
-            wvl_nm = _detected_light_center(channel)
+            # the light detected in these channel(s) instead
+            wvl_nm = _detected_light_center([fl for row in group for fl in row])
+            names = ", ".join(repr(row[0].channel.name) for row in group)
             # (warnings are shown once per distinct message)
             warnings.warn(
-                f"Channel {channel[0].channel.name!r} has no band-limited emission "
-                f"filter to match the pinhole size to; using 1 AU at {wvl_nm:.0f} nm "
-                "(the center of the detected emission).  Set "
-                "`Confocal.airy_unit_wavelength_nm` to choose.",
+                f"Channel(s) {names} have no band-limited emission filter to match "
+                f"the pinhole size to; using 1 AU at {wvl_nm:.0f} nm (the center of "
+                "the detected emission).  Set `Confocal.airy_unit_wavelength_nm` to "
+                "choose.",
                 stacklevel=2,
             )
         radius_um = self.pinhole_au * airy_radius_um(
@@ -305,18 +330,19 @@ class Identity(_PSFModality):
         )
 
 
-def _detected_light_center(channel: Sequence[ChannelFluorescence]) -> float:
-    """Mean wavelength of all light detected in a channel (all fluorophores)."""
+def _detected_light_center(fluorescence: Sequence[ChannelFluorescence]) -> float:
+    """Mean wavelength of all light detected (all channels and fluorophores given)."""
     total: float = 0
     weighted: float = 0
-    for fl in channel:
+    for fl in fluorescence:
         detected = fl.detected_spectrum(saturate=False)
         total += float(detected.sum())
         weighted += float((detected * detected.coords[Axis.W]).sum())
     if total <= 0:
+        names = sorted({fl.channel.name for fl in fluorescence})
         raise ValueError(
-            "Cannot determine the pinhole size: no light is detected in channel "
-            f"{channel[0].channel.name!r}.  Set `Confocal.airy_unit_wavelength_nm`."
+            "Cannot determine the pinhole size: no light is detected in channel(s) "
+            f"{names}.  Set `Confocal.airy_unit_wavelength_nm`."
         )
     return weighted / total
 
