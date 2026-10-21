@@ -28,6 +28,7 @@ from microsim.schema.modality._simple_psf import (
     emission_lines,
     excitation_lines,
 )
+from microsim.schema.optical_config import lib
 from microsim.schema.optical_config.lib import FITC
 from tests._util import skipif_no_internet
 
@@ -501,3 +502,13 @@ def test_widefield_plane_brightness_independent_of_stack_depth(nz_out: int) -> N
     rate = float(sim.filtered_emission_rates().sum())
     assert rate > 0
     assert per_fluor == pytest.approx(rate, rel=0.15)
+
+
+@pytest.mark.parametrize("laser", [405, 445, 488, 515, 561, 640])
+def test_laser_channels(laser: int) -> None:
+    ch = getattr(lib, f"LASER_{laser}")
+    assert ch.emission_band_center() == pytest.approx(ch.filters[-1].bandcenter)
+    # the dichroic passes the laser to the sample, and the emission path blocks it
+    illum = ch.illumination
+    assert illum.wavelength[np.argmax(illum.intensity)] == laser
+    assert ch.emission.spectrum.at([laser])[0] < 1e-6

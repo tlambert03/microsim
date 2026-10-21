@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 
 from microsim import schema as ms
 from microsim.schema.detectors import lib
-from microsim.schema.optical_config.lib import FITC
+from microsim.schema.optical_config.lib import LASER_488
 
 DWELL_MS = 0.001  # 1 µs pixel dwell
 
@@ -21,11 +21,11 @@ sim = ms.Simulation(
             concentration=1,
         )
     ],
-    # peak irradiance at focus (~25 µW in a diffraction-limited spot).  Gives tens
+    # peak irradiance at focus (~10 µW at NA 1.4).  Gives tens
     # of Mcps at the brightest pixels; EGFP saturation is minor here (k*tau ~ 0.03)
-    channels=[FITC.model_copy(update={"power": 2e4})],  # W/cm^2
+    channels=[LASER_488.model_copy(update={"power": 2e4})],  # W/cm^2
     modality=ms.Confocal(pinhole_au=1),
-    settings=ms.Settings(random_seed=100, max_psf_radius_aus=8),
+    settings=ms.Settings(random_seed=100),
     # QE is applied when the optical image is computed (see microsim#152).  All the
     # detectors below are GaAsP (peak QE 0.45, nearly identical spectra), so one
     # optical image serves them all.
