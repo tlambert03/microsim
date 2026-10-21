@@ -13,6 +13,7 @@ from microsim.schema.dimensions import Axis
 from microsim.schema.sample.fluorophore import Fluorophore
 from microsim.schema.spectrum import Spectrum
 
+from ._fluorescence import ChannelFluorescence
 from .filter import Filter, Placement, SpectrumFilter
 
 if TYPE_CHECKING:
@@ -102,12 +103,9 @@ class OpticalConfig(SimBaseModel):
         """Return `k * tau`: absorption rate relative to the excited-state decay rate.
 
         This is `I / I_sat` for a two-level system. Returns 0 if the fluorophore
-        lifetime is unknown.
+        lifetime is unknown.  See `ChannelFluorescence.saturation`.
         """
-        if not fluorophore.lifetime_ns:
-            return 0.0
-        k = self.absorption_rate(fluorophore).sum().item()
-        return float(k * fluorophore.lifetime_ns * 1e-9)
+        return ChannelFluorescence.from_channel(self, fluorophore).saturation
 
     def total_emission_rate(
         self, fluorophore: Fluorophore, *, saturate: bool = True
@@ -116,24 +114,12 @@ class OpticalConfig(SimBaseModel):
 
         The emission rate is the total number of photons emitted per second per
         fluorophore, as a function of wavelength, prior to any filtering in the emission
-        path. It's a vector with a single axis W, and singleton dimensions F and C
-
-        If `saturate` is False, excitation saturation is not applied (e.g. because
-        it is handled spatially by the PSF, as in point-scanning modalities).
+        path. It's a vector with a single axis W, and singleton dimensions F and C.
+        If `saturate` is True, excitation saturation is applied.
         """
-        tot_absorption_rate = self.absorption_rate(fluorophore).sum()
-        if saturate:
-            # steady-state excitation saturation of a two-level system, assuming
-            # uniform irradiance: emission saturates at QY/lifetime as k grows.
-            # Known omissions (not modeled):
-            # - triplet and other dark/intermediate states (S0 <-> S1 only)
-            # - stimulated emission
-            # - orientation: with polarized excitation, k varies per molecule and
-            #   <k/(1+k*tau)> != <k>/(1+<k>*tau); using mean k over-saturates
-            # - pulsed excitation: assumes CW (steady state), not pulses << lifetime
-            s = self.saturation_parameter(fluorophore)
-            tot_absorption_rate = tot_absorption_rate / (1 + s)
-        em_rate = fluorophore.emission_per_absorbed_photon * tot_absorption_rate
+        fl = ChannelFluorescence.from_channel(self, fluorophore)
+        absorbed = fl.total_absorption_rate(saturate=saturate)
+        em_rate = fluorophore.emission_per_absorbed_photon * absorbed
         # add singleton coordinates for fluorophore and self
         em_rate = em_rate.expand_dims({Axis.F: [fluorophore], Axis.C: [self]})
         em_rate.name = "emission_rate"
@@ -189,19 +175,13 @@ class OpticalConfig(SimBaseModel):
             - the quantum yield and emission spectrum of the fluorophore
             - excitation saturation (unless `saturate` is False)
             - the emission filter/beamsplitter spectra
-            - camera QE, if passed
+            - detector QE: `detector_qe`, or else this config's detector's QE
+
+        It does not include the fraction of emitted light collected by the objective
+        (see `Simulation.filtered_emission_rates`, which does).
         """
-        absorption_rate = self.absorption_rate(fluorophore).sum()
-        if saturate:
-            absorption_rate /= 1 + self.saturation_parameter(fluorophore)
-        detected = self.detected_fraction(fluorophore, detector_qe)
-        final = absorption_rate * detected
-        # add singleton coordinates for fluorophore and self
-        final = final.expand_dims({Axis.F: [fluorophore], Axis.C: [self]})
-        final.name = "filtered_emission_rate"
-        final.attrs["long_name"] = "Filtered Emission rate"
-        final.attrs["units"] = "photons/s"
-        return final
+        fl = ChannelFluorescence.from_channel(self, fluorophore, detector_qe)
+        return fl.detected_spectrum(saturate=saturate)
 
     def emission_band_center(self) -> float | None:
         """Center wavelength of the emission filter passband.

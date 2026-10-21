@@ -7,6 +7,7 @@ from .lens import ObjectiveLens
 from .modality import Confocal, Identity, Modality, Widefield
 from .optical_config import (
     Bandpass,
+    ChannelFluorescence,
     LightSource,
     Longpass,
     OpticalConfig,
@@ -30,6 +31,7 @@ __all__ = [
     "CameraCCD",
     "CameraCMOS",
     "CameraEMCCD",
+    "ChannelFluorescence",
     "Confocal",
     "CosemLabel",
     "DeviceName",

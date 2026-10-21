@@ -538,6 +538,7 @@ def plot_simulation_summary(
     if len(sim.channels) == 1:
         fp_ax, ex_ax, ab_ax, em_ax, f_ax = [fp_ax], [ex_ax], [ab_ax], [em_ax], [f_ax]
 
+    fluorescence = sim._channel_fluorescence()
     for ch_idx, oc in enumerate(sim.channels):
         # FLUOROPHORES --------------------------------------
         for lbl in sim.sample.labels:
@@ -565,23 +566,20 @@ def plot_simulation_summary(
         full.plot.line(ax=ex_ax[ch_idx], label="flux density", color="k")
 
         # ABSORPTION/EMISSION RATES --------------------------------------
-        for lbl in sim.sample.labels:
-            if fluor := lbl.fluorophore:
-                rate = oc.absorption_rate(fluor)
-                tot = rate.sum()
-                rate.isel({Axis.F: 0, Axis.C: 0}).plot.line(
-                    ax=ab_ax[ch_idx],
-                    x=Axis.W,
-                    label=f"{fluor.name} ({tot:.2f} phot/s tot)",
-                )
-
-                em_rate = oc.total_emission_rate(fluor)
-                em_rate.isel({Axis.F: 0, Axis.C: 0}).plot.line(
-                    ax=ab_ax[ch_idx],
-                    label=f"{fluor.name} emission (at peak)",
-                    alpha=0.4,
-                    linestyle="--",
-                )
+        for fl in fluorescence[ch_idx]:
+            name = fl.fluorophore.name
+            tot = fl.total_absorption_rate(saturate=False)
+            fl.absorption_rate.plot.line(
+                ax=ab_ax[ch_idx], x=Axis.W, label=f"{name} ({tot:.2f} phot/s tot)"
+            )
+            em_rate = fl.fluorophore.emission_per_absorbed_photon
+            em_rate = em_rate * fl.total_absorption_rate()
+            em_rate.plot.line(
+                ax=ab_ax[ch_idx],
+                label=f"{name} emission (at peak)",
+                alpha=0.4,
+                linestyle="--",
+            )
 
         # EMISSION PATH --------------------------------------
         for f in oc.filters:
@@ -614,14 +612,13 @@ def plot_simulation_summary(
             emspec = (ch_em.spectrum * qe).as_xarray()
             emspec.plot.line(ax=em_ax[ch_idx], label="emission", color="k")
 
-            for lbl in sim.sample.labels:
-                if fluor := lbl.fluorophore:
-                    final = oc.filtered_emission_rate(fluor, detector_qe=qe)
-                    final = final * sim.objective_lens.collection_efficiency
-                    final.isel({Axis.F: 0, Axis.C: 0}).plot.line(
-                        ax=f_ax[ch_idx],
-                        label=f"{fluor.name} collection ({final.sum():.2f} phot/s tot)",
-                    )
+            for fl in fluorescence[ch_idx]:
+                final = fl.detected_spectrum().isel({Axis.F: 0, Axis.C: 0})
+                final.plot.line(
+                    ax=f_ax[ch_idx],
+                    label=f"{fl.fluorophore.name} collection "
+                    f"({final.sum():.2f} phot/s tot)",
+                )
 
         if legend:
             with warnings.catch_warnings():
