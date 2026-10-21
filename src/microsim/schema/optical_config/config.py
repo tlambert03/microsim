@@ -2,6 +2,7 @@ import inspect
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, cast
 
+import numpy as np
 import xarray as xr
 from pydantic import Field, model_validator
 from scipy.constants import c, h
@@ -12,6 +13,7 @@ from microsim.schema.dimensions import Axis
 from microsim.schema.sample.fluorophore import Fluorophore
 from microsim.schema.spectrum import Spectrum
 
+from ._fluorescence import ChannelFluorescence
 from .filter import Filter, Placement, SpectrumFilter
 
 if TYPE_CHECKING:
@@ -19,10 +21,19 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
 
+# emission bandpass filters are rarely wider than this; a wider band that runs off
+# the end of the filter's spectrum is treated as open-ended (e.g. a longpass)
+_MAX_EMISSION_BAND_NM = 150
+# fluorescence is rarely detected beyond this.  Many measured filter spectra (e.g. on
+# FPbase) transmit again in the near-infrared; that isn't part of the passband.
+_MAX_EMISSION_WAVELENGTH_NM = 900
+
+
 class LightSource(SimBaseModel):
     name: str = ""
     spectrum: Spectrum
-    power: float | None = None  # W/cm^2
+    # relative to the channel's other lights; `OpticalConfig.power` sets the irradiance
+    power: float | None = None
 
     @classmethod
     def from_fpbase(cls, light: "SpectrumOwner") -> "LightSource":
@@ -61,7 +72,7 @@ class OpticalConfig(SimBaseModel):
     # but it depends on where the power is being measured
     # TODO: it's tough deciding where power should go...
     # it could also go on Simulation itself as a function of space.
-    power: float | None = None  # total power of all lights after filters
+    power: float | None = None  # W/cm^2: irradiance of all lights, after filters
 
     def absorption_rate(self, fluorophore: Fluorophore) -> xr.DataArray:
         """Return the absorption rate of a fluorophore with this configuration.
@@ -92,12 +103,9 @@ class OpticalConfig(SimBaseModel):
         """Return `k * tau`: absorption rate relative to the excited-state decay rate.
 
         This is `I / I_sat` for a two-level system. Returns 0 if the fluorophore
-        lifetime is unknown.
+        lifetime is unknown.  See `ChannelFluorescence.saturation`.
         """
-        if not fluorophore.lifetime_ns:
-            return 0.0
-        k = self.absorption_rate(fluorophore).sum().item()
-        return float(k * fluorophore.lifetime_ns * 1e-9)
+        return ChannelFluorescence.from_channel(self, fluorophore).saturation
 
     def total_emission_rate(
         self, fluorophore: Fluorophore, *, saturate: bool = True
@@ -106,24 +114,12 @@ class OpticalConfig(SimBaseModel):
 
         The emission rate is the total number of photons emitted per second per
         fluorophore, as a function of wavelength, prior to any filtering in the emission
-        path. It's a vector with a single axis W, and singleton dimensions F and C
-
-        If `saturate` is False, excitation saturation is not applied (e.g. because
-        it is handled spatially by the PSF, as in point-scanning modalities).
+        path. It's a vector with a single axis W, and singleton dimensions F and C.
+        If `saturate` is True, excitation saturation is applied.
         """
-        tot_absorption_rate = self.absorption_rate(fluorophore).sum()
-        if saturate:
-            # steady-state excitation saturation of a two-level system, assuming
-            # uniform irradiance: emission saturates at QY/lifetime as k grows.
-            # Known omissions (not modeled):
-            # - triplet and other dark/intermediate states (S0 <-> S1 only)
-            # - stimulated emission
-            # - orientation: with polarized excitation, k varies per molecule and
-            #   <k/(1+k*tau)> != <k>/(1+<k>*tau); using mean k over-saturates
-            # - pulsed excitation: assumes CW (steady state), not pulses << lifetime
-            s = self.saturation_parameter(fluorophore)
-            tot_absorption_rate = tot_absorption_rate / (1 + s)
-        em_rate = fluorophore.emission_per_absorbed_photon * tot_absorption_rate
+        fl = ChannelFluorescence.from_channel(self, fluorophore)
+        absorbed = fl.total_absorption_rate(saturate=saturate)
+        em_rate = fluorophore.emission_per_absorbed_photon * absorbed
         # add singleton coordinates for fluorophore and self
         em_rate = em_rate.expand_dims({Axis.F: [fluorophore], Axis.C: [self]})
         em_rate.name = "emission_rate"
@@ -179,19 +175,51 @@ class OpticalConfig(SimBaseModel):
             - the quantum yield and emission spectrum of the fluorophore
             - excitation saturation (unless `saturate` is False)
             - the emission filter/beamsplitter spectra
-            - camera QE, if passed
+            - detector QE: `detector_qe`, or else this config's detector's QE
+
+        It does not include the fraction of emitted light collected by the objective
+        (see `Simulation.filtered_emission_rates`, which does).
         """
-        absorption_rate = self.absorption_rate(fluorophore).sum()
-        if saturate:
-            absorption_rate /= 1 + self.saturation_parameter(fluorophore)
-        detected = self.detected_fraction(fluorophore, detector_qe)
-        final = absorption_rate * detected
-        # add singleton coordinates for fluorophore and self
-        final = final.expand_dims({Axis.F: [fluorophore], Axis.C: [self]})
-        final.name = "filtered_emission_rate"
-        final.attrs["long_name"] = "Filtered Emission rate"
-        final.attrs["units"] = "photons/s"
-        return final
+        fl = ChannelFluorescence.from_channel(self, fluorophore, detector_qe)
+        return fl.detected_spectrum(saturate=saturate)
+
+    def emission_band_center(self) -> float | None:
+        """Center wavelength of the emission filter passband.
+
+        This is the midpoint of the band where transmission is above half its peak
+        (as in filter names, e.g. 525/50), combining all filters in the emission path.
+        If they pass several bands, the one transmitting the most light is used, and
+        transmission beyond 900 nm (e.g. near-infrared leaks) is ignored.  Returns
+        None if there are no emission filters, or if the band is open-ended: e.g. a
+        longpass filter, still transmitting at the end of its spectrum.  (A spectrum
+        that only covers a narrow passband is fine: beyond its data, transmission is
+        0.)
+        """
+        if (emission := self.emission) is None:
+            return None
+        spectrum = emission.spectrum
+        order = np.argsort(spectrum.wavelength)
+        wvl, trans = spectrum.wavelength[order], spectrum.intensity[order]
+        keep = wvl <= _MAX_EMISSION_WAVELENGTH_NM
+        wvl, trans = wvl[keep], trans[keep]
+        if trans.size < 2 or (half := trans.max() / 2) <= 0:
+            return None
+        # contiguous bands above half the peak: [start, stop) sample indices
+        above = np.concatenate([[False], trans > half, [False]])
+        edges = np.flatnonzero(np.diff(above.astype(int)))
+        bands = list(zip(edges[::2], edges[1::2], strict=True))
+        light = trans * np.gradient(wvl)  # transmission x sample width
+        start, stop = max(bands, key=lambda band: light[band[0] : band[1]].sum())
+
+        def _crossing(i: int, j: int) -> float:
+            # wavelength where transmission crosses `half`, between samples i and j
+            return float(np.interp(half, trans[[i, j]], wvl[[i, j]]))
+
+        lo = wvl[start] if start == 0 else _crossing(start - 1, start)
+        hi = wvl[stop - 1] if stop == trans.size else _crossing(stop, stop - 1)
+        if (start == 0 or stop == trans.size) and hi - lo > _MAX_EMISSION_BAND_NM:
+            return None  # runs off the end of the data: open-ended
+        return float(lo + hi) / 2
 
     @property
     def excitation(self) -> Filter | None:
