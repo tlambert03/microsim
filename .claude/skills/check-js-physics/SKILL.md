@@ -31,7 +31,7 @@ code is a copy, and copies drift. This skill is how to check it.
 
 | Chart | Page | Physics used | Data | Starting values |
 | --- | --- | --- | --- | --- |
-| `spectra.js` | `guide/channels.md` | `absorptionRate`, `crossSection`, `filteredEmissionRate`, `fluxDensity`, `irradiance`, `mulArrays` | `photometry.json` | fluorophore and channel menus |
+| `spectra.js` | `guide/channels.md` | `absorptionRate`, `crossSection`, `filteredEmissionRate`, `fluxDensity`, `irradiance`, `transmitted` | `photometry.json` | fluorophore and channel menus |
 | `crosstalk.js` | `guide/channels.md` | `photonBudget` | `photometry.json` (incl. `lens`) | EGFP + tdTomato, FITC 500 LP + TRITC; numbers in the caption |
 | `photon-budget.js` | `guide/photometry.md` | `photonBudget` | `photometry.json` (incl. `lens`) | EGFP, FITC, 1 W/cm², 100 ms; "about 6 photons" in the page text |
 | `saturation.js` | `guide/photometry.md` | `absorptionRate`, `totalEmissionRate`, `halfSaturationIrradiance`, `maxEmissionRate` | `photometry.json` | irradiance bands from the table in `guide/channels.md` |
@@ -60,14 +60,15 @@ Update this table when you add, rename, or remove a chart.
    | JavaScript (`docs/javascripts/physics/`) | Python (`src/microsim/` unless noted) |
    | --- | --- |
    | `photometry.js` `decodeSpectrum` | `scripts/make_doc_figures.py` `spectrum_json` (inverse) |
-   | `photometry.js` `mulSpectra` | `schema/spectrum.py` `Spectrum._intensity_op` (outer join, fill 0) |
-   | `photometry.js` `mulArrays` | xarray arithmetic (inner join) |
+   | `photometry.js` `at` | `schema/spectrum.py` `Spectrum.at` (linear interpolation, 0 outside) |
+   | `photometry.js` `mulSpectra` | `schema/spectrum.py` `Spectrum._intensity_op` for `*` (union of wavelengths, both interpolated) |
+   | `photometry.js` `transmitted` | `schema/spectrum.py` `Spectrum.transmitted` |
    | `photometry.js` `inverted` | `schema/spectrum.py` `Spectrum.inverted` |
    | `photometry.js` `excitationPath`, `emissionPath` | `schema/optical_config/config.py` `OpticalConfig.excitation`, `.emission`, `._merge` |
    | `photometry.js` `illumination` | `OpticalConfig.illumination`, `LightSource.scaled_spectrum` |
    | `photometry.js` `irradiance`, `fluxDensity` | `OpticalConfig.irradiance`, `.illumination_flux_density` |
    | `photometry.js` `crossSection` | `schema/sample/fluorophore.py` `Fluorophore.absorption_cross_section` |
-   | `photometry.js` `absorptionRate`, `saturationParameter`, `totalEmissionRate`, `filteredEmissionRate` | `OpticalConfig` methods of the same names |
+   | `photometry.js` `absorptionRate`, `saturationParameter`, `totalEmissionRate`, `filteredEmissionRate` | `OpticalConfig` methods of the same names (which call `optical_config/_fluorescence.py` `ChannelFluorescence` and `OpticalConfig.detected_fraction`) |
    | `photometry.js` `halfSaturationIrradiance`, `maxEmissionRate` | derived from `OpticalConfig.saturation_parameter` and `.total_emission_rate` |
    | `photometry.js` `collectionEfficiency` | `schema/lens.py` `ObjectiveLens.collection_efficiency` |
    | `photometry.js` `photonBudget` | `Simulation.filtered_emission_rates` (tested end to end) |

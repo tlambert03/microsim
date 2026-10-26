@@ -239,9 +239,9 @@ for ax, oc in zip(axes, sim.channels):
 
     These per-channel plots assume that every emitted photon reaches the
     filters. In the simulation, the rates are also multiplied by the fraction
-    of light the objective collects, about 35% for this 1.4 NA objective, and
-    by the detector's QE. `sim.filtered_emission_rates()` returns the rates with
-    both applied. See [Photon budget](../guide/photometry.md#the-details).
+    of light the objective collects, about 35% for this 1.4 NA objective, and,
+    if a detector is set, by its QE. `sim.filtered_emission_rates()` returns
+    the rates with these applied. See [Photon budget](../guide/photometry.md#the-details).
 
 ### The optical image, again
 
@@ -307,6 +307,8 @@ ortho_plot(sim.digital_image(exposure_ms=0.01), z=9)  # 10 µs pixel dwell
 ![Confocal digital image](../images/generated/tutorials/two-color-cell/15.png){ .plot }
 
 The channels still use the LED spectrum from the widefield configuration;
-only the irradiance and the PSF changed. The detector is still the CCD camera;
+only the irradiance and the PSF changed. For laser excitation, use the
+[laser lines](../guide/channels.md#built-in-filter-sets) in `lib` (e.g.
+`LASER_488`). The detector is still the CCD camera;
 point-scanning confocals record with point detectors, as in
 [point-scanning detectors](point-scanning-detectors.md).

@@ -19,6 +19,7 @@ fields map onto parts of a real experiment:
 | `output_space`   | the pixel grid of the final image                               | [Spaces](spaces.md)                     |
 | `sample`         | where the fluorophores are, and which fluorophores they are     | [Samples](samples.md)                   |
 | `channels`       | light sources and filters, one entry per channel                | [Channels](channels.md)                 |
+| `tracks`         | which channels are acquired at the same time                    | [Channels](channels.md#sequential-and-simultaneous-acquisition) |
 | `objective_lens` | numerical aperture, refractive indices, coverslip              | [Modalities](modalities.md#objective-lens) |
 | `modality`       | how the image is formed: widefield, confocal, ...               | [Modalities](modalities.md)             |
 | `detector`       | camera or point detector, and its noise                        | [Detectors](detectors.md)               |
@@ -44,7 +45,7 @@ flowchart TB
     subgraph S2 ["<span class='ms-stage'>2</span> filtered_emission_rates()"]
       direction LR
       fl[fluorophore spectra] --> em["photons/s per fluorophore<br/><code>(c, f, w)</code>"]
-      ch[channels] --> em
+      ch["channels, tracks"] --> em
       ob1[objective NA, specimen RI] --> em
       dq[detector QE] --> em
     end
@@ -74,7 +75,8 @@ fluorophore's absorption and emission spectra, extinction coefficient and
 quantum yield, the fraction of light the objective collects, and the
 detector's quantum efficiency. It has no spatial dimensions. Because every
 fluorophore is computed in every channel, bleedthrough and cross-excitation
-follow automatically. See [Channels](channels.md) and
+follow automatically. Channels acquired at the same time (`tracks`) excite
+the sample together. See [Channels](channels.md) and
 [Photon budget](photometry.md).
 
 <span class="ms-stage">3</span> **Optical image.** The ground truth of each

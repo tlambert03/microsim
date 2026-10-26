@@ -116,10 +116,10 @@ class Settings(SimBaseModel, BaseSettings):
     spectral_bins_per_emission_channel: int = Field(
         1,
         description="Number of wavelengths to use (per channel) when simulating the "
-        "optical image. By default, a single centroid wavelength is used to approximate"
-        "the emission wavelength.  Increasing this will make the simulation more "
-        "realistic, by superposing multiple different PSFs, but will also increase "
-        "memory usage and time.",
+        "optical image. By default, a single centroid wavelength is used to "
+        "approximate the emission wavelength.  Increasing this will make the "
+        "simulation more realistic, by superposing multiple different PSFs, but will "
+        "also increase memory usage and time.",
     )
     excitation_bin_width_nm: float = Field(
         10,

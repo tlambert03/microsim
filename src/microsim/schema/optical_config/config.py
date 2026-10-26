@@ -39,8 +39,9 @@ class LightSource(SimBaseModel):
     spectrum : Spectrum
         Emission spectrum of the light source.
     power : float, optional
-        Relative power, used to weight light sources in the same `OpticalConfig`.
-        The total irradiance is set by `OpticalConfig.power`.
+        Relative weight: the spectrum is multiplied by it before the light sources
+        of an `OpticalConfig` are added.  The total irradiance is set by
+        `OpticalConfig.power`.
     """
 
     name: str = ""

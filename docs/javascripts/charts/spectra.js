@@ -93,8 +93,10 @@ export default async function (el) {
     const em = peakNormalized(fluor.em);
     const light = peakNormalized(channel.illumination);
     const path = channel.emission;
-    const absorbed = P.mulArrays(ex, light);
-    const detected = path ? P.mulArrays(em, path) : em;
+    // as in microsim: absorption at the light's wavelengths, detection at the
+    // emission's (OpticalConfig.absorption_rate, .detected_fraction)
+    const absorbed = P.transmitted(light, ex);
+    const detected = path ? P.transmitted(em, path) : em;
 
     const exEff = excitationEfficiency(channel, fluor);
     const emFrac = emissionFraction(channel, fluor);

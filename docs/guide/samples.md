@@ -82,8 +82,10 @@ ms.CosemLabel(dataset="jrc_hela-3", label="er-mem_pred")
   `jrc_hela-3`, `jrc_cos7-11`).
 - `label` is the name of a segmentation or prediction layer in that dataset
   (e.g. `er-mem_pred`, `mito-mem_pred`, `ne_pred`), or its description.
-- `position` (optional) selects the region to extract. By default the region
-  is centered in the dataset.
+- `position` (optional) shifts the region to extract: the dataset's origin is
+  moved to `position` (in voxels of the resolution level that is read), and the
+  region around 0 is extracted. By default the region is centered in the
+  dataset.
 
 The data are downloaded on first use and cached. This needs the `cosem` extra
 and network access.
@@ -254,7 +256,7 @@ What each property does:
 | `excitation_spectrum`    | the shape of the absorption spectrum; it is normalized to 1 at its peak                          |
 | `extinction_coefficient` | scales the absorption spectrum to an absorption cross section; required                          |
 | `quantum_yield`          | the fraction of absorbed photons that are emitted (treated as 1 if not set)                       |
-| `emission_spectrum`      | the distribution of emitted photons over wavelength; normalized to unit area                      |
+| `emission_spectrum`      | the distribution of emitted photons over wavelength; normalized to unit sum                       |
 | `lifetime_ns`            | [excitation saturation](photometry.md#excitation-saturation); no saturation if not set            |
 | `bleaching_half_life_s`  | not used yet                                                                                     |
 

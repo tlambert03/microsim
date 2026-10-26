@@ -53,7 +53,7 @@ widefield = ms.Simulation.from_ground_truth(truth, **common).run()
 confocal = ms.Simulation.from_ground_truth(
     truth,
     modality=ms.Confocal(),
-    channels=[lib.FITC.model_copy(update={"power": 5000})],  # W/cm² at focus
+    channels=[lib.LASER_488.model_copy(update={"power": 5000})],  # W/cm² at focus
     exposure_ms=0.01,  # 10 µs dwell
     **common,
 ).run()

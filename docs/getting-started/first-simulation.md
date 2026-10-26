@@ -123,15 +123,16 @@ result = sim.run()
     setting `lib.FITC.power` directly would change it for every simulation
     in the session. `power` is in W/cm² at the sample.
 
-A confocal microscope focuses the excitation light to a diffraction-limited
-spot and scans it, so its irradiance is far higher (kW/cm² to MW/cm² at the
-focus) and the time per pixel is far shorter (microseconds). For point-scanning
-modalities `power` is the peak irradiance at the focus and `exposure_ms` is the
-pixel dwell time:
+A confocal microscope focuses a laser to a diffraction-limited spot and scans
+it, so its irradiance is far higher (kW/cm² to MW/cm² at the focus) and the
+time per pixel is far shorter (microseconds). For point-scanning modalities
+`power` is the peak irradiance at the focus and `exposure_ms` is the pixel
+dwell time. `lib` has [laser lines](../guide/channels.md#built-in-filter-sets)
+for this:
 
 ```python
 sim.modality = ms.Confocal(pinhole_au=0.5)
-sim.channels = [lib.FITC.model_copy(update={"power": 50_000})]  # W/cm² at focus
+sim.channels = [lib.LASER_488.model_copy(update={"power": 50_000})]  # W/cm² at focus
 sim.exposure_ms = 0.01  # 10 µs per pixel
 result = sim.run()
 ```

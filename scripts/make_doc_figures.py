@@ -607,7 +607,7 @@ def first_simulation() -> None:
     )
     sim.modality = ms.Confocal(pinhole_au=0.5)
     sim.exposure_ms = 0.01
-    sim.channels = [oc_lib.FITC.model_copy(update={"power": 50_000})]
+    sim.channels = [oc_lib.LASER_488.model_copy(update={"power": 50_000})]
     img = sim.digital_image()
     imgs.append(("confocal, 50 kW/cm², 10 µs dwell", _np(img)[0, 8]))
     for title, im in imgs:

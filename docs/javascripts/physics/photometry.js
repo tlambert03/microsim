@@ -20,28 +20,49 @@ export function decodeSpectrum(s) {
   return { w: s.v.map((_, i) => s.w0 + i * s.dw), v: s.v };
 }
 
-// Align two spectra on their exact wavelengths, the union (`outer`) or the
-// intersection (`inner`), filling missing values with 0.
-function align(a, b, join) {
+const union = (a, b) => [...new Set([...a.w, ...b.w])].sort((x, y) => x - y);
+
+// Align two spectra on the union of their exact wavelengths, filling missing
+// values with 0 (xr.align(join="outer"), then fillna(0)).
+function alignOuter(a, b) {
   const ma = new Map(a.w.map((w, i) => [w, a.v[i]]));
   const mb = new Map(b.w.map((w, i) => [w, b.v[i]]));
-  let w;
-  if (join === "outer") w = [...new Set([...a.w, ...b.w])].sort((x, y) => x - y);
-  else w = a.w.filter((x) => mb.has(x));
+  const w = union(a, b);
   return { w, va: w.map((x) => ma.get(x) ?? 0), vb: w.map((x) => mb.get(x) ?? 0) };
 }
 
+// Spectrum.at: linear interpolation (np.interp), 0 outside the spectrum's range.
+// `wavelengths` may be unsorted; the spectrum's must be ascending.
+export function at(s, wavelengths) {
+  const n = s.w.length;
+  return wavelengths.map((x) => {
+    if (!n || x < s.w[0] || x > s.w[n - 1]) return 0;
+    let lo = 0;
+    let hi = n - 1;
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (s.w[mid] <= x) lo = mid;
+      else hi = mid;
+    }
+    if (x === s.w[hi]) return s.v[hi];
+    const t = (x - s.w[lo]) / (s.w[hi] - s.w[lo]);
+    return s.v[lo] + t * (s.v[hi] - s.v[lo]);
+  });
+}
+
 // Spectrum * Spectrum: src/microsim/schema/spectrum.py `Spectrum._intensity_op`
-// (xr.align(join="outer"), then fillna(0))
+// (both interpolated with Spectrum.at, on the union of their wavelengths)
 export function mulSpectra(a, b) {
-  const { w, va, vb } = align(a, b, "outer");
+  const w = union(a, b);
+  const va = at(a, w);
+  const vb = at(b, w);
   return { w, v: va.map((x, i) => x * vb[i]) };
 }
 
-// DataArray * DataArray: xarray's default arithmetic join is "inner"
-export function mulArrays(a, b) {
-  const { w, va, vb } = align(a, b, "inner");
-  return { w, v: va.map((x, i) => x * vb[i]) };
+// Spectrum.transmitted: `light` through `transmission`, on the light's wavelengths
+export function transmitted(light, transmission) {
+  const t = at(transmission, light.w);
+  return { w: light.w, v: light.v.map((x, i) => x * t[i]) };
 }
 
 export const scale = (s, k) => ({ w: s.w, v: s.v.map((x) => x * k) });
@@ -79,11 +100,11 @@ export function illumination(lights, exPath) {
     const s = l.power == null ? l.spectrum : scale(l.spectrum, l.power);
     if (spec === null) spec = s;
     else {
-      const { w, va, vb } = align(spec, s, "outer");
+      const { w, va, vb } = alignOuter(spec, s);
       spec = { w, v: va.map((x, i) => x + vb[i]) };
     }
   }
-  return exPath ? mulSpectra(spec, exPath) : spec;
+  return exPath ? transmitted(spec, exPath) : spec;
 }
 
 // OpticalConfig.irradiance: illumination normalized to sum 1, times `power`
@@ -113,9 +134,12 @@ export function crossSection(exSpectrum, extinctionCoefficient) {
   };
 }
 
-// OpticalConfig.absorption_rate: photons/s absorbed per molecule, per wavelength
+// OpticalConfig.absorption_rate: photons/s absorbed per molecule, at each
+// wavelength of the illumination (the cross section is interpolated there)
 export function absorptionRate(illum, power, fluor) {
-  return mulArrays(fluxDensity(irradiance(illum, power)), crossSection(fluor.ex, fluor.ec));
+  const flux = fluxDensity(irradiance(illum, power));
+  const sigma = at(crossSection(fluor.ex, fluor.ec), flux.w);
+  return { w: flux.w, v: flux.v.map((x, i) => x * sigma[i]) };
 }
 
 // OpticalConfig.saturation_parameter: k * tau, 0 if the lifetime is unknown
@@ -147,14 +171,21 @@ export function totalEmissionRate(absRate, fluor, saturate = true) {
   return scale(fluor.em, ((fluor.qy || 1) * k) / norm);
 }
 
-// OpticalConfig.filtered_emission_rate: emission rate times the emission path,
-// itself multiplied by the detector QE (a number, a spectrum, or null)
+// OpticalConfig.filtered_emission_rate (via OpticalConfig.detected_fraction):
+// emission rate times the emission path and the detector QE (a number, a
+// spectrum, or null), both interpolated at the emission wavelengths
 export function filteredEmissionRate(emRate, emPath, qe = null) {
-  if (emPath === null) return emRate;
-  let path = emPath;
-  if (typeof qe === "number") path = scale(path, qe);
-  else if (qe) path = mulSpectra(path, qe);
-  return mulArrays(emRate, path);
+  let v = emRate.v;
+  if (emPath !== null) {
+    const t = at(emPath, emRate.w);
+    v = v.map((x, i) => x * t[i]);
+  }
+  if (typeof qe === "number") v = v.map((x) => x * qe);
+  else if (qe) {
+    const q = at(qe, emRate.w);
+    v = v.map((x, i) => x * q[i]);
+  }
+  return { w: emRate.w, v };
 }
 
 // ObjectiveLens.collection_efficiency: solid-angle fraction of isotropic emission,

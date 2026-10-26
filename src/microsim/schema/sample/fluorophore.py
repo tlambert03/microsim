@@ -22,7 +22,7 @@ class Fluorophore(SimBaseModel):
     excitation_spectrum : Spectrum
         Excitation (absorption) spectrum.  Normalized to 1 at its peak when used.
     emission_spectrum : Spectrum
-        Emission spectrum.  Normalized to unit area when used.
+        Emission spectrum.  Normalized to unit sum when used.
     bleaching_half_life_s : float, optional
         Not used yet.
     extinction_coefficient : float, optional

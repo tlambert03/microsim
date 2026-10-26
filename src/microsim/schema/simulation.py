@@ -125,6 +125,11 @@ class Simulation(SimBaseModel):
     exposure_ms : float
         Integration time per pixel in ms: camera exposure, or pixel dwell time for
         point-scanning modalities.  Can be overridden per channel.
+    tracks : "sequential" | "simultaneous" | list[Track]
+        Which channels are acquired at the same time (excited by all of their light
+        sources together).  `"sequential"` (the default): each channel on its own.
+        `"simultaneous"`: all channels at once.  Or a list of tracks, each a list of
+        channels by index or name, e.g. `[[0, 2], [1, 3]]`.
     settings : Settings
         Computation settings (backend, random seed, caching, ...).
     output_path : Path, optional

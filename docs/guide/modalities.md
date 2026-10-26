@@ -56,15 +56,36 @@ and \(\text{PSF}_\text{em}\) sums to 1 in each plane, so the confocal PSF at
 the focus is the fraction of the collected light that passes the pinhole.
 
 `pinhole_au` is the pinhole diameter in Airy units, where 1 AU is
-1.22 λ<sub>em</sub> / NA, measured in the sample. Smaller pinholes reject more
+1.22 λ / NA, measured in the sample. Smaller pinholes reject more
 out-of-focus light and slightly improve resolution, at the cost of signal.
+
+The pinhole has one physical size for all the light that passes it, so λ is
+one wavelength per pinhole, not the wavelength of each fluorophore:
+
+- By default, λ is the center of the channel's emission filter passband (e.g.
+  525 nm for a 525/50 filter). As on many point scanners, the channels of a
+  [track](channels.md#sequential-and-simultaneous-acquisition) are detected
+  through one pinhole, and λ is the average of their band centers. With
+  `shared_pinhole=False`, each channel has its own pinhole, matched to its own
+  band.
+- If a channel sharing the pinhole has no band-limited emission filter (e.g.
+  only a longpass), λ is the mean wavelength of the emission detected in all
+  the channels sharing it, and microsim warns.
+- `airy_unit_wavelength_nm` sets λ directly.
+
+The excitation spot is computed at the excitation wavelengths. With several
+lasers, or a broadband source, the light each fluorophore absorbs is grouped
+into bands at most `excitation_bin_width_nm` wide
+([Settings](settings.md#accuracy-vs-speed)), and the spot is the sum of the
+spots at each band's wavelength, weighted by the light absorbed in it.
 
 For a point-scanning modality:
 
 - `power` on the channel is the **peak irradiance** at the center of the spot
   (often kW/cm² or more), not an average over the field.
 - `exposure_ms` is the **pixel dwell time** (often 0.0005–0.01 ms), and is not
-  divided among pixels.
+  divided among pixels. Channels acquired together (in one track) must have
+  the same dwell time.
 - [Saturation](photometry.md#excitation-saturation) is applied at each position
   of the excitation spot rather than to the emission rate.
 - Downsampling to the output space averages rather than sums
@@ -85,13 +106,6 @@ contribute as much as the focal plane; the pinhole removes it, more so the
 smaller it is. Smaller pinholes also narrow the PSF, mostly below 1 AU, while
 passing less light.
 ///
-
-!!! info "Excitation wavelength"
-
-    In a simulation, the confocal excitation PSF is currently computed at the
-    emission wavelength, not at the wavelength of the light source. This makes
-    the simulated excitation spot slightly larger than it should be (by the
-    ratio of the wavelengths, about 7% for EGFP excited at 488 nm).
 
 ## Identity
 
@@ -166,5 +180,6 @@ This takes proportionally longer. See [Settings](settings.md#accuracy-vs-speed).
 ## PSF caching
 
 PSFs are cached in memory and on disk, keyed by every parameter that affects
-them, so repeating a simulation with a different sample or detector does not
-recompute them. See [Settings](settings.md#caching).
+them, so repeating a simulation with a different sample, or with a detector
+with the same QE, does not recompute them. (The QE changes the spectrum of the
+detected light, and so the wavelengths at which the PSFs are computed.) See [Settings](settings.md#caching).

@@ -39,7 +39,9 @@ class CosemLabel(BaseDistribution):
         Name (or description) of a segmentation or prediction layer in the dataset,
         e.g. `"er-mem_pred"`.
     position : tuple[float, float, float], optional
-        Position of the region to extract.  By default, the center of the dataset.
+        Where the dataset's origin is moved to (in voxels of the resolution level
+        that is read) before the region around 0 is extracted.  By default, the
+        region is centered in the dataset.
     """
 
     type: Literal["cosem"] = "cosem"

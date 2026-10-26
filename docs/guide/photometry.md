@@ -38,6 +38,11 @@ fluorophore, for every channel, fluorophore, and wavelength. Keeping the
 wavelength lets the next stage use a PSF for the actual emission color.
 Keeping every channel–fluorophore pair is what produces bleedthrough.
 
+These rates are for a fluorophore at the channel's `power`: anywhere in a
+widefield field of view, or at the center of the focused spot in a confocal.
+By default they include [excitation saturation](#excitation-saturation) at
+that irradiance.
+
 You can compute each step on its own:
 
 ```py
@@ -49,7 +54,12 @@ oc.absorption_rate(fluor)  # photons/s absorbed
 oc.total_emission_rate(fluor)  # photons/s emitted
 oc.filtered_emission_rate(fluor)  # photons/s through the emission path
 sim.filtered_emission_rates()  # all pairs, with QE and collection efficiency
+sim.filtered_emission_rates(saturate=False)  # the same, without saturation
 ```
+
+The `OpticalConfig` methods describe a channel on its own. `Simulation` also
+accounts for channels that are [acquired at the same
+time](#channels-acquired-together).
 
 ## The details
 
@@ -71,9 +81,12 @@ sim.filtered_emission_rates()  # all pairs, with QE and collection efficiency
 
 ??? abstract "2. Illumination"
 
-    The illumination spectrum is the product of the light source spectra (or
-    flat white light, if there are none) and the transmission of every filter
-    in the excitation path. It is scaled so that its sum over wavelength equals
+    The illumination spectrum is the light source spectrum (the sum of the
+    light sources, weighted by their relative `power`), multiplied by the
+    transmission of every filter in the excitation path at the light source's
+    wavelengths, so a laser stays a single line. With no light source, it is
+    flat white light through the excitation filters. It is scaled so that its
+    sum over wavelength equals
     the channel's `power`, \(P\) (1 W/cm² if not set). This gives the
     irradiance \(E(\lambda)\) in W/cm² per wavelength bin, which is converted to
     a photon flux density, in photons/cm²/s:
@@ -85,7 +98,8 @@ sim.filtered_emission_rates()  # all pairs, with QE and collection efficiency
 ??? abstract "3. Absorption rate"
 
     The rate at which one molecule absorbs photons is the overlap of the cross
-    section and the photon flux, summed over wavelength:
+    section and the photon flux, summed over the wavelengths of the
+    illumination (the cross section is interpolated there):
 
     \[
     k = \sum_\lambda \sigma(\lambda) \, \Phi(\lambda)
@@ -107,7 +121,8 @@ sim.filtered_emission_rates()  # all pairs, with QE and collection efficiency
 
     The emitted light is multiplied by the combined transmission
     \(T_\text{em}(\lambda)\) of every filter in the emission path, and by the
-    detector's quantum efficiency \(\text{QE}(\lambda)\), if a detector is set:
+    detector's quantum efficiency \(\text{QE}(\lambda)\), if a detector is set,
+    both interpolated at the wavelengths of the emission spectrum:
 
     \[
     R_\text{det}(\lambda) = R_\text{em}(\lambda) \, T_\text{em}(\lambda) \, \text{QE}(\lambda)
@@ -136,6 +151,23 @@ sim.filtered_emission_rates()  # all pairs, with QE and collection efficiency
     supercritical-angle fluorescence near the coverslip, and the transmission
     of the objective and other optics.
 
+## Channels acquired together
+
+When channels are acquired at the same time (in one
+[track](channels.md#sequential-and-simultaneous-acquisition)), all of their
+light sources are on, so a fluorophore absorbs from all of them. Its
+absorption rate is then the sum over the light sources of the track, each at
+its own channel's `power`:
+
+\[
+k = \sum_\text{sources} \sum_\lambda \sigma(\lambda) \, \Phi_\text{source}(\lambda)
+\]
+
+The same emission is then detected by each channel of the track, through its
+own emission path. A light source shared by several channels of the track is
+counted once. With the default, `tracks="sequential"`, each channel's \(k\)
+comes from its own light sources only.
+
 ## Excitation saturation
 
 A fluorophore that has absorbed a photon cannot absorb another until it
@@ -149,7 +181,9 @@ proportional to
 \]
 
 The product \(s = k\tau\) is the saturation parameter
-([`OpticalConfig.saturation_parameter`][microsim.schema.optical_config.OpticalConfig.saturation_parameter]).
+([`OpticalConfig.saturation_parameter`][microsim.schema.optical_config.OpticalConfig.saturation_parameter],
+for a channel on its own; in a track, \(k\) includes every light source of
+the track).
 When \(s \ll 1\), emission is proportional to irradiance. At \(s = 1\) it is
 half of what a linear response would give.
 
@@ -167,7 +201,8 @@ How saturation is applied depends on the modality:
 - **Confocal**: the irradiance varies across the focused spot, so saturation
   is applied at each position of the excitation PSF. The peak saturates first,
   which broadens the effective PSF. Here `power` is the irradiance at the
-  center of the spot.
+  center of the spot, and `filtered_emission_rates()` gives the (saturated)
+  rates there.
 
 Saturation requires `lifetime_ns` on the fluorophore. Fluorophores from FPbase
 usually have one.

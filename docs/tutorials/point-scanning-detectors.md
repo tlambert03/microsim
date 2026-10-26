@@ -20,7 +20,7 @@ A single confocal plane of random lines labeled with EGFP, with 80 nm pixels:
 ```python
 from microsim import schema as ms
 from microsim.schema.detectors import lib
-from microsim.schema.optical_config.lib import FITC
+from microsim.schema.optical_config.lib import LASER_488
 
 sim = ms.Simulation(
     truth_space={"upscale": 4},
@@ -31,7 +31,7 @@ sim = ms.Simulation(
             fluorophore="EGFP",
         )
     ],
-    channels=[FITC.model_copy(update={"power": 2e4})],  # (1)!
+    channels=[LASER_488.model_copy(update={"power": 2e4})],  # (1)!
     modality=ms.Confocal(pinhole_au=1),
     settings=ms.Settings(random_seed=100),
     detector=lib.HYD_SP8,  # (2)!
@@ -39,9 +39,10 @@ sim = ms.Simulation(
 optical_image = sim.optical_image()
 ```
 
-1.  20 kW/cm² at the focus, about 10 µW in a diffraction-limited spot. The
-    brightest pixels receive tens of millions of photons per second. EGFP is
-    only slightly saturated at this irradiance (\(k\tau \approx 0.02\)).
+1.  A 488 nm laser with a 525/50 emission filter, at 20 kW/cm² at the focus
+    (about 10 µW at 1.4 NA; the library default is 100 kW/cm²). The brightest
+    pixels receive tens of millions of photons per second. EGFP is only
+    slightly saturated at this irradiance (\(k\tau \approx 0.03\)).
 2.  The detector's QE is applied when the optical image is computed. All the
     detectors compared below have GaAsP photocathodes with nearly identical QE
     spectra, so one optical image serves for all of them.

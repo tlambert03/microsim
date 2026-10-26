@@ -18,7 +18,8 @@ sim = ms.Simulation(..., settings=ms.Settings(random_seed=42, np_backend="jax"))
 | `float_dtype`                        | `float32` | floating-point precision                                       |
 | `max_psf_radius_aus`                 | `"auto"`  | lateral size limit of each PSF, in Airy radii                  |
 | `spectral_bins_per_emission_channel` | 1         | number of PSFs used per fluorophore and channel                |
-| `spectral_bin_threshold_percentage`  | 1         | part of the emission spectrum that is ignored when binning     |
+| `excitation_bin_width_nm`            | 10        | widest band of excitation light given one excitation spot      |
+| `spectral_bin_threshold_percentage`  | 1         | part of the spectra that is ignored when binning               |
 | `cache`                              | on        | read and write the on-disk ground-truth cache                  |
 
 ## Reproducibility
@@ -85,6 +86,14 @@ dropping the parts below `spectral_bin_threshold_percentage` of its peak) is
 split into that many bins, and one PSF is computed per bin and weighted by
 its photons. Time and memory grow with the number of bins.
 
+**`excitation_bin_width_nm`** applies to modalities with a focused excitation
+spot ([Confocal](modalities.md#confocal)). The light each fluorophore absorbs
+(after dropping the parts below `spectral_bin_threshold_percentage` of its
+peak) is grouped into bins at most this wide, and one excitation spot is
+computed per bin, weighted by the light absorbed in it. A single laser line
+gives one spot, and laser lines further apart than this are always computed
+separately. A broadband source gives one spot per bin.
+
 **`float_dtype`** can be set to `float64` for higher precision, at twice the
 memory.
 
@@ -93,16 +102,17 @@ memory.
 microsim caches results that are slow to compute and depend only on their
 parameters:
 
-- **PSFs**, in memory (the most recent 64) and on disk.
+- **PSFs**, in memory and on disk. Detection PSFs and confocal excitation
+  spots are cached separately (in memory, the most recent 64 of each).
 - **Fourier transforms of PSFs**, in memory, up to
   `Settings.cache.in_mem_size.otf_mb` (1000 MB by default; GPU memory for GPU
   backends).
-- **Emission rates** (the result of `filtered_emission_rates`), in memory, for
-  the most recent 32 combinations of channels, fluorophores, detector QE, and
-  objective.
+- **Emission rates** (what `filtered_emission_rates` is computed from), in
+  memory, for the most recent 32 combinations of channels, tracks,
+  fluorophores, detector QE, and objective.
 - **Ground truth** from `MatsLines` and `CosemLabel`, on disk, keyed by the
-  distribution's parameters, the truth space, the concentration, and the random
-  seed.
+  distribution's parameters, the truth space, and the concentration (and, for
+  random distributions such as `MatsLines`, the random seed).
 - **OpenOrganelle downloads**, on disk.
 
 The disk cache is in the user cache directory given by

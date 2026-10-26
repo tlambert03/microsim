@@ -115,7 +115,9 @@ def _channel_json(oc: ms.OpticalConfig) -> dict:
 def _assert_same(js: dict, da: object) -> None:
     da = da.squeeze()  # type: ignore[attr-defined]
     np.testing.assert_array_equal(js["w"], da.coords["w"].values)
-    np.testing.assert_allclose(js["v"], da.values, rtol=1e-9, atol=0)
+    # (the atol only matters for values too small to hold 1e-9 relative precision)
+    atol = 1e-15 * float(np.abs(da.values).max())
+    np.testing.assert_allclose(js["v"], da.values, rtol=1e-9, atol=atol)
     np.testing.assert_allclose(js["total"], float(da.sum()), rtol=1e-9)
 
 
@@ -153,19 +155,18 @@ def test_photometry() -> None:
         assert js["saturation"] == pytest.approx(
             oc.saturation_parameter(fluor), rel=1e-9
         )
-        if sat:  # widefield saturates the rates; point scanners do it in the PSF
-            sim = ms.Simulation(
-                truth_space=ms.ShapeScaleSpace(shape=(1, 8, 8), scale=0.1),
-                sample=[
-                    ms.FluorophoreDistribution(
-                        distribution=ms.MatsLines(), fluorophore=fluor
-                    )
-                ],
-                channels=[oc],
-                objective_lens=lens,
-                detector=None if qe is None else ms.CameraCCD(qe=qe),
-            )
-            _assert_same(js["collected"], sim.filtered_emission_rates())
+        sim = ms.Simulation(
+            truth_space=ms.ShapeScaleSpace(shape=(1, 8, 8), scale=0.1),
+            sample=[
+                ms.FluorophoreDistribution(
+                    distribution=ms.MatsLines(), fluorophore=fluor
+                )
+            ],
+            channels=[oc],
+            objective_lens=lens,
+            detector=None if qe is None else ms.CameraCCD(qe=qe),
+        )
+        _assert_same(js["collected"], sim.filtered_emission_rates(saturate=sat))
         if fluor.lifetime_ns:
             half = oc.model_copy(update={"power": js["half_saturation_irradiance"]})
             assert half.saturation_parameter(fluor) == pytest.approx(1, rel=1e-9)

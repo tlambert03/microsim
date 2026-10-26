@@ -47,6 +47,20 @@ simulations; for real filters, load them from FPbase (below).
 
 Bandpass filters are written as center/width in nm.
 
+For point-scanning confocals, `lib` also has laser lines: a laser, a dichroic,
+and an emission bandpass, with generic filter values. Their `power` is 1e5
+W/cm², the peak irradiance at the focus (about 50 µW at the sample with a
+1.4 NA objective).
+
+| Name        | Laser  | Dichroic | Emission |
+| ----------- | ------ | -------- | -------- |
+| `LASER_405` | 405 nm | 420 LP   | 450/50   |
+| `LASER_445` | 445 nm | 455 LP   | 480/40   |
+| `LASER_488` | 488 nm | 495 LP   | 525/50   |
+| `LASER_515` | 515 nm | 520 LP   | 550/40   |
+| `LASER_561` | 561 nm | 570 LP   | 600/50   |
+| `LASER_640` | 640 nm | 650 LP   | 690/50   |
+
 ## Filter sets from FPbase
 
 FPbase lets you
@@ -125,9 +139,11 @@ is 1 W/cm².
 
 !!! warning "`LightSource.power` sets relative power only"
 
-    When a channel has several light sources, their `power` values set how the
-    total is divided between them. The total is always
-    `OpticalConfig.power` (or 1 W/cm²). Set `power` on the
+    When a channel has several light sources, each source's spectrum is
+    multiplied by its `power` before they are added, so `power` sets their
+    relative weight. For sources whose spectra have the same sum, such as
+    `LightSource.laser` lines, that is each source's share of the total. The
+    total is always `OpticalConfig.power` (or 1 W/cm²). Set `power` on the
     `OpticalConfig` to change brightness.
 
 Rough orders of magnitude for the irradiance at the sample:
@@ -139,7 +155,8 @@ Rough orders of magnitude for the irradiance at the sample:
 | point-scanning confocal, at focus   | 10–1000 kW/cm²          |
 
 For point-scanning modalities, `power` is the peak irradiance at the center of
-the focused spot. See [Modalities](modalities.md#confocal).
+the focused spot. See [Modalities](modalities.md#confocal). To change the power
+of a library channel, use e.g. `lib.LASER_488.model_copy(update={"power": 1e4})`.
 
 ### Per-channel exposure
 
@@ -165,11 +182,14 @@ microsim computes every fluorophore in every channel, so crosstalk needs no
 extra setup. A fluorophore excited by another channel's light
 (**cross-excitation**), or whose emission passes another channel's filter
 (**bleedthrough**), appears in that channel in proportion to the overlap of the
-spectra.
+spectra. Which light sources are on while a channel is recorded depends on
+whether channels are [acquired one after another or at the same
+time](#sequential-and-simultaneous-acquisition).
 
 <div class="ms-chart" data-chart="crosstalk"></div>
 /// caption
-Detected photons per molecule for two fluorophores in two channels. Dashed
+Detected photons per molecule for two fluorophores in two channels, acquired
+one after the other (each channel is excited only by its own light). Dashed
 cells are crosstalk: the fluorophore gives less than half of that channel's
 signal. tdTomato absorbs only weakly in the FITC excitation band, but it is
 bright, and a 500 nm longpass emission filter passes nearly all of its
@@ -212,6 +232,52 @@ emission filter. Each row has one display range, so each panel shows its true
 contribution. With the longpass filter, the mitochondria appear in the green
 channel.
 ///
+
+## Sequential and simultaneous acquisition
+
+By default, channels are acquired one after another, so each channel is
+excited only by its own light sources. [`Simulation.tracks`][microsim.schema.simulation.Simulation]
+groups channels that are acquired at the same time, as in the *tracks* of a
+point scanner. All light sources of all channels in a track are on together,
+and each channel's detector records at the same time, so a fluorophore can be
+excited by any light source of its track:
+
+```py
+from microsim.schema.optical_config.lib import (
+    LASER_405,
+    LASER_488,
+    LASER_561,
+    LASER_640,
+)
+
+sim = ms.Simulation(
+    ...,
+    channels=[LASER_405, LASER_488, LASER_561, LASER_640],
+    tracks=[[0, 2], [1, 3]],  # or by name: [["405", "561"], ["488", "640"]]
+)
+```
+
+| `tracks`                | Meaning                                                    |
+| ----------------------- | ---------------------------------------------------------- |
+| `"sequential"` (default) | each channel is its own track                             |
+| `"simultaneous"`        | one track with all channels                                |
+| a list of lists         | channels by index in `channels`, or by name               |
+
+Each list is shorthand for a [`Track`][microsim.schema.simulation.Track], e.g.
+`Track(channels=[0, 2])`, and every channel must be in exactly one track.
+
+- A light source listed in several channels of a track (e.g. two detection
+  windows behind one laser) is one light source, on once, so those channels
+  must have the same `power` and excitation-side filters (including the
+  dichroic). Channels in a track must have either the same light sources or
+  none in common.
+- On a point scanner, the channels of a track have one pixel dwell time, so
+  they must have the same `exposure_ms`.
+- Each channel detects through its own filters, including its own dichroic.
+  On a real scanner, the channels of a track share one (multiband) dichroic;
+  give them matching dichroics if that matters for your simulation.
+- With a [`Confocal`](modalities.md#confocal) modality, the channels of a
+  track are detected through one pinhole (unless `shared_pinhole=False`).
 
 ## Plotting spectra
 
