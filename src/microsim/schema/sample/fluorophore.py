@@ -62,6 +62,15 @@ class Fluorophore(SimBaseModel):
         out.name = "cross_section"
         return cast("xr.DataArray", out)
 
+    @property
+    def emission_per_absorbed_photon(self) -> xr.DataArray:
+        """Photons emitted per absorbed photon, at each wavelength.
+
+        The emission spectrum (normalized to an area of 1) times the quantum yield.
+        """
+        em = self.emission_spectrum.as_xarray()
+        return em / em.sum() * (self.quantum_yield or 1)
+
     @classmethod
     def from_fpbase(cls, name: str) -> "Fluorophore":
         from fpbase import get_fluorophore

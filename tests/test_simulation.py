@@ -174,7 +174,7 @@ def test_simulation_write_from_ground_truth(tmp_path: Path) -> None:
 def test_reused_caches_across_simulations() -> None:
     """Simulations with the same optics reuse PSF transforms and emission rates."""
     convolve._KERNEL_FT_CACHE.clear()
-    simulation._RATES_CACHE.clear()
+    simulation._FLUORESCENCE_CACHE.clear()
 
     def _sim(seed: int) -> ms.Simulation:
         return ms.Simulation(
@@ -190,12 +190,12 @@ def test_reused_caches_across_simulations() -> None:
     sim_a, sim_b = _sim(1), _sim(2)
     img_a = sim_a.optical_image()
     assert len(convolve._KERNEL_FT_CACHE) == 1
-    assert len(simulation._RATES_CACHE) == 1
+    assert len(simulation._FLUORESCENCE_CACHE) == 1
 
     # the second simulation hits both caches...
     img_b = sim_b.optical_image()
     assert len(convolve._KERNEL_FT_CACHE) == 1
-    assert len(simulation._RATES_CACHE) == 1
+    assert len(simulation._FLUORESCENCE_CACHE) == 1
     # ... but with its own coordinate objects, and its own (different) sample
     rates_b = sim_b.filtered_emission_rates()
     assert rates_b.coords[Axis.C].values[0] is sim_b.channels[0]
@@ -206,7 +206,7 @@ def test_reused_caches_across_simulations() -> None:
 
     # and the result is the same as without the caches
     convolve._KERNEL_FT_CACHE.clear()
-    simulation._RATES_CACHE.clear()
+    simulation._FLUORESCENCE_CACHE.clear()
     np.testing.assert_allclose(_sim(2).optical_image(), img_b, rtol=1e-6)
 
 

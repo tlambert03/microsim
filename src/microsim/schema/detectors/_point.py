@@ -255,7 +255,7 @@ def _per_channel(func: Any, x: "npt.NDArray", dt: Any, *args: Any) -> "npt.NDArr
     """Call `func(x, dt, *args)`, per channel (first axis) if `dt` is per channel."""
     x, dt = np.asarray(x, dtype=float), np.asarray(dt, dtype=float)
     if dt.size == 1:
-        return func(x, float(dt), *args)  # type: ignore[no-any-return]
+        return func(x, float(dt.item()), *args)  # type: ignore[no-any-return]
     return np.stack(
         [func(xc, float(d), *args) for d, xc in zip(dt.ravel(), x, strict=True)]
     )

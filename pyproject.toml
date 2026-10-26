@@ -88,7 +88,8 @@ torch = [
     "torchaudio>=2.7.0",
 ]
 # jaxlib only ships cp314 wheels from 0.7.1 (jax/jaxlib versions are coupled).
-jax = ["jax[cpu]>=0.7.1; python_version >= '3.14'", "jax[cpu]>=0.5.2"]
+# jaxlib < 0.5.3 needs an executable stack, which newer glibc (e.g. 2.43) refuses.
+jax = ["jax[cpu]>=0.7.1; python_version >= '3.14'", "jax[cpu]>=0.5.3"]
 all = ["microsim[view,io,cosem]", "rich>=13"]
 
 [dependency-groups]
