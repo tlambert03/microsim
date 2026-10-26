@@ -96,7 +96,7 @@ class PMT(_Detector):
     - Temperature dependence, drift, and hysteresis of the gain (~1%).
     - Bidirectional scanning (which flips the streak on alternate lines).
 
-    Attributes
+    Parameters
     ----------
     hv : float, optional
         HV (or control voltage) setting.  Defaults to `ref_hv`.
@@ -225,7 +225,7 @@ class HyD(_Detector):
     `electrons_per_adu = 1 / gain` here.  The linearization Leica applies in that
     mode is not published, and is not modeled.
 
-    Attributes
+    Parameters
     ----------
     dead_time_ns : float
         Time after each pulse during which no other photon is counted (Leica: < 1.5

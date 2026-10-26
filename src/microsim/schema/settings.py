@@ -35,6 +35,20 @@ class InMemoryCacheSizes(SimBaseModel):
 
 
 class CacheSettings(SimBaseModel):
+    """On-disk cache settings for ground truth.
+
+    A boolean may be passed instead, to set both `read` and `write`.
+
+    Parameters
+    ----------
+    read : bool
+        Read cached ground truth, if available.
+    write : bool
+        Write generated ground truth to the cache.
+    in_mem_size : InMemoryCacheSizes
+        Sizes of the in-memory caches.
+    """
+
     read: bool = True
     write: bool = True
     in_mem_size: InMemoryCacheSizes = Field(default_factory=InMemoryCacheSizes)
@@ -50,6 +64,25 @@ class CacheSettings(SimBaseModel):
 
 
 class Settings(SimBaseModel, BaseSettings):
+    """Settings that affect how a simulation is computed.
+
+    Every setting can also be set with an environment variable `MICROSIM_<NAME>`
+    (nested settings separated by `__`, e.g. `MICROSIM_CACHE__WRITE=0`).
+
+    Parameters
+    ----------
+    np_backend : str
+        Array library: `"numpy"`, `"cupy"`, `"jax"`, `"torch"`, or `"auto"` (CuPy
+        if it can be imported, otherwise NumPy).
+    device : str
+        Not used yet.
+    random_seed : int, optional
+        Seed for random ground truth and noise.  A random seed is chosen if not
+        given.
+    cache : CacheSettings | bool
+        Whether to read and write the on-disk ground truth cache.
+    """
+
     np_backend: BackendName = "auto"
     device: DeviceName = "auto"
     float_dtype: FloatDtype = Field(
@@ -62,20 +95,22 @@ class Settings(SimBaseModel, BaseSettings):
     max_psf_radius_aus: float | Literal["auto"] | None = Field(
         "auto",
         description=(
-            "Restrict the lateral radius of simulated PSFs to this many Airy units. "
-            "`'auto'` (default) is our opinionated balance between speed and "
-            "accuracy, aiming for ~1% RMSE (and <2% max error) relative to an "
-            "untruncated PSF, which is below shot noise unless pixels collect well "
-            "over ~10^4 photons. For widefield, the radius grows with the depth of the "
-            "simulated volume, since out-of-focus light spreads in a cone of "
-            "half-angle asin(NA/n): it is ~14 AU (for the tails of the in-focus Airy "
-            "pattern) plus half the radius of that cone at half the volume depth "
-            "(e.g. ~17 AU for a 1 um deep volume, ~27 AU for 5 um, at NA 1.4). For "
-            "confocal, where the pinhole rejects out-of-focus light, it is 8 AU. A "
-            "number sets the radius directly; a too-small radius loses out-of-focus "
-            "light (in a 5 um deep widefield volume, 8 AU loses ~20% of it). `None` "
-            "uses the full extent of the simulated space (most accurate, but much "
-            "slower for large volumes: ~2-4x slower per sample than 'auto' at "
+            "Restrict the lateral radius of simulated PSFs to this many Airy radii "
+            "(1 Airy radius = 0.61 * wavelength / NA, the radius of the Airy disk; "
+            "half the Airy unit used for `Confocal.pinhole_au`).  `'auto'` "
+            "(default) is our opinionated balance between speed and accuracy, aiming "
+            "for ~1% RMSE (and <2% max error) relative to an untruncated PSF, which is "
+            "below shot noise unless pixels collect well over ~10^4 photons. For "
+            "widefield, the radius grows with the depth of the simulated volume, since "
+            "out-of-focus light spreads in a cone of half-angle asin(NA/n): it is ~14 "
+            "Airy radii (for the tails of the in-focus Airy pattern) plus half the "
+            "radius of that cone at half the volume depth (e.g. ~17 Airy radii for a "
+            "1 um deep volume, ~27 for 5 um, at NA 1.4). For confocal, where the "
+            "pinhole rejects out-of-focus light, it is 8 Airy radii. A number sets the "
+            "radius directly; a too-small radius loses out-of-focus light (in a 5 um "
+            "deep widefield volume, 8 Airy radii lose ~20% of it). `None` uses the "
+            "full extent of the simulated space (most accurate, but much slower for "
+            "large volumes: ~2-4x slower per sample than 'auto' at "
             "2048x2048 pixels). The PSF is never larger than the simulated space."
         ),
     )
@@ -83,10 +118,10 @@ class Settings(SimBaseModel, BaseSettings):
     spectral_bins_per_emission_channel: int = Field(
         1,
         description="Number of wavelengths to use (per channel) when simulating the "
-        "optical image. By default, a single centroid wavelength is used to approximate"
-        "the emission wavelength.  Increasing this will make the simulation more "
-        "realistic, by superposing multiple different PSFs, but will also increase "
-        "memory usage and time.",
+        "optical image. By default, a single centroid wavelength is used to "
+        "approximate the emission wavelength.  Increasing this will make the "
+        "simulation more realistic, by superposing multiple different PSFs, but will "
+        "also increase memory usage and time.",
     )
     excitation_bin_width_nm: float = Field(
         10,
