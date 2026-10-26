@@ -1,0 +1,557 @@
+/* ---------------------------------------------------------------------------
+   Interactive charts (docs/javascripts/charts)
+--------------------------------------------------------------------------- */
+
+:root,
+[data-md-color-scheme="default"] {
+  /* categorical series, fixed order (same as scripts/make_doc_figures.py) */
+  --ms-c1: #2a78d6;
+  --ms-c2: #eb6834;
+  --ms-c3: #1baf7a;
+  --ms-c4: #eda100;
+  --ms-c5: #e87ba4;
+  --ms-ink: #1f1e1c;
+  --ms-ink-muted: #5f5e59;
+  --ms-ink-faint: #b9b8b2;
+  --ms-grid: #ecebe7;
+  --ms-surface: #ffffff;
+  --ms-card: #fbfbfa;
+  --ms-card-border: #e7e6e2;
+  --ms-control: #ffffff;
+  --ms-control-border: #d6d5d0;
+  --ms-shadow: 0 6px 24px -8px rgb(0 0 0 / 0.18);
+}
+
+[data-md-color-scheme="slate"] {
+  --ms-c1: #3987e5;
+  --ms-c2: #d95926;
+  --ms-c3: #199e70;
+  --ms-c4: #c98500;
+  --ms-c5: #d55181;
+  --ms-ink: #edece8;
+  --ms-ink-muted: #a9a8a0;
+  --ms-ink-faint: #55544f;
+  --ms-grid: #2c2c2a;
+  --ms-surface: #1b1b1d;
+  --ms-card: #1f1f22;
+  --ms-card-border: #2f2f33;
+  --ms-control: #27272b;
+  --ms-control-border: #3a3a3f;
+  --ms-shadow: 0 8px 28px -8px rgb(0 0 0 / 0.6);
+}
+
+.md-typeset .ms-chart {
+  position: relative;
+  margin: 1.5em 0 0.5em;
+  padding: 0.9rem 1rem 0.8rem;
+  border: 1px solid var(--ms-card-border);
+  border-radius: 10px;
+  background: var(--ms-card);
+  font-size: 0.68rem;
+  color: var(--ms-ink);
+  text-align: left;
+  min-height: 12rem;
+}
+
+.md-typeset .ms-chart--error {
+  display: grid;
+  place-items: center;
+  color: var(--ms-ink-muted);
+}
+
+/* the chart's caption, when it directly follows */
+.md-typeset figure:has(> .ms-chart) {
+  display: block;
+  width: 100%;
+  max-width: none;
+}
+
+.md-typeset figure > .ms-chart {
+  margin-top: 0;
+}
+
+/* --- controls ------------------------------------------------------------ */
+
+.ms-chart__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.1rem;
+  align-items: flex-end;
+  margin-bottom: 0.7rem;
+}
+
+.ms-chart__controls:empty {
+  display: none;
+}
+
+.ms-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 8rem;
+}
+
+.ms-control--slider {
+  flex: 1 1 6.5rem;
+  max-width: 15rem;
+}
+
+.ms-control__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.ms-control__label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--ms-ink-muted);
+}
+
+.ms-control__value {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.66rem;
+  color: var(--ms-ink);
+}
+
+.ms-select {
+  appearance: none;
+  font: inherit;
+  font-size: 0.7rem;
+  color: var(--ms-ink);
+  background-color: var(--ms-control);
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 13px) 50%, calc(100% - 9px) 50%;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+  border: 1px solid var(--ms-control-border);
+  border-radius: 6px;
+  padding: 0.3rem 1.8rem 0.3rem 0.55rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.ms-select:hover,
+.ms-select:focus-visible {
+  border-color: var(--md-accent-fg-color);
+  outline: none;
+}
+
+.ms-range {
+  --fill: 50%;
+  appearance: none;
+  width: 100%;
+  height: 1.1rem;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.ms-range::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--md-accent-fg-color) var(--fill),
+    var(--ms-control-border) var(--fill)
+  );
+}
+
+.ms-range::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--md-accent-fg-color) var(--fill),
+    var(--ms-control-border) var(--fill)
+  );
+}
+
+.ms-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--ms-surface);
+  border: 2px solid var(--md-accent-fg-color);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+  transition: transform 0.1s;
+}
+
+.ms-range::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ms-surface);
+  border: 2px solid var(--md-accent-fg-color);
+}
+
+.ms-range:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}
+
+.ms-range:focus-visible {
+  outline: 2px solid var(--md-accent-fg-color--transparent);
+  outline-offset: 2px;
+}
+
+/* --- legend ------------------------------------------------------------- */
+
+.ms-chart__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin-bottom: 0.3rem;
+  color: var(--ms-ink-muted);
+  font-size: 0.62rem;
+}
+
+.ms-chart__legend:empty {
+  display: none;
+}
+
+.ms-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+}
+
+.ms-legend__swatch {
+  display: inline-block;
+  width: 1.4em;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--swatch);
+}
+
+.ms-legend__item--dash .ms-legend__swatch {
+  mask: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 8px);
+}
+
+.ms-legend__item--dot .ms-legend__swatch {
+  mask: repeating-linear-gradient(90deg, #000 0 2px, transparent 2px 5px);
+}
+
+.ms-legend__item--area .ms-legend__swatch {
+  height: 0.75em;
+  border-radius: 2px;
+  opacity: 0.8;
+}
+
+.ms-legend__item--dotmark .ms-legend__swatch {
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+}
+
+/* --- plot --------------------------------------------------------------- */
+
+.ms-chart__plot {
+  position: relative;
+  width: 100%;
+}
+
+.ms-chart__plot svg {
+  display: block;
+  max-width: 100%;
+  touch-action: pan-y;
+}
+
+.ms-chart__plot [aria-label="x-axis label"] text,
+.ms-chart__plot [aria-label="y-axis label"] text {
+  fill: var(--ms-ink-muted);
+}
+
+.ms-crosshair {
+  stroke: var(--ms-ink-muted);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+  pointer-events: none;
+}
+
+.ms-tooltip {
+  position: absolute;
+  z-index: 2;
+  min-width: 10rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--ms-card-border);
+  border-radius: 8px;
+  background: var(--ms-surface);
+  box-shadow: var(--ms-shadow);
+  font-size: 0.62rem;
+  line-height: 1.55;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.ms-tooltip__title {
+  font-weight: 600;
+  color: var(--ms-ink);
+  margin-bottom: 0.15rem;
+}
+
+.ms-tooltip__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.2rem;
+}
+
+.ms-tooltip__key {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45em;
+  color: var(--ms-ink-muted);
+}
+
+.ms-tooltip__key::before {
+  content: "";
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: var(--swatch);
+}
+
+.ms-tooltip__val {
+  color: var(--ms-ink);
+}
+
+/* --- stats -------------------------------------------------------------- */
+
+.ms-chart__stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.7rem;
+}
+
+.ms-chart__stats:empty {
+  display: none;
+}
+
+.ms-stat {
+  padding: 0.5rem 0.65rem;
+  border-radius: 8px;
+  background: var(--ms-surface);
+  border: 1px solid var(--ms-card-border);
+}
+
+.ms-stat__value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ms-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ms-stat__value small {
+  font-size: 0.6em;
+  font-weight: 500;
+  color: var(--ms-ink-muted);
+}
+
+.ms-stat__label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--ms-ink-muted);
+}
+
+.ms-stat__note {
+  font-size: 0.58rem;
+  line-height: 1.4;
+  color: var(--ms-ink-muted);
+  opacity: 0.85;
+  margin-top: 0.1rem;
+}
+
+/* a row of sliders that share the width evenly */
+.ms-chart__controls--grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+}
+
+.ms-chart__controls--grid .ms-control--slider {
+  max-width: none;
+}
+
+/* side-by-side plots in one chart */
+.ms-chart__panels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 24px;
+}
+
+/* --- image panels and buttons ------------------------------------------- */
+
+.ms-panels {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.ms-panel canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  background: #000;
+  image-rendering: pixelated;
+}
+
+.ms-panel--smooth canvas {
+  image-rendering: auto;
+}
+
+.ms-panel__label {
+  margin-top: 0.3rem;
+  font-size: 0.62rem;
+  color: var(--ms-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ms-button {
+  font: inherit;
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--ms-ink);
+  background: var(--ms-control);
+  border: 1px solid var(--ms-control-border);
+  border-radius: 6px;
+  padding: 0.32rem 0.7rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.ms-button:hover,
+.ms-button:focus-visible {
+  border-color: var(--md-accent-fg-color);
+  color: var(--md-accent-fg-color);
+  outline: none;
+}
+
+.ms-control[hidden] {
+  display: none;
+}
+
+.ms-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.62rem;
+  color: var(--ms-ink-muted);
+  cursor: pointer;
+}
+
+.ms-check input {
+  accent-color: var(--md-accent-fg-color);
+}
+
+.ms-control--button {
+  justify-content: flex-end;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.ms-legend__note {
+  margin-right: auto;
+}
+
+/* --- 2 x 2 matrix (crosstalk) -------------------------------------------- */
+
+.md-typeset table.ms-matrix {
+  display: table;
+  width: 100%;
+  margin: 0;
+  border: 0;
+  font-size: 0.66rem;
+  border-collapse: separate;
+  border-spacing: 0.4rem;
+  background: none;
+}
+
+.md-typeset table.ms-matrix caption {
+  caption-side: top;
+  text-align: left;
+  font-size: 0.6rem;
+  color: var(--ms-ink-muted);
+  padding: 0 0.4rem;
+}
+
+.md-typeset table.ms-matrix th {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: var(--ms-ink-muted);
+  background: none;
+  border: 0;
+  padding: 0.2rem 0.4rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.md-typeset table.ms-matrix td {
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--ms-card-border);
+  border-radius: 8px;
+  background: var(--ms-surface);
+}
+
+.md-typeset table.ms-matrix td.ms-matrix__cross {
+  border-color: var(--ms-c2);
+  border-style: dashed;
+}
+
+.ms-matrix__value {
+  display: block;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--ms-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.ms-matrix__share {
+  font-size: 0.58rem;
+  color: var(--ms-ink-muted);
+}
+
+/* controls in two equal columns, filled row by row */
+.ms-chart__controls--pairs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.ms-chart__controls--pairs .ms-select {
+  width: 100%;
+}
+
+/* --- chain: spectra panels side by side (photon budget) */
+
+.ms-chain {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.ms-chain__col {
+  position: relative;
+}
+
+.ms-chain__title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--ms-ink);
+  margin-bottom: 0.2rem;
+}
+
+.ms-chain__label {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--ms-ink);
+  font-variant-numeric: tabular-nums;
+}
