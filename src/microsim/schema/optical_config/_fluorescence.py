@@ -3,10 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
+import xarray as xr
+
 from microsim.schema.dimensions import Axis
 
 if TYPE_CHECKING:
-    import xarray as xr
+    from collections.abc import Sequence
 
     from microsim.schema.detectors import Detector
     from microsim.schema.lens import ObjectiveLens
@@ -21,7 +23,8 @@ class ChannelFluorescence:
     """How bright one fluorophore is in one channel, and at which wavelengths.
 
     This has no spatial information: it describes a single fluorophore at the
-    *reference* illumination intensity (`OpticalConfig.power`), which is the intensity
+    *reference* illumination intensity (`OpticalConfig.power`, summed over the
+    channels of a track that are acquired together), which is the intensity
     everywhere in a widefield field of view, or at the center of a focused spot.  The
     rates are given with or without saturation at that intensity: modalities that
     don't illuminate evenly (e.g. confocal) apply saturation locally instead.
@@ -35,17 +38,24 @@ class ChannelFluorescence:
     fluorophore : Fluorophore
         The fluorophore.
     absorption_rate : xr.DataArray
-        Photons absorbed per second by one fluorophore, at each excitation wavelength.
+        Photons absorbed per second by one fluorophore, at each excitation wavelength,
+        from all light sources that are on while this channel is acquired (i.e. those
+        of every channel in its track).
     detected_fraction : xr.DataArray
         Photons detected per photon absorbed, at each emission wavelength: quantum
         yield x emission spectrum x emission filters x detector QE x the fraction of
         emitted light collected by the objective.
+    track : int | None
+        Index of the track this channel belongs to: the group of channels acquired
+        at the same time (see `Simulation.tracks`).  None if unknown: the channel is
+        then treated as acquired on its own (e.g. with its own confocal pinhole).
     """
 
     channel: OpticalConfig
     fluorophore: Fluorophore
     absorption_rate: xr.DataArray  # (W,)
     detected_fraction: xr.DataArray  # (W,)
+    track: int | None = None
 
     @classmethod
     def create(
@@ -54,14 +64,26 @@ class ChannelFluorescence:
         fluorophore: Fluorophore,
         objective: ObjectiveLens,
         detector: Detector | None = None,
+        *,
+        absorption_rate: xr.DataArray | None = None,
+        track: int | None = None,
     ) -> ChannelFluorescence:
-        """Describe `fluorophore` in `channel`."""
+        """Describe `fluorophore` in `channel`.
+
+        `absorption_rate` is the fluorophore's absorption from all light sources of
+        the channel's track (see `track_absorption_rate`).  By default, only from
+        `channel` itself.
+        """
         qe = detector.qe if detector else None
         fl = cls.from_channel(channel, fluorophore, detector_qe=qe)
+        if absorption_rate is None:
+            absorption_rate = fl.absorption_rate
         # fraction of isotropic emission entering the objective. PSFs are normalized
         # to collected light, so this is not double-counted (see `detection_psf`)
         detected = fl.detected_fraction * objective.collection_efficiency
-        return replace(fl, detected_fraction=detected)
+        return replace(
+            fl, absorption_rate=absorption_rate, detected_fraction=detected, track=track
+        )
 
     @classmethod
     def from_channel(
@@ -129,3 +151,55 @@ class ChannelFluorescence:
         out.name = "filtered_emission_rate"
         out.attrs.update(long_name="Filtered Emission rate", units="photons/s")
         return out
+
+
+def track_light_sources(track: Sequence[OpticalConfig]) -> list[OpticalConfig]:
+    """Return the channels whose light sources excite `track`, one per light source.
+
+    A light source used by several channels of a track (e.g. two detection windows
+    behind one laser) is on once, so those channels must agree on its power and on
+    the excitation-side filters (e.g. the dichroic).
+    """
+    sources: dict[tuple, OpticalConfig] = {}
+    light_owner: dict[tuple, OpticalConfig] = {}
+    for oc in track:
+        # channels without lights are illuminated through their filters (a lamp)
+        key = (
+            tuple(sorted(oc._light_keys()))
+            if oc.lights
+            else oc._excitation_filter_key()
+        )
+        first = sources.setdefault(key, oc)
+        if first is not oc:
+            if first._excitation_key() != oc._excitation_key():
+                raise ValueError(
+                    f"Channels {first.name!r} and {oc.name!r} are acquired together "
+                    "(in the same track) with the same light source, so they must "
+                    "use the same power and excitation filters (e.g. dichroic)."
+                )
+            continue
+        for light in oc._light_keys():
+            if (other := light_owner.setdefault(light, oc)) is not oc:
+                raise ValueError(
+                    f"Channels {other.name!r} and {oc.name!r} are acquired together "
+                    "(in the same track) and share some, but not all, light sources. "
+                    "Give each light source to one channel (or the same set of light "
+                    "sources to both)."
+                )
+    return list(sources.values())
+
+
+def track_absorption_rate(
+    track: Sequence[OpticalConfig], fluorophore: Fluorophore
+) -> xr.DataArray:
+    """Photons absorbed per second by `fluorophore`, from all light sources of `track`.
+
+    Returns one value per excitation wavelength (dimension `W`).
+    """
+    rates = [
+        oc.absorption_rate(fluorophore).squeeze([Axis.F, Axis.C], drop=True)
+        for oc in track_light_sources(track)
+    ]
+    if len(rates) == 1:
+        return rates[0]
+    return xr.concat(rates, dim="source", join="outer", fill_value=0).sum("source")
