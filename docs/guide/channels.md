@@ -24,28 +24,35 @@ excitation light that reaches the sample, and the transmission of the emission
 path. The emission path combines every filter in it: the dichroic mirror
 reflects the excitation light toward the sample and transmits the emission to
 the detector. Shaded: the absorption spectrum weighted by the excitation light,
-and the emission that passes the emission path. Hover for values.
+and the emission that passes the emission path. Hover for values. The filter
+sets in this and the other charts of this guide are measured spectra from
+FPbase: Chroma's ET filter sets ([below](#built-in-filter-sets)), and the
+Semrock filters of an
+[example microscope](https://www.fpbase.org/microscope/wKqWbgApvguSNDSRZNSfpN/).
 ///
 
 ## Built-in filter sets
 
 [`microsim.schema.optical_config.lib`][microsim.schema.optical_config.lib]
 has idealized versions of common filter sets, built from smooth bandpass and
-longpass edges. They are not models of real filters, and are meant for quick
-simulations; for real filters, load them from FPbase (below).
+longpass edges, with the nominal band edges of Chroma's ET filter sets. They
+are not measured spectra, and are meant for quick simulations; for real
+filters, load them from FPbase (below). The interactive charts in this guide
+use the measured spectra of the Chroma sets.
 
-| Name    | Excitation  | Dichroic | Emission   |
-| ------- | ----------- | -------- | ---------- |
-| `DAPI`  | 350/50      | 400 LP   | 460/50     |
-| `ECFP`  | 436/20      | 455 LP   | 480/40     |
-| `FITC`  | 470/40      | 495 LP   | 525/50     |
-| `EYFP`  | 500/20      | 515 LP   | 535/30     |
-| `TRITC` | 545/25      | 565 LP   | 605/70     |
-| `DSRED` | 545/30      | 570 LP   | 620/60     |
-| `CY5`   | 620/60      | 660 LP   | 700/75     |
-| `CY7`   | 710/75      | 760 LP   | 810/90     |
+| Name    | Excitation  | Dichroic | Emission   | Chroma set (FPbase)       |
+| ------- | ----------- | -------- | ---------- | ------------------------- |
+| `DAPI`  | 350/50      | 400 LP   | 460/50     | `"PMtA2n::Chroma 49000"`  |
+| `ECFP`  | 436/20      | 455 LP   | 480/40     | `"PMtA2n::Chroma 49001"`  |
+| `FITC`  | 470/40      | 495 LP   | 525/50     | `"PMtA2n::Chroma 49002"`  |
+| `EYFP`  | 500/20      | 515 LP   | 535/30     | `"PMtA2n::Chroma 49003"`  |
+| `TRITC` | 545/25      | 565 LP   | 605/70     | `"PMtA2n::Chroma 49004"`  |
+| `DSRED` | 545/30      | 570 LP   | 620/60     | `"PMtA2n::Chroma 49005"`  |
+| `CY5`   | 620/60      | 660 LP   | 700/75     | `"PMtA2n::Chroma 49006"`  |
+| `CY7`   | 710/75      | 760 LP   | 810/90     | `"PMtA2n::Chroma 49007"`  |
 
-Bandpass filters are written as center/width in nm.
+Bandpass filters are written as center/width in nm. The last column is the
+string that loads the measured set ([Filter sets from FPbase](#filter-sets-from-fpbase)).
 
 For point-scanning confocals, `lib` also has laser lines: a laser, a dichroic,
 and an emission bandpass, with generic filter values. Their `power` is 1e5
@@ -192,10 +199,11 @@ Detected photons per molecule for two fluorophores in two channels, acquired
 one after the other (each channel is excited only by its own light). Dashed
 cells are crosstalk: the fluorophore gives less than half of that channel's
 signal. tdTomato absorbs only weakly in the FITC excitation band, but it is
-bright, and a 500 nm longpass emission filter passes nearly all of its
-emission: per molecule, it gives about 80% as much signal in the green channel
-as EGFP. With the 525/50 bandpass emission filter of `FITC`, its share drops below
-1%. Select `FITC` as channel 1 to compare.
+bright, and a 500 nm longpass emitter (Chroma ET500lp, in place of the
+ET525/50m of the FITC set 49002) passes nearly all of its emission: per
+molecule, it gives about 77% as much signal in the green channel as EGFP. With
+the ET525/50m bandpass, its share drops to about 0.5%. Select
+`FITC (Chroma 49002)` as channel 1 to compare.
 ///
 
 To see where the signal in each channel comes from in an image, use

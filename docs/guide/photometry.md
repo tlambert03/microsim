@@ -9,14 +9,23 @@ emits and how many of them reach the detector. These calculations happen in
 [`filtered_emission_rates()`][microsim.schema.simulation.Simulation.filtered_emission_rates],
 before anything spatial is computed.
 
-<div class="ms-chart" data-chart="photon-budget"></div>
+<div class="ms-chart" data-chart="photon-chain"></div>
 /// caption
-Photons absorbed, emitted, and detected per second by one molecule, calculated
-as microsim does, for a specimen refractive index of 1.47 (the
-`ObjectiveLens` default). With the defaults (EGFP, FITC channel, 1 W/cm²,
-1.4 NA, no detector QE), one molecule gives about 6 photons in a 100 ms
-exposure. Typical widefield irradiance is 0.1–10 W/cm²; the peak irradiance of
-a confocal spot is 10–1000 kW/cm²
+The photon budget of one molecule, calculated as microsim does.
+**Excitation**: the light at the sample times the absorption cross section
+gives the absorption rate. **Emission**: the absorption rate times the quantum
+yield (and saturation, if any) is spread over the emission spectrum, then
+multiplied by the emission path, the detector QE, and the fraction of light the
+objective collects (1.4 NA and specimen refractive index 1.47, the
+`ObjectiveLens` defaults). The light, cross section, and emission are drawn
+relative to their peaks, so each shaded area is the product of the curves in
+its plot (times the collection efficiency, for the detected light). Hover for
+values. The filter sets are measured spectra from FPbase
+([Channels](channels.md#built-in-filter-sets)). With the starting values
+(EGFP, Chroma's FITC set 49002, 1 W/cm², no detector QE), one molecule absorbs
+about 390 photons/s and gives about 53 detected photons/s, or about 5 in a
+100 ms exposure. Typical widefield irradiance is
+0.1–10 W/cm²; the peak irradiance of a confocal spot is 10–1000 kW/cm²
 ([Channels](channels.md#illumination-power)). Fluorophores without a known
 lifetime do not saturate.
 ///
@@ -32,6 +41,9 @@ For each fluorophore in each channel:
    rate**, per wavelength.
 4. The emission filters, the detector's QE, and the fraction of light the
    objective collects reduce it to the **detected rate**.
+
+Steps 1 and 2 are the *Excitation* plot of the chart above, and steps 3 and 4
+the *Emission* plot.
 
 The result is an array with dimensions `(c, f, w)`: photons per second, per
 fluorophore, for every channel, fluorophore, and wavelength. Keeping the

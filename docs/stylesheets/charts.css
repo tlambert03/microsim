@@ -367,93 +367,6 @@
   margin-top: 0.1rem;
 }
 
-/* --- flow: tiles joined by arrows (photon budget tally) ------------------ */
-
-.ms-chart__stats:has(> .ms-flow) {
-  display: block;
-}
-
-.ms-flow {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem 0.9rem;
-}
-
-@media (max-width: 30em) {
-  .ms-flow {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-.ms-flow__step {
-  position: relative;
-  padding: 0.45rem 0.55rem;
-  border-radius: 8px;
-  background: var(--ms-surface);
-  border: 1px solid var(--ms-card-border);
-}
-
-.ms-flow__step:not(:first-child)::before {
-  content: "›";
-  position: absolute;
-  left: -0.75rem;
-  top: 0.55rem;
-  color: var(--ms-ink-faint);
-  font-size: 0.9rem;
-  line-height: 1;
-}
-
-@media (min-width: 30em) {
-  .ms-flow__step:nth-child(3n + 1)::before {
-    content: none;
-  }
-}
-
-@media (max-width: 30em) {
-  .ms-flow__step:nth-child(2n + 1)::before {
-    content: none;
-  }
-}
-
-.ms-flow__step:last-child {
-  border-color: var(--md-accent-fg-color);
-  box-shadow: inset 0 0 0 1px var(--md-accent-fg-color--transparent);
-}
-
-.ms-flow__value {
-  font-size: 0.95rem;
-  font-weight: 600;
-  line-height: 1.25;
-  font-variant-numeric: tabular-nums;
-  color: var(--ms-ink);
-}
-
-.ms-flow__value small {
-  font-size: 0.62em;
-  font-weight: 500;
-  margin-left: 0.1em;
-  color: var(--ms-ink-muted);
-}
-
-.ms-flow__label {
-  font-size: 0.6rem;
-  font-weight: 600;
-  color: var(--ms-ink-muted);
-}
-
-.ms-flow__factor {
-  margin-top: 0.15rem;
-  font-size: 0.56rem;
-  line-height: 1.4;
-  color: var(--ms-ink-muted);
-  opacity: 0.9;
-}
-
-.ms-flow__warn {
-  color: var(--ms-c2);
-  opacity: 1;
-}
-
 /* a row of sliders that share the width evenly */
 .ms-chart__controls--grid {
   display: grid;
@@ -612,4 +525,33 @@
 
 .ms-chart__controls--pairs .ms-select {
   width: 100%;
+}
+
+/* --- chain: spectra panels side by side (photon budget) */
+
+.ms-chain {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.ms-chain__col {
+  position: relative;
+}
+
+.ms-chain__title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--ms-ink);
+  margin-bottom: 0.2rem;
+}
+
+.ms-chain__label {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--ms-ink);
+  font-variant-numeric: tabular-nums;
 }

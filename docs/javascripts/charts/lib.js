@@ -298,11 +298,21 @@ export function baseOptions(width) {
 export const decades = (lo, hi) =>
   Array.from({ length: Math.round(Math.log10(hi / lo)) + 1 }, (_, i) => lo * 10 ** i);
 
+const SUPERSCRIPT = { "-": "⁻", 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" };
+
 export const fmt = {
   si: d3.format(".3~s"),
   sig: (x, n = 3) => (x === 0 ? "0" : d3.format(`.${n}~r`)(x)),
   pct: d3.format(".1~%"),
   int: d3.format(",.0f"),
+  // `n` significant digits, as `5.89 × 10¹⁶` if |x| < 1e-3 or >= 1e5
+  sci: (x, n = 3) => {
+    const a = Math.abs(Number(x.toPrecision(n)));
+    if (x === 0 || (a >= 1e-3 && a < 1e5)) return fmt.sig(x, n);
+    const [m, e] = x.toExponential(n - 1).split("e");
+    const exp = String(Number(e)).replace(/[-0-9]/g, (c) => SUPERSCRIPT[c]);
+    return `${Number(m)} × 10${exp}`;
+  },
 };
 
 // ---------------------------------------------------------------------------

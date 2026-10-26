@@ -122,16 +122,17 @@ export function fluxDensity(irrad) {
   };
 }
 
-// Fluorophore.absorption_cross_section: excitation spectrum normalized to peak 1,
-// times the extinction coefficient (M^-1 cm^-1), then ln(10) * 1e3 * ε / N_A (cm^2)
-export function crossSection(exSpectrum, extinctionCoefficient) {
+// First step of Fluorophore.absorption_cross_section: excitation spectrum
+// normalized to peak 1, times the extinction coefficient: ε(λ) in M^-1 cm^-1
+export function extinction(exSpectrum, extinctionCoefficient) {
   const peak = Math.max(...exSpectrum.v);
-  return {
-    w: exSpectrum.w,
-    v: exSpectrum.v.map(
-      (x) => (Math.log(10) * 1e3 * ((x / peak) * extinctionCoefficient)) / AVOGADRO,
-    ),
-  };
+  return { w: exSpectrum.w, v: exSpectrum.v.map((x) => (x / peak) * extinctionCoefficient) };
+}
+
+// Fluorophore.absorption_cross_section: ln(10) * 1e3 * ε(λ) / N_A (cm^2)
+export function crossSection(exSpectrum, extinctionCoefficient) {
+  const eps = extinction(exSpectrum, extinctionCoefficient);
+  return { w: eps.w, v: eps.v.map((e) => (Math.log(10) * 1e3 * e) / AVOGADRO) };
 }
 
 // OpticalConfig.absorption_rate: photons/s absorbed per molecule, at each

@@ -47,8 +47,8 @@ export default async function (el) {
   const state = {
     f1: "EGFP",
     f2: "tdTomato",
-    c1: "FITC, 500 LP emission",
-    c2: "TRITC",
+    c1: "FITC, ET500lp emission",
+    c2: "TRITC (Chroma 49004)",
   };
   const redraw = () => chart.redraw();
   const pick = (label, key, options) =>

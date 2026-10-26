@@ -32,8 +32,8 @@ code is a copy, and copies drift. This skill is how to check it.
 | Chart | Page | Physics used | Data | Starting values |
 | --- | --- | --- | --- | --- |
 | `spectra.js` | `guide/channels.md` | `absorptionRate`, `crossSection`, `filteredEmissionRate`, `fluxDensity`, `irradiance`, `transmitted` | `photometry.json` | fluorophore and channel menus |
-| `crosstalk.js` | `guide/channels.md` | `photonBudget` | `photometry.json` (incl. `lens`) | EGFP + tdTomato, FITC 500 LP + TRITC; numbers in the caption |
-| `photon-budget.js` | `guide/photometry.md` | `photonBudget` | `photometry.json` (incl. `lens`) | EGFP, FITC, 1 W/cm², 100 ms; "about 6 photons" in the page text |
+| `crosstalk.js` | `guide/channels.md` | `photonBudget` | `photometry.json` (incl. `lens`) | EGFP + tdTomato, `FITC, ET500lp emission` + `TRITC (Chroma 49004)`; numbers in the caption |
+| `photon-chain.js` | `guide/photometry.md` | `crossSection`, `extinction`, `fluxDensity`, `irradiance`, `photonBudget` | `photometry.json` (incl. `lens`) | EGFP, `FITC (Chroma 49002)`, 1 W/cm², QE 1; "about 390 photons/s", "about 53", "about 5 in 100 ms" in the caption |
 | `saturation.js` | `guide/photometry.md` | `absorptionRate`, `totalEmissionRate`, `halfSaturationIrradiance`, `maxEmissionRate` | `photometry.json` | irradiance bands from the table in `guide/channels.md` |
 | `noise.js` | `guide/detectors.md` | `simulateCamera`, `snr`, `emccdExcessNoiseFactor` | `noise.json`, `detectors.json` (`cameras`) | camera presets shared with `detector-snr.js` |
 | `detector-snr.js` | `guide/detectors.md` | `snr`, `emccdExcessNoiseFactor` | `detectors.json` (`cameras`) | ≈71% cap in the caption |
@@ -67,7 +67,7 @@ Update this table when you add, rename, or remove a chart.
    | `photometry.js` `excitationPath`, `emissionPath` | `schema/optical_config/config.py` `OpticalConfig.excitation`, `.emission`, `._merge` |
    | `photometry.js` `illumination` | `OpticalConfig.illumination`, `LightSource.scaled_spectrum` |
    | `photometry.js` `irradiance`, `fluxDensity` | `OpticalConfig.irradiance`, `.illumination_flux_density` |
-   | `photometry.js` `crossSection` | `schema/sample/fluorophore.py` `Fluorophore.absorption_cross_section` |
+   | `photometry.js` `extinction`, `crossSection` | `schema/sample/fluorophore.py` `Fluorophore.absorption_cross_section` (`extinction` is its first step, ε(λ)) |
    | `photometry.js` `absorptionRate`, `saturationParameter`, `totalEmissionRate`, `filteredEmissionRate` | `OpticalConfig` methods of the same names (which call `optical_config/_fluorescence.py` `ChannelFluorescence` and `OpticalConfig.detected_fraction`) |
    | `photometry.js` `halfSaturationIrradiance`, `maxEmissionRate` | derived from `OpticalConfig.saturation_parameter` and `.total_emission_rate` |
    | `photometry.js` `collectionEfficiency` | `schema/lens.py` `ObjectiveLens.collection_efficiency` |

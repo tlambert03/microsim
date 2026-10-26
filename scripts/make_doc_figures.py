@@ -200,6 +200,37 @@ CHART_FLUOROPHORES = [
 ]
 
 
+# The interactive charts use measured filter spectra: the Chroma ET sets that the
+# idealized `optical_config.lib` sets are modeled on, from FPbase.
+CHROMA_SCOPE = "PMtA2nB6Ld2Y2XvrF5zUuP"  # "Chroma Filter Sets" on FPbase
+CHART_CHANNELS = {
+    "DAPI": "49000",
+    "ECFP": "49001",
+    "FITC": "49002",
+    "EYFP": "49003",
+    "TRITC": "49004",
+    "DsRed": "49005",
+    "Cy5": "49006",
+    "Cy7": "49007",
+}
+
+
+def _chroma_set(label: str, part: str) -> ms.OpticalConfig:
+    oc = ms.OpticalConfig.from_fpbase(CHROMA_SCOPE, f"Chroma {part}")
+    return oc.model_copy(update={"name": f"{label} (Chroma {part})"})
+
+
+def _chart_channels() -> list[ms.OpticalConfig]:
+    configs = [_chroma_set(label, part) for label, part in CHART_CHANNELS.items()]
+    # FITC with a longpass emitter: collects more green, and more crosstalk
+    fitc = configs[2]
+    longpass = ms.SpectrumFilter.from_fpbase("chroma-et500lp", placement="EM")
+    filters = [f for f in fitc.filters if f.placement.value != "EM"] + [longpass]
+    name = "FITC, ET500lp emission"
+    configs.insert(3, fitc.model_copy(update={"name": name, "filters": filters}))
+    return configs
+
+
 # FITC with a longpass emission filter: collects more green, and more crosstalk
 FITC_LP = ms.OpticalConfig(
     name="FITC, 500 LP emission",
@@ -238,9 +269,7 @@ def photometry_data() -> None:
             }
         )
     configs = [
-        *(getattr(oc_lib, n) for n in ["DAPI", "ECFP", "FITC", "EYFP", "TRITC"]),
-        FITC_LP,
-        *(getattr(oc_lib, n) for n in ["DSRED", "CY5", "CY7"]),
+        *_chart_channels(),
         *(
             ms.OpticalConfig.from_fpbase(microscope_id="wKqWbg", config_name=n)
             for n in ["Widefield Green", "Widefield Red"]

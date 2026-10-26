@@ -52,7 +52,7 @@ export default async function (el) {
   const ui = shell(el);
   const state = {
     fluor: el.dataset.fluor ?? "EGFP",
-    channel: el.dataset.channel ?? "FITC",
+    channel: el.dataset.channel ?? "FITC (Chroma 49002)",
   };
 
   select(ui.controls, {

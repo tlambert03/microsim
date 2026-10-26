@@ -29,7 +29,7 @@ export default async function (el) {
   const { fluors, channels } = await loadPhotometry();
   const withLifetime = fluors.filter((f) => f.lifetime_ns);
   const ui = shell(el);
-  const state = { fluor: "EGFP", channel: "FITC" };
+  const state = { fluor: "EGFP", channel: "FITC (Chroma 49002)" };
   const redraw = () => chart.redraw();
 
   select(ui.controls, {
