@@ -299,6 +299,8 @@ class Identity(_PSFModality):
     properties (PSF, modality, etc.) in the simulation.
     """
 
+    type: Literal["identity"] = "identity"
+
     def render(
         self,
         truth: xrDataArray,  # (F, Z, Y, X)

@@ -112,8 +112,8 @@ passing less light.
 [`Identity`][microsim.schema.Identity] applies no PSF. Use it when the ground
 truth is already a microscope image (for example, a real widefield image) and
 you are interested in the spectral and detector parts of the simulation:
-fluorophores, filters, bleedthrough, and noise. It must be given as an object,
-`modality=ms.Identity()`.
+fluorophores, filters, bleedthrough, and noise: `modality=ms.Identity()`, or
+`{"type": "identity"}`.
 
 ## Objective lens
 

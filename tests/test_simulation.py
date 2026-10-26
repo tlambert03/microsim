@@ -294,6 +294,17 @@ def test_changing_fields_resets_ground_truth() -> None:
     assert copied.truth_space.shape == (8, 16, 16)
 
 
+@pytest.mark.parametrize("modality", [ms.Widefield(), ms.Confocal(), ms.Identity()])
+def test_modality_json_round_trip(modality: ms.Modality) -> None:
+    sim = ms.Simulation(
+        truth_space=ms.ShapeScaleSpace(shape=(8, 32, 32), scale=(0.2, 0.1, 0.1)),
+        sample=ms.Sample(labels=[MATSLINES]),
+        modality=modality,
+    )
+    loaded = ms.Simulation.model_validate_json(sim.model_dump_json())
+    assert type(loaded.modality) is type(modality)
+
+
 def test_identity_modality_backend_conversion(np_backend: ms.BackendName) -> None:
     """Regression test for #124: em_rates must be converted to the active
     backend before use in Identity.render(), same as truth already is."""
